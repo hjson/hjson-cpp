@@ -196,6 +196,22 @@ int main() {
 }
 ```
 
+Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::VECTOR*:
+
+```cpp
+for (int index = 0; index < int(arr.size()); ++index) {
+  std::cout << arr[0].to_string() << std::endl;
+}
+```
+
+Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::MAP*:
+
+```cpp
+for (auto it = map.begin(); it != map.end(); ++it) {
+  std::cout << "key: " << it->first << "  value: " << it->second.to_string() << std::endl;
+}
+```
+
 # History
 
 [see releases](https://github.com/trobro/hjson-cpp/releases)
