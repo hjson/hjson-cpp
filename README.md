@@ -200,7 +200,7 @@ Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::VECTO
 
 ```cpp
 for (int index = 0; index < int(arr.size()); ++index) {
-  std::cout << arr[0].to_string() << std::endl;
+  std::cout << arr[index].to_string() << std::endl;
 }
 ```
 
