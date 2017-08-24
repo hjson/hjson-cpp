@@ -95,6 +95,64 @@ $ cmake .. -Dhjson_DIR=../hjson-cpp/build
 
 # Usage in C++
 
+### Functions
+
+The most important functions in the Hjson namespace are:
+
+```cpp
+std::string Marshal(Value v);
+Value Unmarshal(const char *data, size_t dataSize);
+```
+
+*Marshal* is the output-function, transforming an *Hjson::Value* tree (represented by its root node) to a string that can be written to a file.
+
+*Unmarshal* is the input-function, transforming a string to a *Hjson::Value* tree. The string is expected to be UTF8 encoded. Other encodings might work too, but have not been tested.
+
+Two more functions exist, allowing adjustments to the output formatting when creating an Hjson string:
+
+```cpp
+EncoderOptions DefaultOptions();
+std::string MarshalWithOptions(Value v, EncoderOptions options);
+```
+
+### Hjson::Value
+
+Input strings are unmarshalled into a tree representation where each node in the tree is an object of the type *Hjson::Value*. The class *Hjson::Value* mimics the behavior of Javascript in that you can assign any type of primitive value to it without casting. Examples:
+
+```cpp
+Hjson::Value myValue(true);
+Hjson::Value myValue2 = 3.0;
+myValue2 = "A text.";
+```
+
+An *Hjson::Value* can behave both like a vector (array) and like a map (*Object* in Javascript):
+
+```cpp
+Hjson::Value map;
+map["down1"]["down2"]["down3"] = "three levels deep!";
+map["down1"]["number"] = 7;
+
+Hjson::Value arr;
+arr.push_back("first");
+std::string myString = arr[0];
+```
+
+If you try to access a map element that doesn't exist, an *Hjson::Value* of type *Hjson::Value::UNDEFINED* is returned. But if you try to access a vector element that doesn't exist, an *Hjson::index_out_of_bounds* exception is thrown.
+
+These are the possible types for an *Hjson::Value*:
+
+    UNDEFINED
+    HJSON_NULL
+    BOOL
+    DOUBLE
+    STRING
+    VECTOR
+    MAP
+
+The default constructor creates an *Hjson::Value* of the type *Hjson::Value::UNDEFINED*.
+
+### Example code
+
 ```cpp
 #include <hjson.h>
 
