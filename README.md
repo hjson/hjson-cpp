@@ -1,6 +1,7 @@
 # hjson-cpp
 
-[![Build Status](https://travis-ci.org/trobro/hjson-cpp.svg?branch=master)](https://travis-ci.org/trobro/hjson-cpp)
+[![Build Status](https://travis-ci.org/hjson/hjson-cpp.svg?branch=master)](https://travis-ci.org/hjson/hjson-cpp)
+[![C++](https://img.shields.io/github/release/hjson/hjson-cpp.svg?style=flat-square&label=c%2b%2b)](https://github.com/hjson/hjson-cpp/releases)
 ![license](https://img.shields.io/github/license/mashape/apistatus.svg)
 
 ![Hjson Intro](http://hjson.org/hjson1.gif)
@@ -214,5 +215,5 @@ for (auto it = map.begin(); it != map.end(); ++it) {
 
 # History
 
-[see releases](https://github.com/trobro/hjson-cpp/releases)
+[see releases](https://github.com/hjson/hjson-cpp/releases)
 
