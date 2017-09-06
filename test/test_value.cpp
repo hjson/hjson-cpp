@@ -1,6 +1,12 @@
 #include <hjson.h>
 #include <assert.h>
 #include <cmath>
+#include <cstring>
+
+
+static std::string _test_string_param(std::string param) {
+  return param;
+}
 
 
 void test_value() {
@@ -106,11 +112,13 @@ void test_value() {
     assert(val == val2);
     assert(val != "beta");
     assert("beta" != val);
+    assert(_test_string_param(val) == "alpha");
     val = std::string("alpha");
     std::string st = val;
     assert(val == val2);
     assert(val2 == std::string("alpha"));
     assert(val2 != std::string("beta"));
+    assert(std::string("alpha") == val2.operator const std::string());
     assert(std::string("beta") != val2.operator const std::string());
     assert(val.to_double() == 0);
     assert(val.to_string() == "alpha");
@@ -173,6 +181,8 @@ void test_value() {
     std::string leaft1 = val["first"];
     assert(leaft1 == "leaf1");
     assert(val[std::string("first")] == "leaf1");
+    assert(val["first"] == "leaf1");
+    assert(!strcmp("leaf1", val["first"]));
 
     auto it = val.begin();
     assert(it->first == "first");
@@ -242,6 +252,11 @@ void test_value() {
       assert(!"Did not throw error when trying to assign Value to VECTOR index that is out of bounds.");
     } catch(Hjson::index_out_of_bounds e) {}
     try {
+      const Hjson::Value val2;
+      const auto val3 = val2[0];
+      assert(!"Did not throw error when trying to access VECTOR index that is out of bounds.");
+    } catch(Hjson::index_out_of_bounds e) {}
+    try {
       if (val[0].empty()) {
         assert(!"Did not throw error when trying to access VECTOR index that is out of bounds.");
       }
@@ -272,6 +287,16 @@ void test_value() {
       }
       assert(!"Did not throw error when trying to access VECTOR index that is out of bounds.");
     } catch(Hjson::index_out_of_bounds e) {}
+  }
+
+  {
+    Hjson::Value val;
+    {
+      Hjson::Value val2;
+      val2.push_back("first");
+      val = val2[0];
+    }
+    assert(val == "first");
   }
 
   {
