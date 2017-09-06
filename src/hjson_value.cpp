@@ -195,7 +195,7 @@ MapProxy Value::operator[](const char *input) {
 
 const Value Value::operator[](int index) const {
   if (prv->type == UNDEFINED) {
-    return Value();
+    throw index_out_of_bounds("Index out of bounds.");
   } else if (prv->type != VECTOR) {
     throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
   }
@@ -210,9 +210,7 @@ const Value Value::operator[](int index) const {
 
 Value &Value::operator[](int index) {
   if (prv->type == UNDEFINED) {
-    prv->~ValueImpl();
-    // Recreate the private object using the same memory block.
-    new(&(*prv)) ValueImpl(VECTOR);
+    throw index_out_of_bounds("Index out of bounds.");
   } else if (prv->type != VECTOR) {
     throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
   }
