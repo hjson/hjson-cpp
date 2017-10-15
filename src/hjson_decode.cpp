@@ -2,6 +2,7 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 
 
 namespace Hjson {
@@ -545,6 +546,15 @@ Value Unmarshal(const char *data, size_t dataSize) {
 
   _resetAt(&parser);
   return _rootValue(&parser);
+}
+
+
+Value Unmarshal(const char *data) {
+  if (!data) {
+    return Value();
+  }
+
+  return Unmarshal(data, std::strlen(data));
 }
 
 

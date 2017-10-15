@@ -543,6 +543,31 @@ bool Value::deep_equal(const Value &other) const {
 }
 
 
+Value Value::clone() const {
+  switch (type()) {
+  case VECTOR:
+    {
+      Value ret;
+      for (int index = 0; index < int(size()); ++index) {
+        ret.push_back(operator[](index).clone());
+      }
+      return ret;
+    }
+
+  case MAP:
+    {
+      Value ret;
+      for (auto it = begin(); it != end(); ++it) {
+        ret[it->first] = it->second.clone();
+      }
+      return ret;
+    }
+  }
+
+  return *this;
+}
+
+
 void Value::erase(int index) {
   if (prv->type != UNDEFINED && prv->type != VECTOR) {
     throw type_mismatch("Must be of type VECTOR for that operation.");
@@ -719,6 +744,29 @@ MapProxy &MapProxy::operator =(const Value &other) {
   prv = other.prv;
   wasAssigned = true;
   return *this;
+}
+
+
+Value Merge(const Value base, const Value ext) {
+  Value merged;
+
+  if (!ext.defined()) {
+    merged = base.clone();
+  } else if (base.type() == Value::MAP && ext.type() == Value::MAP) {
+    for (auto it = ext.begin(); it != ext.end(); ++it) {
+      merged[it->first] = Merge(base[it->first], it->second);
+    }
+
+    for (auto it = base.begin(); it != base.end(); ++it) {
+      if (!merged[it->first].defined()) {
+        merged[it->first] = it->second.clone();
+      }
+    }
+  } else {
+    merged = ext.clone();
+  }
+
+  return merged;
 }
 
 

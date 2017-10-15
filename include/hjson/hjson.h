@@ -119,6 +119,7 @@ public:
   Type type() const;
   size_t size() const;
   bool deep_equal(const Value&) const;
+  Value clone() const;
 
   // VECTOR specific functions
   void erase(int);
@@ -159,11 +160,38 @@ public:
 
 EncoderOptions DefaultOptions();
 
+// Returns a properly indented text representation of the input value tree.
+// Extra options can be specified in the input parameter "options".
 std::string MarshalWithOptions(Value v, EncoderOptions options);
 
+// Returns a properly indented text representation of the input value tree.
 std::string Marshal(Value v);
 
+// Creates a Value tree from input text.
 Value Unmarshal(const char *data, size_t dataSize);
+
+// Creates a Value tree from input text.
+// The input parameter "data" must be null-terminated.
+Value Unmarshal(const char *data);
+
+// Returns a Value tree that is a combination of the input parameters "base"
+// and "ext".
+//
+// If "base" and "ext" contain a map on the same place in the tree, the
+// returned tree will on that place have a map containing a combination of
+// all keys from the "base" and "ext" maps. If a key existed in both "base"
+// and "ext", the value from "ext" is used. Except for if the value in "ext"
+// is of type UNDEFINED: then the value from "base" is used.
+//
+// Vectors are not merged: if a vector exists in the same place in the "base"
+// and "ext" trees, the one from "ext" will be used in the returned tree.
+//
+// Maps and vectors are cloned, not copied. Therefore changes in the returned
+// tree will not affect the input variables "base" and "ext.
+//
+// If "ext" is of type UNDEFINED, a clone of "base" is returned.
+//
+Value Merge(const Value base, const Value ext);
 
 
 }

@@ -459,4 +459,85 @@ void test_value() {
     val2["2"] = 2;
     assert(!val1.deep_equal(val2));
   }
- }
+
+  {
+    Hjson::Value val1;
+    val1["first"] = 1;
+    Hjson::Value val2 = val1.clone();
+    val1["second"] = 2;
+    assert(val2.size() == 1);
+    val1["third"]["first"] = 3;
+    val2 = val1.clone();
+    val2["third"]["second"] = 4;
+    assert(val1["first"].size() == 1);
+  }
+
+  {
+    Hjson::Value val1;
+    val1.push_back(1);
+    Hjson::Value val2 = val1.clone();
+    val1.push_back(2);
+    assert(val2.size() == 1);
+    val1.push_back(val2);
+    val2 = val1.clone();
+    val2[2].push_back(3);
+    assert(val1[2].size() == 1);
+  }
+
+  {
+    Hjson::Value base = Hjson::Unmarshal(R"(
+{
+  debug: false
+  rect: {
+    x: 0
+    y: 0
+    width: 800
+    height: 600
+  }
+  path: C:/temp
+  seq: [
+    0
+    1
+    2
+  ]
+  scale: 3
+  window: {
+    x: 13
+    y: 37
+    width: 200
+    height: 200
+  }
+}
+)");
+
+    Hjson::Value ext = Hjson::Unmarshal(R"(
+{
+  debug: true
+  rect: {
+    x: 0
+    y: 0
+    height: 480
+  }
+  path: /tmp
+  seq: [
+    8
+    9
+  ]
+  otherWindow: {
+    x: 17
+  }
+}
+)");
+
+    Hjson::Value merged = Hjson::Merge(base, ext);
+    assert(merged["debug"] == true);
+    assert(merged["rect"]["width"] == 800);
+    assert(merged["rect"]["height"] == 480);
+    assert(merged["path"] == "/tmp");
+    assert(merged["seq"].size() == 2);
+    assert(merged["seq"][1] == 9);
+    assert(merged["scale"] == 3);
+    assert(merged["window"]["y"] == 37);
+    assert(merged["otherWindow"]["x"] == 17);
+  }
+}
