@@ -103,11 +103,15 @@ The most important functions in the Hjson namespace are:
 ```cpp
 std::string Marshal(Value v);
 Value Unmarshal(const char *data, size_t dataSize);
+Value Unmarshal(const char *data);
+Value Merge(const Value base, const Value ext);
 ```
 
 *Marshal* is the output-function, transforming an *Hjson::Value* tree (represented by its root node) to a string that can be written to a file.
 
-*Unmarshal* is the input-function, transforming a string to a *Hjson::Value* tree. The string is expected to be UTF8 encoded. Other encodings might work too, but have not been tested.
+*Unmarshal* is the input-function, transforming a string to a *Hjson::Value* tree. The string is expected to be UTF8 encoded. Other encodings might work too, but have not been tested. The function comes in two flavors: with or without the `dataSize` parameter. Without it, the `data` parameter must be null-terminated (like all normal strings).
+
+*Merge* returns an *Hjson::Value* tree that is a cloned combination of the input *Hjson::Value* trees `base` and `ext`, with values from `ext` used whenever both `base` and `ext` has a value for some specific position in the tree. The function is convenient when implementing an application with a default configuration (`base`) that can be overridden by input parameters (`ext`).
 
 Two more functions exist, allowing adjustments to the output formatting when creating an Hjson string:
 
@@ -210,6 +214,42 @@ Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::MAP*:
 ```cpp
 for (auto it = map.begin(); it != map.end(); ++it) {
   std::cout << "key: " << it->first << "  value: " << it->second.to_string() << std::endl;
+}
+```
+
+Having a default configuration:
+
+```cpp
+#include <hjson.h>
+#include <cstdio>
+
+
+static const char *_szDefaultConfig = R"(
+{
+  imageSource: NO DEFAULT
+  showImages: true
+  writeImages: true
+  printFrameIndex: false
+  printFrameRate: true
+}
+)";
+
+
+Hjson::Value GetConfig(const char *szInputConfig) {
+  Hjson::Value defaultConfig = Hjson::Unmarshal(_szDefaultConfig);
+
+  Hjson::Value inputConfig
+  try {
+    inputConfig = Hjson::Unmarshal(szInputConfig);
+  } catch(std::exception e) {
+    std::fprintf(stderr, "Error: Failed to unmarshal input config\n");
+    std::fprintf(stdout, "Default config:\n");
+    std::fprintf(stdout, _szDefaultConfig);
+
+    return Hjson::Value();
+  }
+
+  return Hjson::Merge(defaultConfig, inputConfig);
 }
 ```
 
