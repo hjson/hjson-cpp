@@ -4,6 +4,26 @@
 #include <iostream>
 
 
+static std::string _readStream(std::ifstream *pInfile) {
+  assert(pInfile->is_open());
+
+  std::string ret;
+  ret.resize(pInfile->tellg());
+  pInfile->seekg(0, std::ios::beg);
+  pInfile->read(&ret[0], ret.size());
+  pInfile->close();
+
+  return ret;
+}
+
+
+static std::string _readFile(std::string path) {
+  std::ifstream infile(path, std::ifstream::ate | std::ifstream::binary);
+
+  return _readStream(&infile);
+}
+
+
 static std::string _getTestContent(std::string name) {
   std::ifstream infile("assets/" + name + "_test.hjson",
     std::ifstream::ate | std::ifstream::binary);
@@ -13,13 +33,7 @@ static std::string _getTestContent(std::string name) {
       std::ifstream::ate | std::ifstream::binary);
   }
 
-  std::string ret;
-  ret.resize(infile.tellg());
-  infile.seekg(0, std::ios::beg);
-  infile.read(&ret[0], ret.size());
-  infile.close();
-
-  return ret;
+  return _readStream(&infile);
 }
 
 
@@ -51,15 +65,7 @@ static void _examine(std::string filename) {
     }
   }
 
-  std::ifstream resultFile("assets/sorted/" + name + "_result.hjson",
-    std::ifstream::ate | std::ifstream::binary);
-
-  std::string rhjson;
-  rhjson.resize(resultFile.tellg());
-  resultFile.seekg(0, std::ios::beg);
-  resultFile.read(&rhjson[0], rhjson.size());
-  resultFile.close();
-
+  auto rhjson = _readFile("assets/sorted/" + name + "_result.hjson");
   auto actualHjson = Marshal(root);
 
   //std::ofstream outputFile("out.hjson");
@@ -67,6 +73,15 @@ static void _examine(std::string filename) {
   //outputFile.close();
 
   assert(actualHjson == rhjson);
+
+  auto rjson = _readFile("assets/sorted/" + name + "_result.json");
+  auto actualJson = MarshalJson(root);
+
+  //std::ofstream outputFile("out.json");
+  //outputFile << actualJson;
+  //outputFile.close();
+
+  assert(actualJson == rjson);
 }
 
 
