@@ -1,8 +1,9 @@
-#include <hjson.h>
+#include "hjson.h"
 #include <sstream>
 #include <regex>
 #include <iomanip>
-
+#include <iostream>
+#include <cmath>
 
 namespace Hjson {
 
@@ -254,7 +255,6 @@ static void _quoteName(Encoder *e, std::string name) {
   }
 }
 
-
 // Produce a string from value.
 static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
   bool isRootObject)
@@ -262,9 +262,10 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
   switch (value.type()) {
   case Value::DOUBLE:
     e->oss << separator;
-    if (std::isnan(double(value)) || std::isinf(double(value))) {
+          
+      if (std::isnan(double(value)) || std::isinf(double(value))) {
       e->oss << Value(Value::HJSON_NULL).to_string();
-    } else if (!e->opt.allowMinusZero && value == 0 && std::signbit(value)) {
+      } else if (!e->opt.allowMinusZero && value == 0 && std::signbit(double(value))) {
       e->oss << Value(0).to_string();
     } else {
       e->oss << value.to_string();
