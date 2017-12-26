@@ -262,10 +262,10 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
   switch (value.type()) {
   case Value::DOUBLE:
     e->oss << separator;
-          
-      if (std::isnan(double(value)) || std::isinf(double(value))) {
+
+    if (std::isnan(double(value)) || std::isinf(double(value))) {
       e->oss << Value(Value::HJSON_NULL).to_string();
-      } else if (!e->opt.allowMinusZero && value == 0 && std::signbit(double(value))) {
+    } else if (!e->opt.allowMinusZero && value == 0 && std::signbit(double(value))) {
       e->oss << Value(0).to_string();
     } else {
       e->oss << value.to_string();
