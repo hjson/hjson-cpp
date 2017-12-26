@@ -31,14 +31,20 @@ struct EncoderOptions {
   std::string eol;
   // Place braces on the same line
   bool bracesSameLine;
-  // Always place string in quotes
+  // Always place string values in double quotation marks ("), and escape
+  // any special chars inside the string value
   bool quoteAlways;
+  // Always place keys in quotes
+  bool quoteKeys;
   // Indent string
   std::string indentBy;
   // Allow the -0 value (unlike ES6)
   bool allowMinusZero;
   // Encode unknown values as 'null'
   bool unknownAsNull;
+  // Output a comma separator between elements. If true, always place strings
+  // in quotes (overriding the "quoteAlways" setting).
+  bool separator;
 };
 
 
@@ -166,6 +172,10 @@ std::string MarshalWithOptions(Value v, EncoderOptions options);
 
 // Returns a properly indented text representation of the input value tree.
 std::string Marshal(Value v);
+
+// Returns a properly indented JSON text representation of the input value
+// tree.
+std::string MarshalJson(Value v);
 
 // Creates a Value tree from input text.
 Value Unmarshal(const char *data, size_t dataSize);

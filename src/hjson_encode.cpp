@@ -14,9 +14,11 @@ EncoderOptions DefaultOptions() {
   opt.eol = "\n";
   opt.bracesSameLine = false;
   opt.quoteAlways = false;
+  opt.quoteKeys = false;
   opt.indentBy = "  ";
   opt.allowMinusZero = false;
   opt.unknownAsNull = false;
+  opt.separator = false;
 
   return opt;
 }
@@ -218,7 +220,9 @@ static void _quote(Encoder *e, std::string value, std::string separator, bool is
 
     if (!std::regex_search(value, e->needsEscape)) {
       e->oss << separator << '"' << value << '"';
-    } else if (!std::regex_search(value, e->needsEscapeML) && !isRootObject) {
+    } else if (!e->opt.quoteAlways && !std::regex_search(value,
+      e->needsEscapeML) && !isRootObject)
+    {
       _mlString(e, value, separator);
     } else {
       e->oss << separator + '"';
@@ -235,7 +239,7 @@ static void _quote(Encoder *e, std::string value, std::string separator, bool is
 static void _quoteName(Encoder *e, std::string name) {
   if (name.empty()) {
     e->oss << "\"\"";
-  } else if (std::regex_search(name, e->needsEscapeName)) {
+  } else if (e->opt.quoteKeys || std::regex_search(name, e->needsEscapeName)) {
     e->oss << '"';
     if (std::regex_search(name, e->needsEscape)) {
       _quoteReplace(e, name);
@@ -286,8 +290,15 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
       e->oss << "[";
 
       // Join all of the element texts together, separated with newlines
+      bool isFirst = true;
       for (int i = 0; size_t(i) < value.size(); ++i) {
         if (value[i].defined()) {
+          if (isFirst) {
+            isFirst = false;
+          } else if (e->opt.separator) {
+            e->oss << ",";
+          }
+
           _writeIndent(e, e->indent);
           _str(e, value[i], true, "", false);
         }
@@ -315,8 +326,15 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
       e->oss << "{";
 
       // Join all of the member texts together, separated with newlines
+      bool isFirst = true;
       for (auto it : value) {
         if (it.second.defined()) {
+          if (isFirst) {
+            isFirst = false;
+          } else if (e->opt.separator) {
+            e->oss << ",";
+          }
+
           _writeIndent(e, e->indent);
           _quoteName(e, it.first);
           e->oss << ":";
@@ -364,6 +382,10 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
 // an infinite recursion.
 //
 std::string MarshalWithOptions(Value v, EncoderOptions options) {
+  if (options.separator) {
+    options.quoteAlways = true;
+  }
+
   Encoder e;
   e.opt = options;
   e.indent = 0;
@@ -403,5 +425,22 @@ std::string Marshal(Value v) {
   return MarshalWithOptions(v, DefaultOptions());
 }
 
+
+// MarshalJson returns the Json encoding of v using
+// default options + "bracesSameLine", "quoteAlways", "quoteKeys" and
+// "separator".
+//
+// See MarshalWithOptions.
+//
+std::string MarshalJson(Value v) {
+  auto opt = DefaultOptions();
+
+  opt.bracesSameLine = true;
+  opt.quoteAlways = true;
+  opt.quoteKeys = true;
+  opt.separator = true;
+
+  return MarshalWithOptions(v, opt);
+}
 
 }
