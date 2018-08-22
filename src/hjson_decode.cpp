@@ -13,6 +13,7 @@ struct Parser {
   size_t dataSize;
   int at;
   unsigned char ch;
+  bool parseComments;
 };
 
 
@@ -308,31 +309,50 @@ static std::string _readKeyname(Parser *p) {
 }
 
 
-static void _white(Parser *p) {
+// parse commentary iff active and get next character
+static inline void _next2com(Parser *p, std::string*& com, std::string* comNextLine)
+{
+  if (com && p->parseComments) {
+    if (!com->empty() || p->ch > ' ')
+      com->push_back(p->ch);
+    if (p->ch == '\n')
+      com = comNextLine;
+  }
+  _next(p);
+}
+
+
+static void _white(Parser *p, std::string* com1, std::string* com2) {
+  auto* com = com1;
   while (p->ch > 0) {
-    // Skip whitespace.
+    // Read whitespace.
     while (p->ch > 0 && p->ch <= ' ') {
-      _next(p);
+      _next2com(p, com, com2);
     }
     // Hjson allows comments
     if (p->ch == '#' || p->ch == '/' && _peek(p, 0) == '/') {
       while (p->ch > 0 && p->ch != '\n') {
-        _next(p);
+        _next2com(p, com, com2);
       }
     } else if (p->ch == '/' && _peek(p, 0) == '*') {
-      _next(p);
-      _next(p);
+      _next2com(p, com, com);
+	  _next2com(p, com, com);
       while (p->ch > 0 && !(p->ch == '*' && _peek(p, 0) == '/')) {
-        _next(p);
+        _next2com(p, com, com);
       }
       if (p->ch > 0) {
-        _next(p);
-        _next(p);
+        _next2com(p, com, com);
+        _next2com(p, com, com);
       }
     } else {
       break;
     }
   }
+}
+
+
+static inline void _white(Parser *p, std::string* com = nullptr) {
+  _white(p, com, com);
 }
 
 
@@ -427,13 +447,13 @@ static Value _readArray(Parser *p) {
 // Parse an object value.
 static Value _readObject(Parser *p, bool withoutBraces) {
   Value object(Hjson::Value::MAP);
+  std::string comPre, comPost;
 
   if (!withoutBraces) {
     // assuming ch == '{'
     _next(p);
   }
-
-  _white(p);
+  _white(p, &comPre);
   if (p->ch == '}' && !withoutBraces) {
     _next(p);
     return object; // empty object
@@ -446,19 +466,33 @@ static Value _readObject(Parser *p, bool withoutBraces) {
         "Expected ':' instead of '") + (char)(p->ch) + "'"));
     }
     _next(p);
-    // duplicate keys overwrite the previous value
-    object[key] = _readValue(p);
-    _white(p);
+    // read the value and store previously read comments
+    auto val = _readValue(p);
+    val.comment_pre() = std::move(comPre);
+    comPre.clear();
+    // read following comments (note: after first '\n' it relates to next key)
+    _white(p, &comPost, &comPre);
     // in Hjson the comma is optional and trailing commas are allowed
     if (p->ch == ',') {
       _next(p);
-      _white(p);
+      // iff a line-break appeared before ',' whole following commentary relates to next key
+      if (comPost.back() == '\n')
+        _white(p, &comPre);
+      else
+        _white(p, &comPost, &comPre);
     }
+    // store suffix-like comment into value
+    if (!comPost.empty() && comPost.back() == '\n')
+      comPost.pop_back();
+    val.comment_post() = std::move(comPost);
+    comPost.clear();
+    // duplicate keys overwrite the previous value
+    object[key] = std::move(val);
     if (p->ch == '}' && !withoutBraces) {
       _next(p);
       return object;
     }
-    _white(p);
+    _white(p, &comPre);
   }
 
   if (withoutBraces) {
@@ -536,12 +570,13 @@ static Value _rootValue(Parser *p) {
 //
 // Unmarshal uses the inverse of the encodings that Marshal uses.
 //
-Value Unmarshal(const char *data, size_t dataSize) {
+Value Unmarshal(const char *data, size_t dataSize, bool parseComments) {
   Parser parser = {
     (const unsigned char*) data,
     dataSize,
     0,
-    ' '
+    ' ',
+    parseComments
   };
 
   _resetAt(&parser);
@@ -549,12 +584,12 @@ Value Unmarshal(const char *data, size_t dataSize) {
 }
 
 
-Value Unmarshal(const char *data) {
+Value Unmarshal(const char *data, bool parseComments) {
   if (!data) {
     return Value();
   }
 
-  return Unmarshal(data, std::strlen(data));
+  return Unmarshal(data, std::strlen(data), parseComments);
 }
 
 

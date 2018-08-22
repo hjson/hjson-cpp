@@ -20,6 +20,7 @@ EncoderOptions DefaultOptions() {
   opt.allowMinusZero = false;
   opt.unknownAsNull = false;
   opt.separator = false;
+  opt.outputCommentary = false;
 
   return opt;
 }
@@ -204,13 +205,15 @@ static void _mlString(Encoder *e, std::string value, std::string separator) {
 
 // Check if we can insert this string without quotes
 // see hjson syntax (must not parse as true, false, null or number)
-static void _quote(Encoder *e, std::string value, std::string separator, bool isRootObject) {
-  if (value.size() == 0) {
+static void _quote(Encoder *e, const Value& value, std::string separator, bool isRootObject) {
+  std::string valueStr = value.to_string();
+  if (valueStr.size() == 0) {
     e->oss << separator << "\"\"";
   } else if (e->opt.quoteAlways ||
-    std::regex_search(value, e->needsQuotes) ||
-    startsWithNumber(value.c_str(), value.size()) ||
-    std::regex_search(value, e->startsWithKeyword))
+    std::regex_search(valueStr, e->needsQuotes) ||
+    startsWithNumber(valueStr.c_str(), valueStr.size()) ||
+    std::regex_search(valueStr, e->startsWithKeyword) ||
+    e->opt.outputCommentary && !(value.comment_post().empty()))
   {
 
     // If the string contains no control characters, no quote characters, and no
@@ -219,20 +222,20 @@ static void _quote(Encoder *e, std::string value, std::string separator, bool is
     // format or we must replace the offending characters with safe escape
     // sequences.
 
-    if (!std::regex_search(value, e->needsEscape)) {
-      e->oss << separator << '"' << value << '"';
-    } else if (!e->opt.quoteAlways && !std::regex_search(value,
+    if (!std::regex_search(valueStr, e->needsEscape)) {
+      e->oss << separator << '"' << valueStr << '"';
+    } else if (!e->opt.quoteAlways && !std::regex_search(valueStr,
       e->needsEscapeML) && !isRootObject)
     {
-      _mlString(e, value, separator);
+      _mlString(e, valueStr, separator);
     } else {
       e->oss << separator + '"';
-      _quoteReplace(e, value);
+      _quoteReplace(e, valueStr);
       e->oss << '"';
     }
   } else {
     // return without quotes
-    e->oss << separator << value;
+    e->oss << separator << valueStr;
   }
 }
 
@@ -256,7 +259,7 @@ static void _quoteName(Encoder *e, std::string name) {
 }
 
 // Produce a string from value.
-static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
+static void _str(Encoder *e, const Value& value, bool noIndent, std::string separator,
   bool isRootObject)
 {
   switch (value.type()) {
@@ -337,9 +340,13 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
           }
 
           _writeIndent(e, e->indent);
+          if (e->opt.outputCommentary)
+            e->oss << it.second.comment_pre();
           _quoteName(e, it.first);
           e->oss << ":";
           _str(e, it.second, false, " ", false);
+          if (e->opt.outputCommentary && !it.second.comment_post().empty())
+            e->oss << " " << it.second.comment_post();
         }
       }
 
@@ -382,7 +389,7 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
 // handle them. Passing cyclic structures to Marshal will result in
 // an infinite recursion.
 //
-std::string MarshalWithOptions(Value v, EncoderOptions options) {
+std::string MarshalWithOptions(const Value& v, EncoderOptions options) {
   if (options.separator) {
     options.quoteAlways = true;
   }
@@ -422,7 +429,7 @@ std::string MarshalWithOptions(Value v, EncoderOptions options) {
 //
 // See MarshalWithOptions.
 //
-std::string Marshal(Value v) {
+std::string Marshal(const Value& v) {
   return MarshalWithOptions(v, DefaultOptions());
 }
 
@@ -433,7 +440,7 @@ std::string Marshal(Value v) {
 //
 // See MarshalWithOptions.
 //
-std::string MarshalJson(Value v) {
+std::string MarshalJson(const Value& v) {
   auto opt = DefaultOptions();
 
   opt.bracesSameLine = true;

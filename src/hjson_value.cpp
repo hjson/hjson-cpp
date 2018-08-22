@@ -15,6 +15,8 @@ typedef std::map<std::string, Value> ValueMap;
 class Value::ValueImpl {
 public:
   Type type;
+  std::string commentPre;
+  std::string commentPost;
   union {
     bool b;
     double d;
@@ -707,6 +709,30 @@ std::string Value::to_string() const {
   }
 
   throw type_mismatch("Illegal type for this operation.");
+}
+
+
+std::string& Value::comment_pre()
+{
+  return prv->commentPre;
+}
+
+
+std::string& Value::comment_post()
+{
+  return prv->commentPost;
+}
+
+
+const std::string& Value::comment_pre() const
+{
+  return prv->commentPre;
+}
+
+
+const std::string& Value::comment_post() const
+{
+  return prv->commentPost;
 }
 
 

@@ -45,6 +45,8 @@ struct EncoderOptions {
   // Output a comma separator between elements. If true, always place strings
   // in quotes (overriding the "quoteAlways" setting).
   bool separator;
+  // Print existing commentary
+  bool outputCommentary;
 };
 
 
@@ -142,6 +144,12 @@ public:
   // Throws if used on VECTOR or MAP
   double to_double() const;
   std::string to_string() const;
+
+  // commentary access functions
+  std::string& comment_pre();
+  std::string& comment_post();
+  const std::string& comment_pre() const;
+  const std::string& comment_post() const;
 };
 
 
@@ -168,21 +176,21 @@ EncoderOptions DefaultOptions();
 
 // Returns a properly indented text representation of the input value tree.
 // Extra options can be specified in the input parameter "options".
-std::string MarshalWithOptions(Value v, EncoderOptions options);
+std::string MarshalWithOptions(const Value& v, EncoderOptions options);
 
 // Returns a properly indented text representation of the input value tree.
-std::string Marshal(Value v);
+std::string Marshal(const Value& v);
 
 // Returns a properly indented JSON text representation of the input value
 // tree.
-std::string MarshalJson(Value v);
+std::string MarshalJson(const Value& v);
 
 // Creates a Value tree from input text.
-Value Unmarshal(const char *data, size_t dataSize);
+Value Unmarshal(const char *data, size_t dataSize, bool parseComments = false);
 
 // Creates a Value tree from input text.
 // The input parameter "data" must be null-terminated.
-Value Unmarshal(const char *data);
+Value Unmarshal(const char *data, bool parseComments = false);
 
 // Returns a Value tree that is a combination of the input parameters "base"
 // and "ext".
