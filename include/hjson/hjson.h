@@ -47,6 +47,8 @@ struct EncoderOptions {
   bool separator;
   // Print existing commentary
   bool outputCommentary;
+  // [OBSOLETE] While Hjson allows you to omit {} for the root object, this feature should no longer be used.
+  bool emitRootBraces;
 };
 
 

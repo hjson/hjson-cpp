@@ -21,6 +21,7 @@ EncoderOptions DefaultOptions() {
   opt.unknownAsNull = false;
   opt.separator = false;
   opt.outputCommentary = false;
+  opt.emitRootBraces = true;
 
   return opt;
 }
@@ -320,14 +321,16 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
       e->oss << separator << "{}";
     } else {
       auto indent1 = e->indent;
-      e->indent++;
+      if (!isRootObject || e->opt.emitRootBraces)
+        e->indent++;
 
       if (!noIndent && !e->opt.bracesSameLine) {
         _writeIndent(e, indent1);
       } else {
         e->oss << separator;
       }
-      e->oss << "{";
+      if (!isRootObject || e->opt.emitRootBraces)
+        e->oss << "{";
 
       // Join all of the member texts together, separated with newlines
       bool isFirst = true;
@@ -351,7 +354,8 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
       }
 
       _writeIndent(e, indent1);
-      e->oss << "}";
+      if (!isRootObject || e->opt.emitRootBraces)
+        e->oss << "}";
 
       e->indent = indent1;
     }
