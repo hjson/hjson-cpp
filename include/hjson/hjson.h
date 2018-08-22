@@ -120,7 +120,7 @@ public:
   explicit operator bool() const;
   operator double() const;
   operator const char*() const;
-  operator const std::string() const;
+  operator std::string() const;
 
   bool defined() const;
   bool empty() const;

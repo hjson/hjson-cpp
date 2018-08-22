@@ -20,7 +20,9 @@ public:
   union {
     bool b;
     double d;
-    void *p;
+    ValueMap* m;
+    ValueVec* v;
+    std::string* s;
   };
 
   ValueImpl();
@@ -54,7 +56,7 @@ Value::ValueImpl::ValueImpl(double input)
 
 Value::ValueImpl::ValueImpl(const std::string &input)
   : type(STRING),
-  p(new std::string(input))
+  s(new std::string(input))
 {
 }
 
@@ -68,13 +70,13 @@ Value::ValueImpl::ValueImpl(Type _type)
     d = 0.0;
     break;
   case STRING:
-    p = new std::string();
+    s = new std::string();
     break;
   case VECTOR:
-    p = new ValueVec();
+    v = new ValueVec();
     break;
   case MAP:
-    p = new ValueMap();
+    m = new ValueMap();
     break;
   }
 }
@@ -84,13 +86,13 @@ Value::ValueImpl::~ValueImpl() {
   switch (type)
   {
   case STRING:
-    delete (std::string*) p;
+    delete s;
     break;
   case VECTOR:
-    delete (ValueVec*)p;
+    delete v;
     break;
   case MAP:
-    delete (ValueMap*)p;
+    delete m;
     break;
   }
 }
@@ -157,8 +159,8 @@ const Value Value::operator[](const std::string& name) const {
   if (prv->type == UNDEFINED) {
     return Value();
   } else if (prv->type == MAP) {
-    auto it = ((ValueMap*)prv->p)->find(name);
-    if (it == ((ValueMap*)prv->p)->end()) {
+    auto it = prv->m->find(name);
+    if (it == prv->m->end()) {
       return Value();
     }
     return it->second;
@@ -177,8 +179,8 @@ MapProxy Value::operator[](const std::string& name) {
     throw type_mismatch("Must be of type UNDEFINED or MAP for that operation.");
   }
 
-  auto it = ((ValueMap*)prv->p)->find(name);
-  if (it == ((ValueMap*)prv->p)->end()) {
+  auto it = prv->m->find(name);
+  if (it == prv->m->end()) {
     return MapProxy(prv, std::make_shared<ValueImpl>(UNDEFINED), name);
   }
   return MapProxy(prv, it->second.prv, name);
@@ -206,7 +208,7 @@ const Value Value::operator[](int index) const {
     throw index_out_of_bounds("Index out of bounds.");
   }
 
-  return ((const ValueVec*)prv->p)[0][index];
+  return prv->v[0][index];
 }
 
 
@@ -221,7 +223,7 @@ Value &Value::operator[](int index) {
     throw index_out_of_bounds("Index out of bounds.");
   }
 
-  return ((ValueVec*)prv->p)[0][index];
+  return prv->v[0][index];
 }
 
 
@@ -266,7 +268,7 @@ bool Value::operator!=(const char *input) const {
 
 
 bool Value::operator==(const std::string &input) const {
-  return operator const std::string() == input;
+  return operator std::string() == input;
 }
 
 
@@ -289,10 +291,10 @@ bool Value::operator==(const Value &other) const {
   case DOUBLE:
     return prv->d == other.prv->d;
   case STRING:
-    return *((std::string*) prv->p) == *((std::string*)other.prv->p);
+    return *(prv->s) == *(other.prv->s);
   case VECTOR:
   case MAP:
-    return prv->p == other.prv->p;
+    return prv->m == other.prv->m;
   }
 
   assert(!"Unknown type");
@@ -327,22 +329,22 @@ bool Value::operator<(int input) const {
 
 
 bool Value::operator>(const char *input) const {
-  return operator const std::string() > input;
+  return operator std::string() > input;
 }
 
 
 bool Value::operator<(const char *input) const {
-  return operator const std::string() < input;
+  return operator std::string() < input;
 }
 
 
 bool Value::operator>(const std::string &input) const {
-  return operator const std::string() > input;
+  return operator std::string() > input;
 }
 
 
 bool Value::operator<(const std::string &input) const {
-  return operator const std::string() < input;
+  return operator std::string() < input;
 }
 
 
@@ -355,7 +357,7 @@ bool Value::operator>(const Value &other) const {
   case DOUBLE:
     return prv->d > other.prv->d;
   case STRING:
-    return *((std::string*)prv->p) > *((std::string*)other.prv->p);
+    return *(prv->s) > *(other.prv->s);
   }
 
   throw type_mismatch("The compared values must be of type DOUBLE or STRING.");
@@ -371,7 +373,7 @@ bool Value::operator<(const Value &other) const {
   case DOUBLE:
     return prv->d < other.prv->d;
   case STRING:
-    return *((std::string*)prv->p) < *((std::string*)other.prv->p);
+    return *(prv->s) < *(other.prv->s);
   }
 
   throw type_mismatch("The compared values must be of type DOUBLE or STRING.");
@@ -389,12 +391,12 @@ double Value::operator+(double input) const {
 
 
 std::string Value::operator+(const char *input) const {
-  return operator const std::string() + input;
+  return operator std::string() + input;
 }
 
 
 std::string Value::operator+(const std::string &input) const {
-  return operator const std::string() + input;
+  return operator std::string() + input;
 }
 
 
@@ -407,7 +409,7 @@ Value Value::operator+(const Value &other) const {
   case DOUBLE:
     return prv->d + other.prv->d;
   case STRING:
-    return *((std::string*)prv->p) + *((std::string*)other.prv->p);
+    return *(prv->s) + *(other.prv->s);
   }
 
   throw type_mismatch("The values must be of type DOUBLE or STRING for this operation.");
@@ -448,16 +450,16 @@ Value::operator const char*() const {
     throw type_mismatch("Must be of type STRING for that operation.");
   }
 
-  return ((std::string*)(prv->p))->c_str();
+  return prv->s->c_str();
 }
 
 
-Value::operator const std::string() const {
+Value::operator std::string() const {
   if (prv->type != STRING) {
     throw type_mismatch("Must be of type STRING for that operation.");
   }
 
-  return *((const std::string*)(prv->p));
+  return *(prv->s);
 }
 
 
@@ -469,9 +471,9 @@ bool Value::defined() const {
 bool Value::empty() const {
   return (prv->type == UNDEFINED ||
     prv->type == HJSON_NULL ||
-    prv->type == STRING && ((std::string*)prv->p)->empty() ||
-    prv->type == VECTOR && ((ValueVec*)prv->p)->empty() ||
-    prv->type == MAP && ((ValueMap*)prv->p)->empty());
+    prv->type == STRING && prv->s->empty() ||
+    prv->type == VECTOR && prv->v->empty() ||
+    prv->type == MAP && prv->m->empty());
 }
 
 
@@ -488,11 +490,11 @@ size_t Value::size() const {
   switch (prv->type)
   {
   case STRING:
-    return ((std::string*)prv->p)->size();
+    return prv->s->size();
   case VECTOR:
-    return ((ValueVec*)prv->p)->size();
+    return prv->v->size();
   case MAP:
-    return ((ValueMap*)prv->p)->size();
+    return prv->m->size();
   }
 
   assert(prv->type == BOOL || prv->type == DOUBLE);
@@ -514,9 +516,9 @@ bool Value::deep_equal(const Value &other) const {
   {
   case VECTOR:
     {
-      auto itA = ((ValueVec*)(this->prv->p))->begin();
-      auto endA = ((ValueVec*)(this->prv->p))->end();
-      auto itB = ((ValueVec*)(other.prv->p))->begin();
+      auto itA = prv->v->begin();
+      auto endA = prv->v->end();
+      auto itB = other.prv->v->begin();
       do {
         if (!itA->deep_equal(*itB)) {
           return false;
@@ -577,7 +579,7 @@ void Value::erase(int index) {
     throw index_out_of_bounds("Index out of bounds.");
   }
 
-  auto vec = (ValueVec*) prv->p;
+  auto vec = prv->v;
   vec->erase(vec->begin() + index);
 }
 
@@ -591,7 +593,7 @@ void Value::push_back(const Value &other) {
     throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
   }
 
-  ((ValueVec*)prv->p)->push_back(other);
+  prv->v->push_back(other);
 }
 
 
@@ -602,7 +604,7 @@ ValueMap::iterator Value::begin() {
     return ValueMap::iterator();
   }
 
-  return ((ValueMap*)prv->p)->begin();
+  return prv->m->begin();
 }
 
 
@@ -613,7 +615,7 @@ ValueMap::iterator Value::end() {
     return ValueMap::iterator();
   }
 
-  return ((ValueMap*)prv->p)->end();
+  return prv->m->end();
 }
 
 
@@ -624,7 +626,7 @@ ValueMap::const_iterator Value::begin() const {
     return ValueMap::const_iterator();
   }
 
-  return ((const ValueMap*)prv->p)->begin();
+  return prv->m->begin();
 }
 
 
@@ -635,7 +637,7 @@ ValueMap::const_iterator Value::end() const {
     return ValueMap::const_iterator();
   }
 
-  return ((const ValueMap*)prv->p)->end();
+  return prv->m->end();
 }
 
 
@@ -646,7 +648,7 @@ size_t Value::erase(const std::string &key) {
     throw type_mismatch("Must be of type MAP for that operation.");
   }
 
-  return ((ValueMap*)(prv->p))->erase(key);
+  return prv->m->erase(key);
 }
 
 
@@ -666,7 +668,7 @@ double Value::to_double() const {
     return prv->d;
   case STRING:
     double ret;
-    std::stringstream ss(*((std::string*)prv->p));
+    std::stringstream ss(*(prv->s));
 
     // Make sure we expect dot (not comma) as decimal point.
     ss.imbue(std::locale::classic());
@@ -705,7 +707,7 @@ std::string Value::to_string() const {
       return oss.str();
     }
   case STRING:
-    return *((std::string*)prv->p);
+    return *(prv->s);
   }
 
   throw type_mismatch("Illegal type for this operation.");
@@ -754,7 +756,7 @@ MapProxy::~MapProxy() {
     // Without this requirement, checking for the existence of an element
     // would create an UNDEFINED element for that key if it didn't already exist
     // (e.g. `if (val["key"] == 1) {` would create an element for "key").
-    ((ValueMap*)parentPrv->p)[0][key] = Value(prv);
+    parentPrv->m[0][key] = Value(prv);
   }
 }
 
