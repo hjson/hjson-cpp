@@ -77,7 +77,7 @@ static std::string _errAt(Parser *p, std::string message) {
 
 static bool _next(Parser *p) {
   // get the next character.
-  if (p->at < p->dataSize) {
+  if (static_cast<size_t>(p->at) < p->dataSize) {
     p->ch = p->data[p->at++];
     return true;
   }
@@ -91,7 +91,7 @@ static bool _next(Parser *p) {
 static unsigned char _peek(Parser *p, int offs) {
   int pos = p->at + offs;
 
-  if (pos >= 0 && pos < p->dataSize) {
+  if (pos >= 0 && static_cast<size_t>(pos) < p->dataSize) {
     return p->data[p->at + offs];
   }
 

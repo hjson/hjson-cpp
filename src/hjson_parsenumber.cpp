@@ -28,7 +28,7 @@ static bool _parseFloat(double *pNumber, const std::string &str) {
 
 static bool _next(Parser *p) {
   // get the next character.
-  if (p->at < p->dataSize) {
+  if (static_cast<size_t>(p->at) < p->dataSize) {
     p->ch = p->data[p->at++];
     return true;
   }

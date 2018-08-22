@@ -96,7 +96,7 @@ static int _fromUtf8(const unsigned char **ppC, size_t *pnS) {
     return -1;
   }
 
-  if (*pnS < nS) {
+  if (*pnS < static_cast<size_t>(nS)) {
     return -1;
   }
 

@@ -200,7 +200,7 @@ const Value Value::operator[](int index) const {
     throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
   }
 
-  if (index < 0 || index >= size()) {
+  if (index < 0 || static_cast<size_t>(index) >= size()) {
     throw index_out_of_bounds("Index out of bounds.");
   }
 
@@ -215,7 +215,7 @@ Value &Value::operator[](int index) {
     throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
   }
 
-  if (index < 0 || index >= size()) {
+  if (index < 0 || static_cast<size_t>(index) >= size()) {
     throw index_out_of_bounds("Index out of bounds.");
   }
 
@@ -571,7 +571,7 @@ Value Value::clone() const {
 void Value::erase(int index) {
   if (prv->type != UNDEFINED && prv->type != VECTOR) {
     throw type_mismatch("Must be of type VECTOR for that operation.");
-  } else if (index < 0 || index >= size()) {
+  } else if (index < 0 || static_cast<size_t>(index) >= size()) {
     throw index_out_of_bounds("Index out of bounds.");
   }
 
