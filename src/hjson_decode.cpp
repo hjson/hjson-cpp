@@ -18,7 +18,7 @@ struct Parser {
 
 
 bool tryParseNumber(double *pNumber, const char *text, size_t textSize, bool stopAtNext);
-static Value _readValue(Parser *p);
+static Value _readValue(Parser *p, std::string& comPre, const std::string& indent);
 
 
 // trim from start (in place)
@@ -86,6 +86,21 @@ static bool _next(Parser *p) {
   p->ch = 0;
 
   return false;
+}
+
+
+// spool by n chars (negative = backwards)
+static inline bool _spool(Parser *p, int n) {
+  if (n!=0) {
+    auto target = p->at + n;
+    if (target >= 0 && static_cast<size_t>(target) < p->dataSize) {
+      p->at = target;
+      p->ch = p->data[p->at];
+      return true;
+    }
+    return false;
+  }
+  return true;
 }
 
 
@@ -309,50 +324,119 @@ static std::string _readKeyname(Parser *p) {
 }
 
 
-// parse commentary iff active and get next character
-static inline void _next2com(Parser *p, std::string*& com, std::string* comNextLine)
-{
-  if (com && p->parseComments) {
-    if (!com->empty() || p->ch > ' ')
-      com->push_back(p->ch);
-    if (p->ch == '\n')
-      com = comNextLine;
+// skip given string
+// skip == nullptr: skip all wite-char except '\n'
+static void _skip(Parser *p, const std::string* skip = nullptr) {
+  if (skip) { // skip given string
+    for (const auto& c : *skip)
+    {
+      if (p->ch == c)
+        _next(p);
+      else
+        return; // stop skipping on mismatch
+    }
   }
+  else { // skip all whitespace-chars except '\n'
+    while (p->ch > 0 && p->ch <= ' ' && p->ch != '\n')
+      _next(p);
+  }
+}
+
+
+// read char to string and move on
+static inline void _readComChar(Parser *p, std::string& str) {
+  if (p->parseComments)
+    str.push_back(p->ch);
   _next(p);
 }
 
 
-static void _white(Parser *p, std::string* com1, std::string* com2) {
-  auto* com = com1;
-  while (p->ch > 0) {
-    // Read whitespace.
-    while (p->ch > 0 && p->ch <= ' ') {
-      _next2com(p, com, com2);
+// get indent from current position until non-white char.
+// reset indent on newline
+static inline std::string _readIndent(Parser *p) {
+  std::string indent;
+  while (p->ch > 0 && p->ch <= ' ') {
+    _readComChar(p, indent);
+    if (indent.back() == '\n') {
+      indent.clear();
     }
-    // Hjson allows comments
-    if (p->ch == '#' || p->ch == '/' && _peek(p, 0) == '/') {
-      while (p->ch > 0 && p->ch != '\n') {
-        _next2com(p, com, com2);
+  }
+  return indent;
+}
+
+
+// parse commentary, stop on non-white-character or '\n' outside commentary
+// commentary is trimmed right and seperated with a ' ' form previously existing commentary
+// indent is skipped in /**/-style multiline comment. Skips all whitespace if indent == nullptr
+static bool _readComment(Parser *p, std::string& com, const std::string* indent = nullptr) {
+  // add a space if comment is appended directly after non white char
+  if (!com.empty() && com.back() > ' ')
+    com.push_back(' ');
+  while (true) {
+    // Read whitespace
+    if (p->ch > 0 && p->ch <= ' ') {
+      // Stop parsing on linebreak outside commentary
+      if (p->ch == '\n') {
+        _rtrim(com);
+        return true; // Stop was caused by newline
       }
-    } else if (p->ch == '/' && _peek(p, 0) == '*') {
-      _next2com(p, com, com);
-	  _next2com(p, com, com);
-      while (p->ch > 0 && !(p->ch == '*' && _peek(p, 0) == '/')) {
-        _next2com(p, com, com);
+      _readComChar(p, com);
+    }
+    // Hjson allows single-line comments with "#" or "//"
+    else if (p->ch == '#' || p->ch == '/' && _peek(p, 0) == '/') {
+      while (p->ch > 0 && p->ch != '\n') {
+        _readComChar(p, com);
+      }
+    }
+    // Hjson allows multi-line c-style comments with "/*" and "*/"
+    else if (p->ch == '/' && _peek(p, 0) == '*') {
+      _readComChar(p, com); // expect '/'
+      _readComChar(p, com); // expect '*'
+      while (p->ch > 0 && !(p->ch == '*' && _peek(p, 0) == '/')) {  
+        _readComChar(p, com);
+        if (com.back() == '\n') {
+          _skip(p, indent);
+        }
       }
       if (p->ch > 0) {
-        _next2com(p, com, com);
-        _next2com(p, com, com);
+        _readComChar(p, com);
+        _readComChar(p, com);
       }
-    } else {
-      break;
+    }
+    else {
+      _rtrim(com);
+      return false; // Stop was caused by non-white-character
     }
   }
 }
 
 
-static inline void _white(Parser *p, std::string* com = nullptr) {
-  _white(p, com, com);
+// parse as many lines of commentary as possible, determining and erasing common indent
+static inline std::string _readCommentWithIndent(Parser *p, std::string& com) {
+  if (!com.empty() && com.back() != '\n')
+    com += '\n';
+  std::string indent = _readIndent(p);
+  while (_readComment(p, com, &indent)) {
+    _readComChar(p, com); // newline
+    _skip(p, &indent);
+  }
+  return indent;
+}
+
+
+// parse as many lines of commentary as possible, erasing whitespace prefixes
+static inline void _readCommentSkipIndent(Parser *p, std::string& com) {
+  if (!com.empty())
+    com += '\n';
+  _skip(p);
+  while (p->ch == '\n') {
+    _next(p);
+    _skip(p);
+  }
+  while (_readComment(p, com)) {
+    _readComChar(p, com); // newline
+    _skip(p); // skip whitespace
+  }
 }
 
 
@@ -375,21 +459,26 @@ static Value _readTfnns(Parser *p) {
       p->ch == '#' ||
       p->ch == '/' && (_peek(p, 0) == '/' || _peek(p, 0) == '*'))
     {
-      auto trimmed = _trim(std::string(value.data(), value.size()));
+      // remove any whitespace at the end
+      auto trimmed = std::string(value.data(), value.size());
+      _rtrim(trimmed);
 
       switch (chf) {
       case 'f':
         if (trimmed == "false") {
+          _spool(p, -static_cast<int>(value.size() - trimmed.size()));
           return false;
         }
         break;
       case 'n':
         if (trimmed == "null") {
+          _spool(p, -static_cast<int>(value.size() - trimmed.size()));
           return Value(Value::HJSON_NULL);
         }
         break;
       case 't':
         if (trimmed == "true") {
+          _spool(p, -static_cast<int>(value.size() - trimmed.size()));
           return true;
         }
         break;
@@ -397,13 +486,14 @@ static Value _readTfnns(Parser *p) {
         if (chf == '-' || chf >= '0' && chf <= '9') {
           double number;
           if (tryParseNumber(&number, value.data(), value.size(), false)) {
+            _spool(p, -static_cast<int>(value.size() - trimmed.size()));
             return number;
           }
         }
       }
       if (isEol) {
-        // remove any whitespace at the end (ignored in quoteless strings)
-        return _trim(std::string(value.data(), value.size()));
+        // whitespaces at the end are ignored in quoteless strings and no comment may follow
+        return trimmed;
       }
     }
     value.push_back(p->ch);
@@ -411,33 +501,45 @@ static Value _readTfnns(Parser *p) {
 }
 
 
+// convert a prefix-like comment to suffix-like comment
+static void _movePreToPostCom(std::string& pre, std::string& post) {
+  for(auto& it: pre) {
+  if (it == '\n')
+    it = ' '; // there mustn't be '\n' in post comments
+  }
+  post += post.empty() ? std::move(pre) : " " + pre;
+  pre.clear();
+}
+
+
 // Parse an array value.
 // assuming ch == '['
 static Value _readArray(Parser *p) {
-  Value array(Hjson::Value::VECTOR);
+  Value array(Value::VECTOR);
+  std::string com, comPost, indent;
 
   _next(p);
-  _white(p);
+  // read comment in line after '['
+  _readComment(p, com);
+  _ltrim(com);
+  // read comments previous to first key
+  indent = _readCommentWithIndent(p, com);
 
   if (p->ch == ']') {
     _next(p);
+    array.comment_inside() = std::move(com);
     return array; // empty array
   }
 
   while (p->ch > 0) {
-    Value val = _readValue(p);
-    array.push_back(val);
-    _white(p);
-    // in Hjson the comma is optional and trailing commas are allowed
-    if (p->ch == ',') {
-      _next(p);
-      _white(p);
-    }
+    // read the value (including it's commentary)
+    array.push_back(_readValue(p, com, indent));
+    // check for end of array
     if (p->ch == ']') {
       _next(p);
+      array.comment_inside() = std::move(com);
       return array;
     }
-    _white(p);
   }
 
   throw syntax_error(_errAt(p, "End of input while parsing an array (did you forget a closing ']'?)"));
@@ -447,55 +549,42 @@ static Value _readArray(Parser *p) {
 // Parse an object value.
 static Value _readObject(Parser *p, bool withoutBraces) {
   Value object(Hjson::Value::MAP);
-  std::string comPre, comPost;
+  std::string com, indent;
 
   if (!withoutBraces) {
     // assuming ch == '{'
     _next(p);
+    // read comment in line after '{'
+    _readComment(p, com);
+    _ltrim(com);
   }
-  _white(p, &comPre);
+  // get indent and read comments previous to first key
+  indent = _readCommentWithIndent(p, com);
   if (p->ch == '}' && !withoutBraces) {
     _next(p);
-    return object; // empty object
+    object.comment_inside() = std::move(com);
+    return object; // empty or only comment object
   }
   while (p->ch > 0) {
     auto key = _readKeyname(p);
-    _white(p);
+    _readCommentSkipIndent(p, com);
     if (p->ch != ':') {
       throw syntax_error(_errAt(p, std::string(
         "Expected ':' instead of '") + (char)(p->ch) + "'"));
     }
-    _next(p);
-    // read the value and store previously read comments
-    auto val = _readValue(p);
-    val.comment_pre() = std::move(comPre);
-    comPre.clear();
-    // read following comments (note: after first '\n' it relates to next key)
-    _white(p, &comPost, &comPre);
-    // in Hjson the comma is optional and trailing commas are allowed
-    if (p->ch == ',') {
-      _next(p);
-      // iff a line-break appeared before ',' whole following commentary relates to next key
-      if (comPost.back() == '\n')
-        _white(p, &comPre);
-      else
-        _white(p, &comPost, &comPre);
-    }
-    // store suffix-like comment into value
-    if (!comPost.empty() && comPost.back() == '\n')
-      comPost.pop_back();
-    val.comment_post() = std::move(comPost);
-    comPost.clear();
+    _next(p);    
     // duplicate keys overwrite the previous value
-    object[key] = std::move(val);
+    object[key] = _readValue(p, com, indent);
+	// check if end of object reached
     if (p->ch == '}' && !withoutBraces) {
       _next(p);
-      return object;
+	  object.comment_inside() = std::move(com);
+	  return object;
     }
-    _white(p, &comPre);
   }
 
   if (withoutBraces) {
+	object.comment_inside() = std::move(com);
     return object;
   }
   throw syntax_error(_errAt(p, "End of input while parsing an object (did you forget a closing '}'?)"));
@@ -503,25 +592,48 @@ static Value _readObject(Parser *p, bool withoutBraces) {
 
 
 // Parse a Hjson value. It could be an object, an array, a string, a number or a word.
-static Value _readValue(Parser *p) {
-  _white(p);
-
-  switch (p->ch) {
-  case '{':
-    return _readObject(p, false);
-  case '[':
-    return _readArray(p);
-  case '"':
-  case '\'':
-    return _readString(p, true);
-  default:
-    return _readTfnns(p);
+// "comPre" might contain commentary, that is already parsed in preceding lines of the value.
+static Value _readValue(Parser *p, std::string& comPre, const std::string& indent) {
+  Value val;
+  std::string comPost;
+  // read additional comments
+  _readCommentSkipIndent(p, comPre);
+  // read value
+  if (p->ch == '{')
+    val = _readObject(p, false);
+  else if (p->ch == '[')
+    val = _readArray(p);
+  else if (p->ch == '"' || p->ch == '\'')
+    val = _readString(p, true);
+  else
+    val = _readTfnns(p);
+  // attach previously parsed comments
+  val.comment_pre() = std::move(comPre);
+  comPre.clear();
+  // read following comments in this line
+  bool newline = _readComment(p, comPost, &indent);
+  if (newline)
+    _readCommentWithIndent(p, comPre);
+  // in Hjson the comma is optional and trailing commas are allowed
+  if (p->ch == ',') {
+    _next(p);
+    // iff no line-break appeared before ',' commentary still relates to previous key
+    if (!newline)
+      _readComment(p, comPost, &indent);
   }
+  // store suffix-like comment into value
+  val.comment_post() = std::move(comPost);
+  comPost.clear();
+  // read comments previous to next key
+  _readCommentWithIndent(p, comPre);
+
+  return val;
 }
 
 
 static Value _hasTrailing(Parser *p) {
-  _white(p);
+  std::string com;
+  _readCommentSkipIndent(p, com);
   return p->ch > 0;
 }
 
@@ -530,17 +642,21 @@ static Value _hasTrailing(Parser *p) {
 static Value _rootValue(Parser *p) {
   Value res;
 
-  _white(p);
-
-  switch (p->ch) {
-  case '{':
-    res = _readObject(p, false);
-    if (_hasTrailing(p)) {
-      throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
-    }
-    return res;
-  case '[':
-    res = _readArray(p);
+  // first assume we have a root object with braces
+  std::string com, indent = "";
+  _readCommentWithIndent(p, com);
+  if (p->ch == '{' || p->ch == '[') {
+    // parse object
+    if (p->ch == '{')
+      res = _readObject(p, false);
+    else
+      res = _readArray(p);
+    // attach previously parsed comments
+    res.comment_pre() = std::move(com);
+    com.clear();
+    // parse following comments
+    _readComment(p, res.comment_post(), &indent);
+    _readCommentWithIndent(p, res.comment_post());
     if (_hasTrailing(p)) {
       throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
     }
@@ -548,6 +664,7 @@ static Value _rootValue(Parser *p) {
   }
 
   // assume we have a root object without braces
+  _resetAt(p);
   try {
     res = _readObject(p, true);
     if (!_hasTrailing(p)) {
@@ -557,7 +674,8 @@ static Value _rootValue(Parser *p) {
 
   // test if we are dealing with a single JSON value instead (true/false/null/num/"")
   _resetAt(p);
-  res = _readValue(p);
+  _readCommentWithIndent(p, com);
+  res = _readValue(p, com, "");
   if (!_hasTrailing(p)) {
     return res;
   }

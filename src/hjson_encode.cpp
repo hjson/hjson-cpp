@@ -259,10 +259,30 @@ static void _quoteName(Encoder *e, std::string name) {
   }
 }
 
-// Produce a string from value.
-static void _str(Encoder *e, const Value& value, bool noIndent, std::string separator,
-  bool isRootObject)
+
+// Write the commentary
+// Iff specialPrefix == "", a normal indent will be used
+static void _writeComment(Encoder *e, const std::string& com, const std::string& specialPrefix = "", bool indent = true)
 {
+  if (e->opt.outputCommentary && !com.empty()) {
+    if (specialPrefix.empty() && indent)
+      _writeIndent(e, e->indent);
+    if (!specialPrefix.empty() && com.front() > ' ')
+      e->oss << specialPrefix; // insert ' ' if suffix-like comment does not start with any white-char
+    for (const auto& it: com) {
+      if (it == '\n') { // line break is encoder dependent
+        _writeIndent(e, indent ? e->indent : 0);
+      }
+      else if (it != '\r') { // skip any '\r'
+        e->oss << it;
+      }
+    }
+  }
+}
+
+
+// Produce a string from value.
+static void _str(Encoder *e, const Value& value, bool noIndent, std::string separator, bool isRootObject) {
   switch (value.type()) {
   case Value::DOUBLE:
     e->oss << separator;
@@ -281,7 +301,7 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
     break;
 
   case Value::VECTOR:
-    if (value.empty()) {
+    if (value.empty() && (value.comment_inside().empty() || !e->opt.outputCommentary)) {
       e->oss << separator << "[]";
     } else {
       auto indent1 = e->indent;
@@ -304,11 +324,14 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
             e->oss << ",";
           }
 
+          _writeComment(e, value[i].comment_pre());
           _writeIndent(e, e->indent);
           _str(e, value[i], true, "", false);
+          _writeComment(e, value[i].comment_post(), " ");
         }
       }
 
+      _writeComment(e, value.comment_inside());
       _writeIndent(e, indent1);
       e->oss << "]";
 
@@ -317,10 +340,13 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
     break;
 
   case Value::MAP:
-    if (value.empty()) {
+    if (value.empty() && (value.comment_inside().empty() || !e->opt.outputCommentary)) {
       e->oss << separator << "{}";
     } else {
       auto indent1 = e->indent;
+      if (isRootObject) {
+        _writeComment(e, value.comment_pre() + '\n', "", !noIndent);
+      }
       if (!isRootObject || e->opt.emitRootBraces)
         e->indent++;
 
@@ -342,22 +368,25 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
             e->oss << ",";
           }
 
+          _writeComment(e, it.second.comment_pre());
           _writeIndent(e, e->indent);
-          if (e->opt.outputCommentary)
-            e->oss << it.second.comment_pre();
           _quoteName(e, it.first);
           e->oss << ":";
           _str(e, it.second, false, " ", false);
-          if (e->opt.outputCommentary && !it.second.comment_post().empty())
-            e->oss << " " << it.second.comment_post();
+          _writeComment(e, it.second.comment_post(), " ");
         }
       }
 
+      _writeComment(e, value.comment_inside());
       _writeIndent(e, indent1);
       if (!isRootObject || e->opt.emitRootBraces)
         e->oss << "}";
 
       e->indent = indent1;
+      if (isRootObject) {
+        _writeComment(e, value.comment_post());
+        _writeIndent(e, 0);
+      }
     }
     break;
 

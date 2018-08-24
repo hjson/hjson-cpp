@@ -15,8 +15,9 @@ typedef std::map<std::string, Value> ValueMap;
 class Value::ValueImpl {
 public:
   Type type;
-  std::string commentPre;
-  std::string commentPost;
+  std::string commentPre;      // multiple line prefix-like commentary before key
+  std::string commentPost;     // suffix-like commentary in same line as key
+  std::string commentInside;   // commentary only used for object and array
   union {
     bool b;
     double d;
@@ -726,6 +727,12 @@ std::string& Value::comment_post()
 }
 
 
+std::string& Value::comment_inside()
+{
+  return prv->commentInside;
+}
+
+
 const std::string& Value::comment_pre() const
 {
   return prv->commentPre;
@@ -735,6 +742,12 @@ const std::string& Value::comment_pre() const
 const std::string& Value::comment_post() const
 {
   return prv->commentPost;
+}
+
+
+const std::string& Value::comment_inside() const
+{
+  return prv->commentInside;
 }
 
 

@@ -150,8 +150,10 @@ public:
   // commentary access functions
   std::string& comment_pre();
   std::string& comment_post();
+  std::string& comment_inside();
   const std::string& comment_pre() const;
   const std::string& comment_post() const;
+  const std::string& comment_inside() const;
 };
 
 
