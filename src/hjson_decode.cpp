@@ -356,8 +356,8 @@ static inline void _readComChar(Parser *p, std::string& str) {
 static inline std::string _readIndent(Parser *p) {
   std::string indent;
   while (p->ch > 0 && p->ch <= ' ') {
-    _readComChar(p, indent);
-    if (indent.back() == '\n') {
+    _readComChar(p, indent); // reads iff p->parseComments
+    if (!indent.empty() && indent.back() == '\n') {
       indent.clear();
     }
   }
@@ -393,8 +393,8 @@ static bool _readComment(Parser *p, std::string& com, const std::string* indent 
       _readComChar(p, com); // expect '/'
       _readComChar(p, com); // expect '*'
       while (p->ch > 0 && !(p->ch == '*' && _peek(p, 0) == '/')) {  
-        _readComChar(p, com);
-        if (com.back() == '\n') {
+        _readComChar(p, com); // reads iff p->parseComments
+        if (!com.empty() && com.back() == '\n') {
           _skip(p, indent);
         }
       }

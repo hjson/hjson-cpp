@@ -281,6 +281,19 @@ static void _writeComment(Encoder *e, const std::string& com, const std::string&
 }
 
 
+// Write seperator and commentary
+static inline void _writeSeperatorAndComment(Encoder *e, bool& isFirst, const std::string& com)
+{
+  if (isFirst) {
+    isFirst = false;
+  }
+  else {
+    if (e->opt.separator)
+      e->oss << ",";
+    _writeComment(e, com, " ");
+  }
+}
+
 // Produce a string from value.
 static void _str(Encoder *e, const Value& value, bool noIndent, std::string separator, bool isRootObject) {
   switch (value.type()) {
@@ -316,20 +329,18 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
 
       // Join all of the element texts together, separated with newlines
       bool isFirst = true;
+      const std::string* com = nullptr;
       for (int i = 0; size_t(i) < value.size(); ++i) {
         if (value[i].defined()) {
-          if (isFirst) {
-            isFirst = false;
-          } else if (e->opt.separator) {
-            e->oss << ",";
-          }
-
+          _writeSeperatorAndComment(e, isFirst, *com);
           _writeComment(e, value[i].comment_pre());
           _writeIndent(e, e->indent);
           _str(e, value[i], true, "", false);
-          _writeComment(e, value[i].comment_post(), " ");
+          com = &value[i].comment_post();
         }
       }
+      if (com)
+        _writeComment(e, *com, " ");
 
       _writeComment(e, value.comment_inside());
       _writeIndent(e, indent1);
@@ -344,7 +355,7 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
       e->oss << separator << "{}";
     } else {
       auto indent1 = e->indent;
-      if (isRootObject) {
+      if (isRootObject && !value.comment_pre().empty()) {
         _writeComment(e, value.comment_pre() + '\n', "", !noIndent);
       }
       if (!isRootObject || e->opt.emitRootBraces)
@@ -360,22 +371,20 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
 
       // Join all of the member texts together, separated with newlines
       bool isFirst = true;
-      for (auto it : value) {
+      const std::string* com = nullptr;
+      for (const auto& it : value) {
         if (it.second.defined()) {
-          if (isFirst) {
-            isFirst = false;
-          } else if (e->opt.separator) {
-            e->oss << ",";
-          }
-
-          _writeComment(e, it.second.comment_pre());
+          _writeSeperatorAndComment(e, isFirst, *com);
+          _writeComment(e, it.second.comment_pre(), "", !isRootObject || e->opt.emitRootBraces);
           _writeIndent(e, e->indent);
           _quoteName(e, it.first);
           e->oss << ":";
           _str(e, it.second, false, " ", false);
-          _writeComment(e, it.second.comment_post(), " ");
+          com = &it.second.comment_post();
         }
       }
+      if (com)
+        _writeComment(e, *com, " ");
 
       _writeComment(e, value.comment_inside());
       _writeIndent(e, indent1);
@@ -385,7 +394,8 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
       e->indent = indent1;
       if (isRootObject) {
         _writeComment(e, value.comment_post());
-        _writeIndent(e, 0);
+        if (e->opt.emitRootBraces)
+          _writeIndent(e, 0);
       }
     }
     break;
