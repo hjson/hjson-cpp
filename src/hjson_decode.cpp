@@ -93,9 +93,9 @@ static bool _next(Parser *p) {
 static inline bool _spool(Parser *p, int n) {
   if (n!=0) {
     auto target = p->at + n;
-    if (target >= 0 && static_cast<size_t>(target) < p->dataSize) {
+    if (target >= 0 && static_cast<size_t>(target) <= p->dataSize) {
       p->at = target;
-      p->ch = p->data[p->at];
+      p->ch = (target == 0) ? ' ' : p->data[p->at-1];
       return true;
     }
     return false;
@@ -688,13 +688,13 @@ static Value _rootValue(Parser *p) {
 //
 // Unmarshal uses the inverse of the encodings that Marshal uses.
 //
-Value Unmarshal(const char *data, size_t dataSize, bool parseComments) {
+Value Unmarshal(const char *data, size_t dataSize) {
   Parser parser = {
     (const unsigned char*) data,
     dataSize,
     0,
     ' ',
-    parseComments
+    true
   };
 
   _resetAt(&parser);
@@ -702,12 +702,12 @@ Value Unmarshal(const char *data, size_t dataSize, bool parseComments) {
 }
 
 
-Value Unmarshal(const char *data, bool parseComments) {
+Value Unmarshal(const char *data) {
   if (!data) {
     return Value();
   }
 
-  return Unmarshal(data, std::strlen(data), parseComments);
+  return Unmarshal(data, std::strlen(data));
 }
 
 

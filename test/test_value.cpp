@@ -118,8 +118,8 @@ void test_value() {
     assert(val == val2);
     assert(val2 == std::string("alpha"));
     assert(val2 != std::string("beta"));
-    assert(std::string("alpha") == val2.operator const std::string());
-    assert(std::string("beta") != val2.operator const std::string());
+    assert(std::string("alpha") == val2.operator std::string());
+    assert(std::string("beta") != val2.operator std::string());
     assert(val.to_double() == 0);
     assert(val.to_string() == "alpha");
     assert(val.begin() == val.end());
@@ -314,11 +314,11 @@ void test_value() {
     // Assert that explicit assignment creates an element.
     assert(val.size() == 2);
     std::string generatedHjson = Hjson::Marshal(val);
-    assert(generatedHjson == "{\n}");
+    assert(generatedHjson == "{\n}\n");
     sub1["sub1"] = "abc";
     sub2["sub2"] = "åäö";
     generatedHjson = Hjson::Marshal(val);
-    assert(generatedHjson == "{\n  abc:\n  {\n    sub1: abc\n  }\n  åäö:\n  {\n    sub2: åäö\n  }\n}");
+    assert(generatedHjson == "{\n  abc:\n  {\n    sub1: abc\n  }\n  åäö:\n  {\n    sub2: åäö\n  }\n}\n");
     Hjson::Value val3 = Hjson::Unmarshal(generatedHjson.c_str(), generatedHjson.size());
     assert(val3["abc"].defined());
     assert(val3["åäö"]["sub2"] == val["åäö"]["sub2"]);
@@ -344,7 +344,7 @@ void test_value() {
     }
     assert(!val[0].empty());
     assert(!val[0]);
-    int val0 = val[0];
+    int val0 = static_cast<int>(val[0]);
     assert(val0 == 0);
     double valD = val[0];
     assert(valD == 0);
@@ -415,7 +415,7 @@ void test_value() {
     assert(root[2] == 5);
     assert(root.size() == 3);
     std::string generatedHjson = Hjson::Marshal(root);
-    assert(generatedHjson == "[\n  3\n  4\n  5\n]");
+    assert(generatedHjson == "[\n  3\n  4\n  5\n]\n");
     Hjson::Value root2;
     root2.push_back(3);
     root2.push_back(4);
@@ -442,7 +442,7 @@ void test_value() {
     root.push_back(1.0/val);
     root.push_back(std::sqrt(-1));
     std::string generatedHjson = Hjson::Marshal(root);
-    assert(generatedHjson == "[\n  null\n  null\n]");
+    assert(generatedHjson == "[\n  null\n  null\n]\n");
   }
 
   {

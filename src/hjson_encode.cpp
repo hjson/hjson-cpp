@@ -293,6 +293,10 @@ static inline void _writeSeperatorAndComment(Encoder *e, bool& isFirst, const st
 
 // Produce a string from value.
 static void _str(Encoder *e, const Value& value, bool noIndent, std::string separator, bool isRootObject) {
+  // Add commentary previous to root object
+  if (isRootObject && !value.comment_pre().empty())
+    _writeComment(e, value.comment_pre() + '\n', "", !noIndent);
+
   switch (value.type()) {
   case Value::DOUBLE:
     e->oss << separator;
@@ -334,6 +338,7 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
           _writeIndent(e, e->indent);
           _str(e, value[i], true, "", false);
           com = &value[i].comment_post();
+          isFirst = false;
         }
       }
       if (com)
@@ -352,9 +357,6 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
       e->oss << separator << "{}";
     } else {
       auto indent1 = e->indent;
-      if (isRootObject && !value.comment_pre().empty()) {
-        _writeComment(e, value.comment_pre() + '\n', "", !noIndent);
-      }
       if (!isRootObject || e->opt.emitRootBraces)
         e->indent++;
 
@@ -385,21 +387,22 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
         _writeComment(e, *com, " ");
 
       _writeComment(e, value.comment_inside());
-      _writeIndent(e, indent1);
-      if (!isRootObject || e->opt.emitRootBraces)
+      if (!isRootObject || e->opt.emitRootBraces) {
+        _writeIndent(e, indent1);
         e->oss << "}";
-
-      e->indent = indent1;
-      if (isRootObject) {
-        _writeComment(e, value.comment_post());
-        if (e->opt.emitRootBraces)
-          _writeIndent(e, 0);
       }
+      e->indent = indent1;
     }
     break;
 
   default:
     e->oss << separator << value.to_string();
+  }
+
+  // Add commentary and newline after root object
+  if (isRootObject) {
+    _writeComment(e, value.comment_post());
+    _writeIndent(e, 0);
   }
 }
 

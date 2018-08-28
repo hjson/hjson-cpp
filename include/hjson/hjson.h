@@ -84,7 +84,7 @@ public:
   virtual ~Value();
 
   const Value operator[](const std::string&) const;
-  MapProxy operator[](const std::string& name);
+  MapProxy operator[](const std::string&);
   const Value operator[](const char*) const;
   MapProxy operator[](const char*);
   const Value operator[](int) const;
@@ -147,7 +147,7 @@ public:
   double to_double() const;
   std::string to_string() const;
 
-  // commentary access functions
+  // Commentary access functions
   std::string& comment_pre();
   std::string& comment_post();
   std::string& comment_inside();
@@ -190,11 +190,11 @@ std::string Marshal(const Value& v);
 std::string MarshalJson(const Value& v);
 
 // Creates a Value tree from input text.
-Value Unmarshal(const char *data, size_t dataSize, bool parseComments = false);
+Value Unmarshal(const char *data, size_t dataSize);
 
 // Creates a Value tree from input text.
 // The input parameter "data" must be null-terminated.
-Value Unmarshal(const char *data, bool parseComments = false);
+Value Unmarshal(const char *data);
 
 // Returns a Value tree that is a combination of the input parameters "base"
 // and "ext".
