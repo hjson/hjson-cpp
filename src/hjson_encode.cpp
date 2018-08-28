@@ -284,10 +284,7 @@ static void _writeComment(Encoder *e, const std::string& com, const std::string&
 // Write seperator and commentary
 static inline void _writeSeperatorAndComment(Encoder *e, bool& isFirst, const std::string& com)
 {
-  if (isFirst) {
-    isFirst = false;
-  }
-  else {
+  if (!isFirst) {
     if (e->opt.separator)
       e->oss << ",";
     _writeComment(e, com, " ");
@@ -375,12 +372,13 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
       for (const auto& it : value) {
         if (it.second.defined()) {
           _writeSeperatorAndComment(e, isFirst, *com);
-          _writeComment(e, it.second.comment_pre(), "", !isRootObject || e->opt.emitRootBraces);
+          _writeComment(e, it.second.comment_pre(), "", !isFirst || !isRootObject || e->opt.emitRootBraces);
           _writeIndent(e, e->indent);
           _quoteName(e, it.first);
           e->oss << ":";
           _str(e, it.second, false, " ", false);
           com = &it.second.comment_post();
+          isFirst = false;
         }
       }
       if (com)
