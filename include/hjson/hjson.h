@@ -148,12 +148,15 @@ public:
   std::string to_string() const;
 
   // Commentary access functions
-  std::string& comment_pre();
-  std::string& comment_post();
-  std::string& comment_inside();
-  const std::string& comment_pre() const;
-  const std::string& comment_post() const;
-  const std::string& comment_inside() const;
+  void set_comment_pre(std::string);
+  void set_comment_post(std::string);
+  void set_comment_inside(std::string);
+  std::string comment_pre() const;
+  std::string comment_post() const;
+  std::string comment_inside() const;
+  bool has_comment_pre() const;
+  bool has_comment_post() const;
+  bool has_comment_inside() const;
 };
 
 

@@ -214,7 +214,7 @@ static void _quote(Encoder *e, const Value& value, std::string separator, bool i
     std::regex_search(valueStr, e->needsQuotes) ||
     startsWithNumber(valueStr.c_str(), valueStr.size()) ||
     std::regex_search(valueStr, e->startsWithKeyword) ||
-    e->opt.outputCommentary && !(value.comment_post().empty()))
+    e->opt.outputCommentary && value.has_comment_post())
   {
 
     // If the string contains no control characters, no quote characters, and no
@@ -294,7 +294,7 @@ static inline void _writeSeperatorAndComment(Encoder *e, bool& isFirst, const st
 // Produce a string from value.
 static void _str(Encoder *e, const Value& value, bool noIndent, std::string separator, bool isRootObject) {
   // Add commentary previous to root object
-  if (isRootObject && !value.comment_pre().empty())
+  if (isRootObject && value.has_comment_pre())
     _writeComment(e, value.comment_pre() + '\n', "", !noIndent);
 
   switch (value.type()) {
@@ -315,7 +315,7 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
     break;
 
   case Value::VECTOR:
-    if (value.empty() && (value.comment_inside().empty() || !e->opt.outputCommentary)) {
+    if (value.empty() && (!value.has_comment_inside() || !e->opt.outputCommentary)) {
       e->oss << separator << "[]";
     } else {
       auto indent1 = e->indent;
@@ -330,19 +330,19 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
 
       // Join all of the element texts together, separated with newlines
       bool isFirst = true;
-      const std::string* com = nullptr;
+      std::string com = "";
       for (int i = 0; size_t(i) < value.size(); ++i) {
         if (value[i].defined()) {
-          _writeSeperatorAndComment(e, isFirst, *com);
+          _writeSeperatorAndComment(e, isFirst, com);
           _writeComment(e, value[i].comment_pre());
           _writeIndent(e, e->indent);
           _str(e, value[i], true, "", false);
-          com = &value[i].comment_post();
+          com = value[i].comment_post();
           isFirst = false;
         }
       }
-      if (com)
-        _writeComment(e, *com, " ");
+      if (!com.empty())
+        _writeComment(e, com, " ");
 
       _writeComment(e, value.comment_inside());
       _writeIndent(e, indent1);
@@ -353,7 +353,7 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
     break;
 
   case Value::MAP:
-    if (value.empty() && (value.comment_inside().empty() || !e->opt.outputCommentary)) {
+    if (value.empty() && (!value.has_comment_inside() || !e->opt.outputCommentary)) {
       e->oss << separator << "{}";
     } else {
       auto indent1 = e->indent;
@@ -370,21 +370,21 @@ static void _str(Encoder *e, const Value& value, bool noIndent, std::string sepa
 
       // Join all of the member texts together, separated with newlines
       bool isFirst = true;
-      const std::string* com = nullptr;
+      std::string com = "";
       for (const auto& it : value) {
         if (it.second.defined()) {
-          _writeSeperatorAndComment(e, isFirst, *com);
+          _writeSeperatorAndComment(e, isFirst, com);
           _writeComment(e, it.second.comment_pre(), "", !isFirst || !isRootObject || e->opt.emitRootBraces);
           _writeIndent(e, e->indent);
           _quoteName(e, it.first);
           e->oss << ":";
           _str(e, it.second, false, " ", false);
-          com = &it.second.comment_post();
+          com = it.second.comment_post();
           isFirst = false;
         }
       }
-      if (com)
-        _writeComment(e, *com, " ");
+      if (!com.empty())
+        _writeComment(e, com, " ");
 
       _writeComment(e, value.comment_inside());
       if (!isRootObject || e->opt.emitRootBraces) {

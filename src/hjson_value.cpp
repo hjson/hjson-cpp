@@ -715,39 +715,57 @@ std::string Value::to_string() const {
 }
 
 
-std::string& Value::comment_pre()
+void Value::set_comment_pre(std::string com)
+{
+  prv->commentPre = std::move(com);
+}
+
+
+void Value::set_comment_post(std::string com)
+{
+  prv->commentPost = std::move(com);
+}
+
+
+void Value::set_comment_inside(std::string com)
+{
+  prv->commentInside = std::move(com);
+}
+
+
+std::string Value::comment_pre() const
 {
   return prv->commentPre;
 }
 
 
-std::string& Value::comment_post()
+std::string Value::comment_post() const
 {
   return prv->commentPost;
 }
 
 
-std::string& Value::comment_inside()
+std::string Value::comment_inside() const
 {
   return prv->commentInside;
 }
 
 
-const std::string& Value::comment_pre() const
+bool Value::has_comment_pre() const
 {
-  return prv->commentPre;
+  return !prv->commentInside.empty();
 }
 
 
-const std::string& Value::comment_post() const
+bool Value::has_comment_post() const
 {
-  return prv->commentPost;
+  return !prv->commentInside.empty();
 }
 
 
-const std::string& Value::comment_inside() const
+bool Value::has_comment_inside() const
 {
-  return prv->commentInside;
+  return !prv->commentInside.empty();
 }
 
 

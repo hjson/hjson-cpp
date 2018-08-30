@@ -527,7 +527,7 @@ static Value _readArray(Parser *p) {
 
   if (p->ch == ']') {
     _next(p);
-    array.comment_inside() = std::move(com);
+    array.set_comment_inside(std::move(com));
     return array; // empty array
   }
 
@@ -537,7 +537,7 @@ static Value _readArray(Parser *p) {
     // check for end of array
     if (p->ch == ']') {
       _next(p);
-      array.comment_inside() = std::move(com);
+      array.set_comment_inside(std::move(com));
       return array;
     }
   }
@@ -562,7 +562,7 @@ static Value _readObject(Parser *p, bool withoutBraces) {
   indent = _readCommentWithIndent(p, com);
   if (p->ch == '}' && !withoutBraces) {
     _next(p);
-    object.comment_inside() = std::move(com);
+    object.set_comment_inside(std::move(com));
     return object; // empty or only comment object
   }
   while (p->ch > 0) {
@@ -575,16 +575,16 @@ static Value _readObject(Parser *p, bool withoutBraces) {
     _next(p);    
     // duplicate keys overwrite the previous value
     object[key] = _readValue(p, com, indent);
-	// check if end of object reached
+    // check if end of object reached
     if (p->ch == '}' && !withoutBraces) {
       _next(p);
-	  object.comment_inside() = std::move(com);
-	  return object;
+      object.set_comment_inside(std::move(com));
+      return object;
     }
   }
 
   if (withoutBraces) {
-	object.comment_inside() = std::move(com);
+    object.set_comment_inside(std::move(com));
     return object;
   }
   throw syntax_error(_errAt(p, "End of input while parsing an object (did you forget a closing '}'?)"));
@@ -608,7 +608,7 @@ static Value _readValue(Parser *p, std::string& comPre, const std::string& inden
   else
     val = _readTfnns(p);
   // attach previously parsed comments
-  val.comment_pre() = std::move(comPre);
+  val.set_comment_pre(std::move(comPre));
   comPre.clear();
   // read following comments in this line
   bool newline = _readComment(p, comPost, &indent);
@@ -622,7 +622,7 @@ static Value _readValue(Parser *p, std::string& comPre, const std::string& inden
       _readComment(p, comPost, &indent);
   }
   // store suffix-like comment into value
-  val.comment_post() = std::move(comPost);
+  val.set_comment_post(std::move(comPost));
   comPost.clear();
   // read comments previous to next key
   _readCommentWithIndent(p, comPre);
@@ -652,11 +652,13 @@ static Value _rootValue(Parser *p) {
     else
       res = _readArray(p);
     // attach previously parsed comments
-    res.comment_pre() = std::move(com);
+    res.set_comment_pre(std::move(com));
     com.clear();
     // parse following comments
-    _readComment(p, res.comment_post(), &indent);
-    _readCommentWithIndent(p, res.comment_post());
+    _readComment(p, com, &indent);
+    _readCommentWithIndent(p, com);
+    res.set_comment_post(std::move(com));
+    com.clear();
     if (_hasTrailing(p)) {
       throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
     }
