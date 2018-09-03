@@ -713,4 +713,10 @@ Value Unmarshal(const char *data) {
 }
 
 
+Value Unmarshal(std::istream& stream) {
+  std::string s(std::istreambuf_iterator<char>(stream), {});
+  return Unmarshal(s.c_str(), s.size());
+}
+
+
 }

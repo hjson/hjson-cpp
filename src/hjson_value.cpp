@@ -129,7 +129,13 @@ Value::Value(double input)
 
 
 Value::Value(int input)
-  : prv(std::make_shared<ValueImpl>((double) input))
+  : prv(std::make_shared<ValueImpl>(static_cast<double>(input)))
+{
+}
+
+
+Value::Value(unsigned input)
+  : prv(std::make_shared<ValueImpl>(static_cast<double>(input)))
 {
 }
 
@@ -153,6 +159,64 @@ Value::Value(Type _type)
 
 
 Value::~Value() {
+}
+
+
+bool Value::exists(const std::vector<std::string>& keyChain) const {
+  return get(keyChain).defined();
+}
+
+bool Value::exists(const std::string& key) const {
+  return get(std::vector<std::string>{ key }).defined();
+}
+
+
+Value Value::get(const std::vector<std::string>& keyChain) const {
+  Value val;
+  const Value* valPtr = this;
+  if (keyChain.empty())
+    return Value(*this);
+  for (const auto& key : keyChain) {
+    if (valPtr->prv->type != MAP)
+      return Value();
+    val = valPtr->operator[](key);
+    valPtr = &val;
+  }
+  return val;
+}
+
+
+Value Value::get(const std::string& key) const {
+  return get(std::vector<std::string>{ key });
+}
+
+
+void Value::set(const Value& val, const std::vector<std::string>& keyChain) {
+  std::vector<MapProxy> proxyChain;
+  Value* valPtr = this;
+  if (keyChain.empty()) {
+    *this = val;
+    return;
+  }
+  for (const auto& key : keyChain) {
+    if (valPtr->prv->type != MAP) {
+      valPtr->prv->~ValueImpl();
+      // Recreate the private object using the same memory block.
+      new(&(*valPtr->prv)) ValueImpl(MAP);
+    }
+    proxyChain.push_back(valPtr->operator[](key));
+    valPtr = &proxyChain.back();
+  }
+  // assign new value
+  proxyChain.back() = val;
+  // proxy destruction order is relevant for new keys
+  for (auto i = proxyChain.size(); i > 0; --i)
+    proxyChain.pop_back();
+}
+
+
+void Value::set(const Value& val, const std::string& key) {
+  set(val, std::vector<std::string>{ key });
 }
 
 
@@ -787,7 +851,8 @@ MapProxy::~MapProxy() {
     // Without this requirement, checking for the existence of an element
     // would create an UNDEFINED element for that key if it didn't already exist
     // (e.g. `if (val["key"] == 1) {` would create an element for "key").
-    parentPrv->m[0][key] = Value(prv);
+    if (parentPrv->type == MAP)
+      parentPrv->m[0][key] = Value(prv);
   }
 }
 

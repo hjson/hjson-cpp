@@ -5,6 +5,8 @@
 #include <memory>
 #include <map>
 #include <stdexcept>
+#include <vector>
+#include <istream>
 
 
 namespace Hjson {
@@ -78,9 +80,11 @@ public:
   Value(bool);
   Value(double);
   Value(int);
+  Value(unsigned);
   Value(const char*);
   Value(const std::string&);
   Value(Type);
+  template<class T> Value(const std::vector<T>& vec);
   virtual ~Value();
 
   const Value operator[](const std::string&) const;
@@ -121,8 +125,9 @@ public:
   double operator -(const Value&) const;
   explicit operator bool() const;
   operator double() const;
-  operator const char*() const;
+  explicit operator const char*() const;
   operator std::string() const;
+  template<class T> operator std::vector<T>() const;
 
   bool defined() const;
   bool empty() const;
@@ -142,6 +147,16 @@ public:
   std::map<std::string, Value>::const_iterator end() const;
   size_t erase(const std::string&);
   size_t erase(const char*);
+
+  // Enhanced access functions allowing a chain of keys and specified return type
+  bool exists(const std::vector<std::string>&) const;
+  bool exists(const std::string&) const;
+  Value get(const std::vector<std::string>&) const;
+  Value get(const std::string&) const;
+  template<class T> bool getAs(T& val, const std::string& key) const;
+  template<class T> bool getAs(T& val, const std::vector<std::string>& keyChain = {}) const;
+  void set(const Value&, const std::vector<std::string>&);
+  void set(const Value&, const std::string&);
 
   // Throws if used on VECTOR or MAP
   double to_double() const;
@@ -199,6 +214,9 @@ Value Unmarshal(const char *data, size_t dataSize);
 // The input parameter "data" must be null-terminated.
 Value Unmarshal(const char *data);
 
+// Creates a Value tree from input stream.
+Value Unmarshal(std::istream& stream);
+
 // Returns a Value tree that is a combination of the input parameters "base"
 // and "ext".
 //
@@ -218,6 +236,49 @@ Value Unmarshal(const char *data);
 //
 Value Merge(const Value base, const Value ext);
 
+
+// Construct a Value of type VECTOR using contents of given std::vector
+template<class T>
+Value::Value(const std::vector<T>& vec) : Value(VECTOR) {
+  for (const auto& it : vec)
+    push_back(it);
+}
+
+
+// Conversion to std::vector<T> for type VECTOR, iff containing consistent entries
+template<class T>
+Value::operator std::vector<T>() const {
+  std::vector<T> vec;
+  for (size_t i = 0; i < size(); ++i)
+    vec.push_back(static_cast<T>(operator [](i)));
+  return vec;
+}
+
+
+// Try reading given key and return as specified type. Returns false on error.
+template<class T>
+bool Value::getAs(T& val, const std::string& key) const {
+  try {
+    val = static_cast<T>(get(key));
+    return true;
+  }
+  catch (...) {
+    return false;
+  }
+}
+
+
+// Try reading given key chain and return as specified type. Returns false on error.
+template<class T>
+bool Value::getAs(T& val, const std::vector<std::string>& keyChain) const {
+  try {
+    val = static_cast<T>(get(keyChain));
+    return true;
+  }
+  catch (...) {
+    return false;
+  }
+}
 
 }
 

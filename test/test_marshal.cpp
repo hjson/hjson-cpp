@@ -8,7 +8,7 @@ static std::string _readStream(std::ifstream *pInfile) {
   assert(pInfile->is_open());
 
   std::string ret;
-  ret.resize(pInfile->tellg());
+  ret.resize(static_cast<size_t>(pInfile->tellg()));
   pInfile->seekg(0, std::ios::beg);
   pInfile->read(&ret[0], ret.size());
   pInfile->close();
