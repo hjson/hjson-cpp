@@ -171,6 +171,19 @@ bool Value::exists(const std::string& key) const {
 }
 
 
+// Try reading given key chain and return as specified type. Returns false on error.
+// Explicit overload needed, because calling static_cast<std::string> is ambiguous
+bool Value::getAs(std::string& val, const std::vector<std::string>& keyChain) const {
+  try {
+    val = get(keyChain).operator std::string();
+    return true;
+  }
+  catch (...) {
+    return false;
+  }
+}
+
+
 Value Value::get(const std::vector<std::string>& keyChain) const {
   Value val;
   const Value* valPtr = this;
@@ -525,6 +538,17 @@ Value::operator std::string() const {
   }
 
   return *(prv->s);
+}
+
+
+// Conversion to std::vector<std::string> for type VECTOR, iff containing only STRINGS
+// Explicit overload needed, because calling static_cast<std::string> is ambiguous
+Value::operator std::vector<std::string>() const {
+  std::vector<std::string> vec;
+  for (size_t i = 0; i < size(); ++i) {
+    vec.push_back(operator [](i).operator std::string());
+  }
+  return vec;
 }
 
 

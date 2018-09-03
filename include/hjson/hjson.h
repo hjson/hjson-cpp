@@ -125,8 +125,9 @@ public:
   double operator -(const Value&) const;
   explicit operator bool() const;
   operator double() const;
-  explicit operator const char*() const;
+  operator const char*() const;
   operator std::string() const;
+  operator std::vector<std::string>() const;
   template<class T> operator std::vector<T>() const;
 
   bool defined() const;
@@ -153,6 +154,7 @@ public:
   bool exists(const std::string&) const;
   Value get(const std::vector<std::string>&) const;
   Value get(const std::string&) const;
+  bool getAs(std::string& val, const std::vector<std::string>& keyChain = {}) const;
   template<class T> bool getAs(T& val, const std::string& key) const;
   template<class T> bool getAs(T& val, const std::vector<std::string>& keyChain = {}) const;
   void set(const Value&, const std::vector<std::string>&);
@@ -258,13 +260,7 @@ Value::operator std::vector<T>() const {
 // Try reading given key and return as specified type. Returns false on error.
 template<class T>
 bool Value::getAs(T& val, const std::string& key) const {
-  try {
-    val = static_cast<T>(get(key));
-    return true;
-  }
-  catch (...) {
-    return false;
-  }
+  return getAs(val, std::vector<std::string>{ key });
 }
 
 
