@@ -882,6 +882,12 @@ MapProxy::~MapProxy() {
 
 
 MapProxy &MapProxy::operator =(const MapProxy &other) {
+  if (other.prv->commentPre.empty())
+    other.prv->commentPre = prv->commentPre;
+  if (other.prv->commentPost.empty())
+    other.prv->commentPost = prv->commentPost;
+  if (other.prv->commentInside.empty())
+    other.prv->commentInside = prv->commentInside;
   prv = other.prv;
   wasAssigned = true;
   return *this;
@@ -889,6 +895,12 @@ MapProxy &MapProxy::operator =(const MapProxy &other) {
 
 
 MapProxy &MapProxy::operator =(const Value &other) {
+  if (other.prv->commentPre.empty())
+    other.prv->commentPre = prv->commentPre;
+  if (other.prv->commentPost.empty())
+    other.prv->commentPost = prv->commentPost;
+  if (other.prv->commentInside.empty())
+    other.prv->commentInside = prv->commentInside;
   prv = other.prv;
   wasAssigned = true;
   return *this;
