@@ -33,7 +33,7 @@ static bool _next(Parser *p) {
     return true;
   }
 
-  if (p->at == p->dataSize) {
+  if (static_cast<size_t>(p->at) == p->dataSize) {
     p->at++;
     p->ch = 0;
   }
@@ -99,7 +99,7 @@ bool tryParseNumber(double *pNumber, const char *text, size_t textSize, bool sto
   if (stopAtNext) {
     // end scan if we find a punctuator character like ,}] or a comment
     if (p.ch == ',' || p.ch == '}' || p.ch == ']' ||
-      p.ch == '#' || p.ch == '/' && (p.data[p.at] == '/' || p.data[p.at] == '*'))
+      p.ch == '#' || (p.ch == '/' && (p.data[p.at] == '/' || p.data[p.at] == '*')))
     {
       p.ch = 0;
     }

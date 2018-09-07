@@ -79,6 +79,8 @@ Value::ValueImpl::ValueImpl(Type _type)
   case MAP:
     m = new ValueMap();
     break;
+  default:
+    break;
   }
 }
 
@@ -94,6 +96,8 @@ Value::ValueImpl::~ValueImpl() {
     break;
   case MAP:
     delete m;
+    break;
+  default:
     break;
   }
 }
@@ -436,9 +440,9 @@ bool Value::operator>(const Value &other) const {
     return prv->d > other.prv->d;
   case STRING:
     return *(prv->s) > *(other.prv->s);
+  default:
+    throw type_mismatch("The compared values must be of type DOUBLE or STRING.");;
   }
-
-  throw type_mismatch("The compared values must be of type DOUBLE or STRING.");
 }
 
 
@@ -452,9 +456,9 @@ bool Value::operator<(const Value &other) const {
     return prv->d < other.prv->d;
   case STRING:
     return *(prv->s) < *(other.prv->s);
+  default:
+    throw type_mismatch("The compared values must be of type DOUBLE or STRING.");
   }
-
-  throw type_mismatch("The compared values must be of type DOUBLE or STRING.");
 }
 
 
@@ -488,9 +492,9 @@ Value Value::operator+(const Value &other) const {
     return prv->d + other.prv->d;
   case STRING:
     return *(prv->s) + *(other.prv->s);
+  default:
+    throw type_mismatch("The values must be of type DOUBLE or STRING for this operation.");
   }
-
-  throw type_mismatch("The values must be of type DOUBLE or STRING for this operation.");
 }
 
 
@@ -560,9 +564,9 @@ bool Value::defined() const {
 bool Value::empty() const {
   return (prv->type == UNDEFINED ||
     prv->type == HJSON_NULL ||
-    prv->type == STRING && prv->s->empty() ||
-    prv->type == VECTOR && prv->v->empty() ||
-    prv->type == MAP && prv->m->empty());
+    (prv->type == STRING && prv->s->empty()) ||
+    (prv->type == VECTOR && prv->v->empty()) ||
+    (prv->type == MAP && prv->m->empty()));
 }
 
 
@@ -572,10 +576,6 @@ Value::Type Value::type() const {
 
 
 size_t Value::size() const {
-  if (prv->type == UNDEFINED || prv->type == HJSON_NULL) {
-    return 0;
-  }
-
   switch (prv->type)
   {
   case STRING:
@@ -584,11 +584,15 @@ size_t Value::size() const {
     return prv->v->size();
   case MAP:
     return prv->m->size();
+  case BOOL:
+  case DOUBLE:
+    return 1;
+  case UNDEFINED:
+  case HJSON_NULL:
+    return 0;
+  default:
+    throw type_mismatch("Unknown type.");
   }
-
-  assert(prv->type == BOOL || prv->type == DOUBLE);
-
-  return 1;
 }
 
 
@@ -630,9 +634,12 @@ bool Value::deep_equal(const Value &other) const {
       } while (itA != endA);
     }
     return true;
+
+  default:
+    return false;
   }
 
-  return false;
+
 }
 
 
@@ -655,9 +662,10 @@ Value Value::clone() const {
       }
       return ret;
     }
-  }
 
-  return *this;
+  default:
+    return *this;
+  }
 }
 
 
@@ -755,7 +763,7 @@ double Value::to_double() const {
     return (prv->b ? 1 : 0);
   case DOUBLE:
     return prv->d;
-  case STRING:
+  case STRING: {
     double ret;
     std::stringstream ss(*(prv->s));
 
@@ -770,8 +778,9 @@ double Value::to_double() const {
 
     return ret;
   }
-
-  throw type_mismatch("Illegal type for this operation.");
+  default:
+    throw type_mismatch("Illegal type for this operation.");
+  }
 }
 
 
@@ -797,9 +806,9 @@ std::string Value::to_string() const {
     }
   case STRING:
     return *(prv->s);
+  default:
+    throw type_mismatch("Illegal type for this operation.");
   }
-
-  throw type_mismatch("Illegal type for this operation.");
 }
 
 

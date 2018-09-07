@@ -300,7 +300,7 @@ static std::string _readKeyname(Parser *p) {
     if (p->ch == ':') {
       if (name.empty()) {
         throw syntax_error(_errAt(p, "Found ':' but no key name (for an empty key name use quotes)"));
-      } else if (space >= 0 && space != name.size()) {
+      } else if (space >= 0 && static_cast<size_t>(space) != name.size()) {
         p->at = start + space;
         throw syntax_error(_errAt(p, "Found whitespace in your key name (use quotes to include)"));
       }
@@ -310,7 +310,7 @@ static std::string _readKeyname(Parser *p) {
         throw syntax_error(_errAt(p, "Found EOF while looking for a key name (check your syntax)"));
       }
       if (space < 0) {
-        space = (int)name.size();
+        space = static_cast<int>(name.size());
       }
     } else {
       if (_isPunctuatorChar(p->ch)) {
@@ -383,7 +383,7 @@ static bool _readComment(Parser *p, std::string& com, const std::string* indent 
       _readComChar(p, com);
     }
     // Hjson allows single-line comments with "#" or "//"
-    else if (p->ch == '#' || p->ch == '/' && _peek(p, 0) == '/') {
+    else if (p->ch == '#' || (p->ch == '/' && _peek(p, 0) == '/')) {
       while (p->ch > 0 && p->ch != '\n') {
         _readComChar(p, com);
       }
@@ -457,7 +457,7 @@ static Value _readTfnns(Parser *p) {
     if (isEol ||
       p->ch == ',' || p->ch == '}' || p->ch == ']' ||
       p->ch == '#' ||
-      p->ch == '/' && (_peek(p, 0) == '/' || _peek(p, 0) == '*'))
+      (p->ch == '/' && (_peek(p, 0) == '/' || _peek(p, 0) == '*')))
     {
       // remove any whitespace at the end
       auto trimmed = std::string(value.data(), value.size());
@@ -483,7 +483,7 @@ static Value _readTfnns(Parser *p) {
         }
         break;
       default:
-        if (chf == '-' || chf >= '0' && chf <= '9') {
+        if (chf == '-' || (chf >= '0' && chf <= '9')) {
           double number;
           if (tryParseNumber(&number, value.data(), value.size(), false)) {
             _spool(p, -static_cast<int>(value.size() - trimmed.size()));
@@ -498,17 +498,6 @@ static Value _readTfnns(Parser *p) {
     }
     value.push_back(p->ch);
   }
-}
-
-
-// convert a prefix-like comment to suffix-like comment
-static void _movePreToPostCom(std::string& pre, std::string& post) {
-  for(auto& it: pre) {
-  if (it == '\n')
-    it = ' '; // there mustn't be '\n' in post comments
-  }
-  post += post.empty() ? std::move(pre) : " " + pre;
-  pre.clear();
 }
 
 

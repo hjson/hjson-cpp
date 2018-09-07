@@ -177,11 +177,11 @@ static void _mlString(Encoder *e, std::string value, std::string separator) {
     do {
       std::smatch match = *it;
       auto indent = e->indent + 1;
-      if (match.position() == uIndexStart) {
+      if (static_cast<size_t>(match.position()) == uIndexStart) {
         indent = 0;
       }
       _writeIndent(e, indent);
-      if (size_t(match.position()) > uIndexStart) {
+      if (static_cast<size_t>(match.position()) > uIndexStart) {
         e->oss << value.substr(uIndexStart, match.position() - uIndexStart);
       }
       uIndexStart = match.position() + match.length();
@@ -214,7 +214,7 @@ static void _quote(Encoder *e, const Value& value, std::string separator, bool i
     std::regex_search(valueStr, e->needsQuotes) ||
     startsWithNumber(valueStr.c_str(), valueStr.size()) ||
     std::regex_search(valueStr, e->startsWithKeyword) ||
-    e->opt.outputCommentary && value.has_comment_post())
+    (e->opt.outputCommentary && value.has_comment_post()))
   {
 
     // If the string contains no control characters, no quote characters, and no
