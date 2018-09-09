@@ -246,6 +246,14 @@ void test_value() {
   }
 
   {
+    Hjson::Value root;
+    root["key1"]["key2"]["key3"]["A"] = 4;
+    auto val2 = root["key1"]["key2"]["key3"];
+    val2["B"] = 5;
+    assert(root["key1"]["key2"]["key3"]["B"] == 5);
+  }
+
+  {
     Hjson::Value val;
     try {
       val[0] = 0;
