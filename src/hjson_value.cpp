@@ -515,26 +515,26 @@ bool Value::deep_equal(const Value &other) const {
       auto itA = ((ValueVec*)(this->prv->p))->begin();
       auto endA = ((ValueVec*)(this->prv->p))->end();
       auto itB = ((ValueVec*)(other.prv->p))->begin();
-      do {
+      while (itA != endA) {
         if (!itA->deep_equal(*itB)) {
           return false;
         }
         ++itA;
         ++itB;
-      } while (itA != endA);
+      }
     }
     return true;
 
   case MAP:
     {
       auto itA = this->begin(), endA = this->end(), itB = other.begin();
-      do {
+      while (itA != endA) {
         if (!itA->second.deep_equal(itB->second)) {
           return false;
         }
         ++itA;
         ++itB;
-      } while (itA != endA);
+      }
     }
     return true;
   }
