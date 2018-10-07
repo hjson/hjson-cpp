@@ -458,6 +458,13 @@ void test_value() {
     val2 = Hjson::Value();
     val2["2"] = 2;
     assert(!val1.deep_equal(val2));
+    val1 = Hjson::Value(Hjson::Value::VECTOR);
+    val2 = Hjson::Value(Hjson::Value::VECTOR);
+    assert(val1.deep_equal(val2));
+    val1 = Hjson::Value(Hjson::Value::MAP);
+    assert(!val1.deep_equal(val2));
+    val2 = Hjson::Value(Hjson::Value::MAP);
+    assert(val1.deep_equal(val2));
   }
 
   {
