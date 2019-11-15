@@ -26,6 +26,15 @@ static bool _parseFloat(double *pNumber, const std::string &str) {
 }
 
 
+static bool _parseInt(std::int64_t *pNumber, const std::string &str) {
+  std::stringstream ss(str);
+
+  ss >> *pNumber;
+
+  return ss.eof() && !ss.fail();
+}
+
+
 static bool _next(Parser *p) {
   // get the next character.
   if (p->at < p->dataSize) {
@@ -43,7 +52,7 @@ static bool _next(Parser *p) {
 
 
 // Parse a number value.
-bool tryParseNumber(double *pNumber, const char *text, size_t textSize, bool stopAtNext) {
+bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopAtNext) {
   Parser p = {
     (const unsigned char*) text,
     textSize,
@@ -53,6 +62,8 @@ bool tryParseNumber(double *pNumber, const char *text, size_t textSize, bool sto
 
   int leadingZeros = 0;
   bool testLeading = true;
+  bool ret = false;
+  bool isFloat = false;
 
   _next(&p);
 
@@ -76,10 +87,12 @@ bool tryParseNumber(double *pNumber, const char *text, size_t textSize, bool sto
   } // single 0 is allowed
 
   if (p.ch == '.') {
+    isFloat = true;
     while (_next(&p) && p.ch >= '0' && p.ch <= '9') {
     }
   }
   if (p.ch == 'e' || p.ch == 'E') {
+    isFloat = true;
     _next(&p);
     if (p.ch == '-' || p.ch == '+') {
       _next(&p);
@@ -110,12 +123,22 @@ bool tryParseNumber(double *pNumber, const char *text, size_t textSize, bool sto
     return false;
   }
 
-  return _parseFloat(pNumber, std::string((char*)p.data, end - 1));
+  if (isFloat) {
+    double d;
+    ret = _parseFloat(&d, std::string((char*)p.data, end - 1));
+    *pValue = Value(d);
+  } else {
+    std::int64_t i;
+    ret = _parseInt(&i, std::string((char*)p.data, end - 1));
+    *pValue = Value(i);
+  }
+
+  return ret;
 }
 
 
 bool startsWithNumber(const char *text, size_t textSize) {
-  double number;
+  Value number;
   return tryParseNumber(&number, text, textSize, true);
 }
 

@@ -16,7 +16,7 @@ struct Parser {
 };
 
 
-bool tryParseNumber(double *pNumber, const char *text, size_t textSize, bool stopAtNext);
+bool tryParseNumber(Value *pNumber, const char *text, size_t textSize, bool stopAtNext);
 static Value _readValue(Parser *p);
 
 
@@ -375,7 +375,7 @@ static Value _readTfnns(Parser *p) {
         break;
       default:
         if (chf == '-' || chf >= '0' && chf <= '9') {
-          double number;
+          Value number;
           if (tryParseNumber(&number, value.data(), value.size(), false)) {
             return number;
           }
