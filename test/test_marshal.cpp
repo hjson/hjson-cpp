@@ -72,7 +72,11 @@ static void _examine(std::string filename) {
   //outputFile << actualHjson;
   //outputFile.close();
 
-  assert(actualHjson == rhjson);
+  if (actualHjson != rhjson) {
+    std::cout << std::endl << "Expected:" << std::endl << rhjson << std::endl
+      << std::endl << "Got:" << std::endl << actualHjson << std::endl << std::endl;
+    assert(actualHjson == rhjson);
+  }
 
   auto rjson = _readFile("assets/sorted/" + name + "_result.json");
   auto actualJson = MarshalJson(root);
@@ -81,7 +85,11 @@ static void _examine(std::string filename) {
   //outputFile << actualJson;
   //outputFile.close();
 
-  assert(actualJson == rjson);
+  if (actualJson != rjson) {
+    std::cout << std::endl << "Expected:" << std::endl << rjson << std::endl
+      << std::endl << "Got:" << std::endl << actualJson << std::endl << std::endl;
+    assert(actualJson == rjson);
+  }
 }
 
 
