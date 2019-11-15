@@ -109,13 +109,16 @@ void test_value() {
   {
     Hjson::Value val = 144115188075855873;
     assert(val == 144115188075855873);
+    assert(val != 144115188075855874);
     assert(val.to_int64() == 144115188075855873);
     val = 9223372036854775807;
     assert(val == 9223372036854775807);
+    assert(val != 9223372036854775806);
     assert(val.to_int64() == 9223372036854775807);
     assert(val > 9223372036854775806);
     std::int64_t i = 9223372036854775806;
     Hjson::Value val2(i);
+    assert(val2 != val);
     assert(val2 < val);
     assert(val > val2);
     assert(val2 < 9223372036854775807);
