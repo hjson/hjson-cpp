@@ -10,12 +10,6 @@ static std::string _test_string_param(std::string param) {
 
 
 void test_value() {
-  std::int64_t ii = 1000000;
-  ii *= ii;
-  Hjson::Value hval(ii);
-  printf("%lld\n", hval.to_int64());
-  assert(hval.to_int64() == ii);
-
   {
     Hjson::Value valVec(Hjson::Value::VECTOR);
     assert(valVec.type() == Hjson::Value::VECTOR);
@@ -110,6 +104,15 @@ void test_value() {
     assert(val2 / val == 2.0);
     assert(val + val2 == 9);
     assert(val - val2 == -3.0);
+  }
+
+  {
+    Hjson::Value val = 144115188075855873;
+    assert(val == 144115188075855873);
+    assert(val.to_int64() == 144115188075855873);
+    val = 9223372036854775807;
+    assert(val == 9223372036854775807);
+    assert(val.to_int64() == 9223372036854775807);
   }
 
   {
