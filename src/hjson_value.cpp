@@ -539,7 +539,7 @@ Value::operator bool() const {
   case ValueImpl::IMPL_BOOL:
     return prv->b;
   }
-  
+
   return !empty();
 }
 
