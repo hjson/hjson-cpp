@@ -27,6 +27,10 @@ jobs:
     - os: osx
       compiler: clang
     - os: windows
+      before_script:
+        - git config core.autocrlf false
+        - git add --renormalize .
+        - git reset --hard
       env:
         - GENERATOR="Visual Studio 15 2017 Win64"
         - ARTIFACT=vs2017-64bit
