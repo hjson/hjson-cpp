@@ -54,7 +54,7 @@ target_link_libraries(myapp hjson)
 $ cd hjson-cpp
 $ mkdir build
 $ cd build
-$ cmake .. -DHJSON_ENABLE_TEST=ON -DHJSON_ENABLE_INSTALL=ON
+$ cmake .. -DHJSON_ENABLE_TEST=ON -DHJSON_ENABLE_INSTALL=ON -DCMAKE_BUILD_TYPE=Release
 ```
 2. Then you can optionally run the tests.
 ```bash
