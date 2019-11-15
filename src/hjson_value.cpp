@@ -129,6 +129,12 @@ Value::Value(int input)
 }
 
 
+Value::Value(std::int64_t input)
+  : prv(std::make_shared<ValueImpl>((double) input))
+{
+}
+
+
 Value::Value(const char *input)
   : prv(std::make_shared<ValueImpl>(std::string(input)))
 {
@@ -253,6 +259,16 @@ bool Value::operator!=(int input) const {
 }
 
 
+bool Value::operator==(std::int64_t input) const {
+  return operator double() == input;
+}
+
+
+bool Value::operator!=(std::int64_t input) const {
+  return !(*this == input);
+}
+
+
 bool Value::operator==(const char *input) const {
   return !strcmp(operator const char*(), input);
 }
@@ -324,6 +340,16 @@ bool Value::operator<(int input) const {
 }
 
 
+bool Value::operator>(std::int64_t input) const {
+  return operator double() > input;
+}
+
+
+bool Value::operator<(std::int64_t input) const {
+  return operator double() < input;
+}
+
+
 bool Value::operator>(const char *input) const {
   return operator const std::string() > input;
 }
@@ -381,6 +407,11 @@ double Value::operator+(int input) const {
 }
 
 
+double Value::operator+(std::int64_t input) const {
+  return operator double() + input;
+}
+
+
 double Value::operator+(double input) const {
   return operator double() + input;
 }
@@ -413,6 +444,11 @@ Value Value::operator+(const Value &other) const {
 
 
 double Value::operator-(int input) const {
+  return operator double() - input;
+}
+
+
+double Value::operator-(std::int64_t input) const {
   return operator double() - input;
 }
 

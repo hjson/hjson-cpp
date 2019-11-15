@@ -74,6 +74,7 @@ public:
   Value(bool);
   Value(double);
   Value(int);
+  Value(std::int64_t);
   Value(const char*);
   Value(const std::string&);
   Value(Type);
@@ -91,6 +92,8 @@ public:
   bool operator !=(double) const;
   bool operator ==(int) const;
   bool operator !=(int) const;
+  bool operator ==(std::int64_t) const;
+  bool operator !=(std::int64_t) const;
   bool operator ==(const char*) const;
   bool operator !=(const char*) const;
   bool operator ==(const std::string&) const;
@@ -101,6 +104,8 @@ public:
   bool operator >(double) const;
   bool operator <(int) const;
   bool operator >(int) const;
+  bool operator <(std::int64_t) const;
+  bool operator >(std::int64_t) const;
   bool operator <(const char*) const;
   bool operator >(const char*) const;
   bool operator <(const std::string&) const;
@@ -109,11 +114,13 @@ public:
   bool operator >(const Value&) const;
   double operator +(double) const;
   double operator +(int) const;
+  double operator +(std::int64_t) const;
   std::string operator +(const char*) const;
   std::string operator +(const std::string&) const;
   Value operator +(const Value&) const;
   double operator -(double) const;
   double operator -(int) const;
+  double operator -(std::int64_t) const;
   double operator -(const Value&) const;
   explicit operator bool() const;
   operator double() const;

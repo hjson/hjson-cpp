@@ -10,6 +10,11 @@ static std::string _test_string_param(std::string param) {
 
 
 void test_value() {
+  std::int64_t ii = 1000000;
+  ii *= ii;
+  Hjson::Value hval(ii);
+  printf("%lld\n", static_cast<std::int64_t>(hval));
+
   {
     Hjson::Value valVec(Hjson::Value::VECTOR);
     assert(valVec.type() == Hjson::Value::VECTOR);
