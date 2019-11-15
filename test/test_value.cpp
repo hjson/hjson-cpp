@@ -113,6 +113,25 @@ void test_value() {
     val = 9223372036854775807;
     assert(val == 9223372036854775807);
     assert(val.to_int64() == 9223372036854775807);
+    assert(val > 9223372036854775806);
+    std::int64_t i = 9223372036854775806;
+    Hjson::Value val2(i);
+    assert(val2 < val);
+    assert(val > val2);
+    assert(val2 < 9223372036854775807);
+    // Would fail, because val2 returns a double when on the right side of the comparison.
+    // assert(9223372036854775807 > val2);
+    assert(9223372036854775807 > val2.to_int64());
+    assert(val2 == i);
+    assert((val2 + 1) == static_cast<double>(i + 1));
+    assert((val2 - 1) == static_cast<double>(i - 1));
+    Hjson::Value val3 = 144115188075855873.0;
+    assert(val3 < val2);
+    assert(val2 > val3);
+    Hjson::Value val4 = 14115188075855873.0;
+    Hjson::Value val5 = 14115188075855873.1;
+    assert(val4 < val5);
+    assert(val5 > val4);
   }
 
   {
