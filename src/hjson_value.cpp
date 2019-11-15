@@ -718,6 +718,35 @@ double Value::to_double() const {
 }
 
 
+std::int64_t Value::to_int64() const {
+  switch (prv->type) {
+  case UNDEFINED:
+  case HJSON_NULL:
+    return 0;
+  case BOOL:
+    return (prv->b ? 1 : 0);
+  case DOUBLE:
+    return static_cast<std::int64_t>(prv->d);
+  case STRING:
+    std::int64_t ret;
+    std::stringstream ss(*((std::string*)prv->p));
+
+    // Make sure we expect dot (not comma) as decimal point.
+    ss.imbue(std::locale::classic());
+
+    ss >> ret;
+
+    if (!ss.eof() || ss.fail()) {
+      return 0;
+    }
+
+    return ret;
+  }
+
+  throw type_mismatch("Illegal type for this operation.");
+}
+
+
 std::string Value::to_string() const {
   switch (prv->type) {
   case UNDEFINED:

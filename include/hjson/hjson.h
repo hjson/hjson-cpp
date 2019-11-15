@@ -148,6 +148,7 @@ public:
 
   // Throws if used on VECTOR or MAP
   double to_double() const;
+  std::int64_t to_int64() const;
   std::string to_string() const;
 };
 
