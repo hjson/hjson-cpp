@@ -841,13 +841,11 @@ std::int64_t Value::to_int64() const {
     std::int64_t ret;
     std::stringstream ss(*((std::string*)prv->p));
 
-    // Make sure we expect dot (not comma) as decimal point.
-    ss.imbue(std::locale::classic());
-
     ss >> ret;
 
     if (!ss.eof() || ss.fail()) {
-      return 0;
+      // Perhaps the string contains a decimal point or exponential part.
+      return static_cast<std::int64_t>(to_double());
     }
 
     return ret;

@@ -31,8 +31,10 @@ void test_value() {
     assert(val.size() == 1);
     assert(val.to_string() == "false");
     assert(val.to_double() == 0);
+    assert(val.to_int64() == 0);
     val = true;
     assert(val.to_double() == 1);
+    assert(val.to_int64() == 1);
     assert(val.to_string() == "true");
     assert(val.begin() == val.end());
   }
@@ -48,8 +50,10 @@ void test_value() {
     Hjson::Value val3;
     assert(val != val3);
     assert(val.to_double() == 0);
+    assert(val.to_int64() == 0);
     assert(val.to_string() == "null");
     assert(val3.to_double() == 0);
+    assert(val3.to_int64() == 0);
     assert(val3.to_string() == "");
     assert(val.begin() == val.end());
     assert(val3.begin() == val3.end());
@@ -87,6 +91,7 @@ void test_value() {
     assert(val - 1.0 == 2.0);
     assert(1.0 - val == -2.0);
     assert(val.to_double() == 3);
+    assert(val.to_int64() == 3);
     assert(val.to_string() == "3");
     assert(val.begin() == val.end());
   }
@@ -112,6 +117,7 @@ void test_value() {
     assert(val != 144115188075855874);
     assert(val.to_int64() == 144115188075855873);
     val = 9223372036854775807;
+    assert(val.to_string() == "9223372036854775807");
     assert(val == 9223372036854775807);
     assert(val != 9223372036854775806);
     assert(val.to_int64() == 9223372036854775807);
@@ -135,6 +141,8 @@ void test_value() {
     Hjson::Value val5 = 14115188075855873.1;
     assert(val4 < val5);
     assert(val5 > val4);
+    Hjson::Value val6("9223372036854775807");
+    assert(val6.to_int64() == 9223372036854775807);
   }
 
   {
@@ -152,6 +160,7 @@ void test_value() {
     assert(std::string("alpha") == val2.operator const std::string());
     assert(std::string("beta") != val2.operator const std::string());
     assert(val.to_double() == 0);
+    assert(val.to_int64() == 0);
     assert(val.to_string() == "alpha");
     assert(val.begin() == val.end());
   }
@@ -172,6 +181,7 @@ void test_value() {
   {
     Hjson::Value val("3.0");
     assert(val.to_double() == 3);
+    assert(val.to_int64() == 3);
     Hjson::Value val2(3.0);
     assert(val != val2);
     assert(!(val == val2));
