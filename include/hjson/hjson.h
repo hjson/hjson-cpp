@@ -124,6 +124,7 @@ public:
   double operator -(const Value&) const;
   explicit operator bool() const;
   operator double() const;
+  operator std::int64_t() const;
   operator const char*() const;
   operator const std::string() const;
 

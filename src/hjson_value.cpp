@@ -477,6 +477,15 @@ Value::operator double() const {
 }
 
 
+Value::operator std::int64_t() const {
+  if (prv->type != DOUBLE) {
+    throw type_mismatch("Must be of type DOUBLE for that operation.");
+  }
+
+  return prv->d;
+}
+
+
 Value::operator const char*() const {
   if (prv->type != STRING) {
     throw type_mismatch("Must be of type STRING for that operation.");
