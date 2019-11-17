@@ -74,11 +74,12 @@ public:
   Value(bool);
   Value(double);
   Value(int);
-  Value(long long);
   Value(const char*);
   Value(const std::string&);
   Value(Type);
   virtual ~Value();
+
+  static Value from_int64(std::int64_t);
 
   const Value operator[](const std::string&) const;
   MapProxy operator[](const std::string& name);
@@ -92,8 +93,6 @@ public:
   bool operator !=(double) const;
   bool operator ==(int) const;
   bool operator !=(int) const;
-  bool operator ==(long long) const;
-  bool operator !=(long long) const;
   bool operator ==(const char*) const;
   bool operator !=(const char*) const;
   bool operator ==(const std::string&) const;
@@ -104,8 +103,6 @@ public:
   bool operator >(double) const;
   bool operator <(int) const;
   bool operator >(int) const;
-  bool operator <(long long) const;
-  bool operator >(long long) const;
   bool operator <(const char*) const;
   bool operator >(const char*) const;
   bool operator <(const std::string&) const;
@@ -114,13 +111,11 @@ public:
   bool operator >(const Value&) const;
   double operator +(double) const;
   double operator +(int) const;
-  double operator +(long long) const;
   std::string operator +(const char*) const;
   std::string operator +(const std::string&) const;
   Value operator +(const Value&) const;
   double operator -(double) const;
   double operator -(int) const;
-  double operator -(long long) const;
   double operator -(const Value&) const;
   explicit operator bool() const;
   operator double() const;
@@ -148,7 +143,7 @@ public:
 
   // Throws if used on VECTOR or MAP
   double to_double() const;
-  long long to_int64() const;
+  std::int64_t to_int64() const;
   std::string to_string() const;
 };
 

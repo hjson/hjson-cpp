@@ -26,7 +26,7 @@ static bool _parseFloat(double *pNumber, const std::string &str) {
 }
 
 
-static bool _parseInt(long long *pNumber, const std::string &str) {
+static bool _parseInt(std::int64_t *pNumber, const std::string &str) {
   std::stringstream ss(str);
 
   ss >> *pNumber;
@@ -128,9 +128,9 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
     ret = _parseFloat(&d, std::string((char*)p.data, end - 1));
     *pValue = Value(d);
   } else {
-    long long i;
+    std::int64_t i;
     ret = _parseInt(&i, std::string((char*)p.data, end - 1));
-    *pValue = Value(i);
+    *pValue = Value::from_int64(i);
   }
 
   return ret;
