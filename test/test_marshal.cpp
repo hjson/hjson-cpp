@@ -18,7 +18,7 @@ static std::string _readStream(std::ifstream *pInfile) {
 
 
 static std::string _readFile(std::string path) {
-  std::ifstream infile(path, std::ifstream::ate | std::ifstream::binary);
+  std::ifstream infile(path, std::ifstream::ate);
 
   return _readStream(&infile);
 }
@@ -72,10 +72,20 @@ static void _examine(std::string filename) {
   //outputFile << actualHjson;
   //outputFile.close();
 
-  if (actualHjson != rhjson) {
-    std::cout << std::endl << "Expected:" << std::endl << rhjson << std::endl
-      << std::endl << "Got:" << std::endl << actualHjson << std::endl << std::endl;
-    assert(actualHjson == rhjson);
+  // Visual studio will have trailing null chars in rhjson if there was any
+  // CRLF conversion when reading it from the file. If so, `==` would return
+  // `false`, therefore we need to use `strcmp`.
+  if (strcmp(rhjson.c_str(), actualHjson.c_str())) {
+    for (int a = 0; a < rhjson.size() && a < actualHjson.size(); a++) {
+      if (actualHjson[a] != rhjson[a]) {
+        std::cout << std::endl << "diff on index " << a << std::endl;
+      }
+    }
+    std::cout << std::endl << "Expected: (size " << rhjson.size() << ")" <<
+      std::endl << rhjson << std::endl << std::endl << "Got: (size " <<
+      actualHjson.size() << ")" << std::endl << actualHjson << std::endl <<
+      std::endl;
+    assert(strcmp(rhjson.c_str(), actualHjson.c_str()));
   }
 
   auto rjson = _readFile("assets/sorted/" + name + "_result.json");
@@ -85,10 +95,20 @@ static void _examine(std::string filename) {
   //outputFile << actualJson;
   //outputFile.close();
 
-  if (actualJson != rjson) {
-    std::cout << std::endl << "Expected:" << std::endl << rjson << std::endl
-      << std::endl << "Got:" << std::endl << actualJson << std::endl << std::endl;
-    assert(actualJson == rjson);
+  // Visual studio will have trailing null chars in rjson if there was any
+  // CRLF conversion when reading it from the file. If so, `==` would return
+  // `false`, therefore we need to use `strcmp`.
+  if (strcmp(rjson.c_str(), actualJson.c_str())) {
+    for (int a = 0; a < rjson.size() && a < actualJson.size(); a++) {
+      if (actualJson[a] != rjson[a]) {
+        std::cout << std::endl << "diff on index " << a << std::endl;
+      }
+    }
+    std::cout << std::endl << "Expected: (size " << rjson.size() << ")" <<
+      std::endl << rjson << std::endl << std::endl << "Got: (size " <<
+      actualJson.size() << ")" << std::endl << actualJson << std::endl <<
+      std::endl;
+    assert(strcmp(rjson.c_str(), actualJson.c_str()));
   }
 }
 
