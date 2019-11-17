@@ -56,8 +56,9 @@ void test_value() {
     assert(val3.to_double() == 0);
     assert(val3.to_int64() == 0);
     assert(val3.to_string() == "");
-    assert(val.begin() == val.end());
-    assert(val3.begin() == val3.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
+    // assert(val3.begin() == val3.end());
   }
 
   {
@@ -94,7 +95,8 @@ void test_value() {
     assert(val.to_double() == 3);
     assert(val.to_int64() == 3);
     assert(val.to_string() == "3");
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {
@@ -199,7 +201,8 @@ void test_value() {
     assert(val.to_double() == 0);
     assert(val.to_int64() == 0);
     assert(val.to_string() == "alpha");
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {
@@ -212,7 +215,8 @@ void test_value() {
     assert("beta" > val.to_string());
     assert(val + "beta" == "alphabeta");
     assert("alpha" + val2.to_string() == "alphabeta");
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {
@@ -434,7 +438,8 @@ void test_value() {
     assert(val0 == 0);
     double valD = val[0];
     assert(valD == 0);
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {
