@@ -36,7 +36,8 @@ void test_value() {
     assert(val.to_double() == 1);
     assert(val.to_int64() == 1);
     assert(val.to_string() == "true");
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {

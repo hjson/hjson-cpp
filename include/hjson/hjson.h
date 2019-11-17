@@ -10,7 +10,7 @@
 namespace Hjson {
 
 
-// Exists only to avoid ambiguos conversions for the Value constructor.
+// Exists only to avoid ambiguous conversions for the Hjson::Value constructors.
 struct Int64_tag {};
 
 class type_mismatch : public std::logic_error {
@@ -77,7 +77,7 @@ public:
   Value(bool);
   Value(double);
   Value(int);
-  // The int64 constructor is tagged to avoid ambiguous conversion for the
+  // The int64 constructor is tagged to avoid ambiguous conversions for the
   // overloaded constructors. Example usage:
   //   Hjson::Value hval(9223372036854775807, Hjson::Int64_tag{});
   Value(std::int64_t, Int64_tag);
