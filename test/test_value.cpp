@@ -112,6 +112,41 @@ void test_value() {
   }
 
   {
+    Hjson::Value val = 1;
+    assert(val == 1);
+    assert(val != 2);
+    assert(val != 2.0);
+    assert(val != 9223372036854775806);
+    assert(val.to_double() == 1.0);
+    assert(val.to_int64() == 1);
+    assert(val.to_string() == "1");
+    int i = 2;
+    Hjson::Value val2(i);
+    assert(val2 != val);
+    assert(val2 > val);
+    assert(val < val2);
+    assert(val2 > 1);
+    assert(val2 < 3);
+    assert(1 < val2);
+    assert(3 > val2);
+    assert(3 > val2.to_int64());
+    assert(val2 == i);
+    assert((val2 + 1) == static_cast<double>(i + 1));
+    assert((val2 - 1) == static_cast<double>(i - 1));
+    char i3 = 4;
+    Hjson::Value val3(i3);
+    assert(val3 == 4);
+    Hjson::Value val4("-1");
+    assert(val4.to_double() == -1);
+    assert(val4.to_int64() == -1);
+    assert(val4.to_string() == "-1");
+    Hjson::Value val5(-1);
+    assert(val5 == -1);
+    assert(val5 < val);
+    assert(val5 < 1.0);
+  }
+
+  {
     Hjson::Value val = 144115188075855873;
     assert(val == 144115188075855873);
     assert(val != 144115188075855874);
@@ -123,11 +158,43 @@ void test_value() {
     assert(val.to_int64() == 9223372036854775807);
     assert(val > 9223372036854775806);
     long long i = 9223372036854775806;
+    std::int64_t i2 = 9223372036854775806;
+    long long i3 = 9223372036854775807;
+    std::int64_t i4 = 9223372036854775807;
+    assert(val > i);
+    assert(val > i2);
     Hjson::Value val2(i);
+    assert(val2 == i);
     assert(val2 != val);
     assert(val2 < val);
     assert(val > val2);
     assert(val2 < 9223372036854775807);
+    assert(val2 < i3);
+    assert(val2 < i4);
+    val2 = i;
+    assert(val2 == i);
+    assert(val2 != val);
+    assert(val2 < val);
+    assert(val > val2);
+    assert(val2 < 9223372036854775807);
+    assert(val2 < i3);
+    assert(val2 < i4);
+    val2 = Hjson::Value(i2);
+    assert(val2 == i2);
+    assert(val2 != val);
+    assert(val2 < val);
+    assert(val > val2);
+    assert(val2 < 9223372036854775807);
+    assert(val2 < i3);
+    assert(val2 < i4);
+    val2 = i2;
+    assert(val2 == i2);
+    assert(val2 != val);
+    assert(val2 < val);
+    assert(val > val2);
+    assert(val2 < 9223372036854775807);
+    assert(val2 < i3);
+    assert(val2 < i4);
     // Would fail, because val2 returns a double when on the right side of the comparison.
     // assert(9223372036854775807 > val2);
     assert(9223372036854775807 > val2.to_int64());
@@ -143,6 +210,13 @@ void test_value() {
     assert(val5 > val4);
     Hjson::Value val6("9223372036854775807");
     assert(val6.to_int64() == 9223372036854775807);
+    Hjson::Value val7("-9223372036854775806");
+    assert(val7.to_int64() == -9223372036854775806);
+    assert(val7.to_string() == "-9223372036854775806");
+    Hjson::Value val8(-9223372036854775806);
+    assert(val8 == -9223372036854775806);
+    assert(val8 < val);
+    assert(val8 < 1.0);
   }
 
   {
