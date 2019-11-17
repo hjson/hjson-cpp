@@ -122,7 +122,7 @@ void test_value() {
     assert(val != 9223372036854775806);
     assert(val.to_int64() == 9223372036854775807);
     assert(val > 9223372036854775806);
-    std::int64_t i = 9223372036854775806;
+    long long i = 9223372036854775806;
     Hjson::Value val2(i);
     assert(val2 != val);
     assert(val2 < val);

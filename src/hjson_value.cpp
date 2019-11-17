@@ -29,14 +29,14 @@ public:
   union {
     bool b;
     double d;
-    std::int64_t i;
+    long long i;
     void *p;
   };
 
   ValueImpl();
   ValueImpl(bool);
   ValueImpl(double);
-  ValueImpl(std::int64_t);
+  ValueImpl(long long);
   ValueImpl(const std::string&);
   ValueImpl(Type);
   ~ValueImpl();
@@ -63,7 +63,7 @@ Value::ValueImpl::ValueImpl(double input)
 }
 
 
-Value::ValueImpl::ValueImpl(std::int64_t input)
+Value::ValueImpl::ValueImpl(long long input)
   : type(IMPL_INT64),
   i(input)
 {
@@ -158,12 +158,12 @@ Value::Value(double input)
 
 
 Value::Value(int input)
-  : prv(std::make_shared<ValueImpl>((std::int64_t) input))
+  : prv(std::make_shared<ValueImpl>((long long) input))
 {
 }
 
 
-Value::Value(std::int64_t input)
+Value::Value(long long input)
   : prv(std::make_shared<ValueImpl>(input))
 {
 }
@@ -293,12 +293,12 @@ bool Value::operator!=(int input) const {
 }
 
 
-bool Value::operator==(std::int64_t input) const {
+bool Value::operator==(long long input) const {
   return (prv->type == ValueImpl::IMPL_INT64 ? prv->i == input : operator double() == input);
 }
 
 
-bool Value::operator!=(std::int64_t input) const {
+bool Value::operator!=(long long input) const {
   return !(*this == input);
 }
 
@@ -382,12 +382,12 @@ bool Value::operator<(int input) const {
 }
 
 
-bool Value::operator>(std::int64_t input) const {
+bool Value::operator>(long long input) const {
   return (prv->type == ValueImpl::IMPL_INT64 ? prv->i > input : operator double() > input);
 }
 
 
-bool Value::operator<(std::int64_t input) const {
+bool Value::operator<(long long input) const {
   return (prv->type == ValueImpl::IMPL_INT64 ? prv->i < input : operator double() < input);
 }
 
@@ -465,7 +465,7 @@ double Value::operator+(int input) const {
 }
 
 
-double Value::operator+(std::int64_t input) const {
+double Value::operator+(long long input) const {
   return operator double() + input;
 }
 
@@ -514,7 +514,7 @@ double Value::operator-(int input) const {
 }
 
 
-double Value::operator-(std::int64_t input) const {
+double Value::operator-(long long input) const {
   return operator double() - input;
 }
 
@@ -826,7 +826,7 @@ double Value::to_double() const {
 }
 
 
-std::int64_t Value::to_int64() const {
+long long Value::to_int64() const {
   switch (prv->type) {
   case ValueImpl::IMPL_UNDEFINED:
   case ValueImpl::IMPL_HJSON_NULL:
@@ -834,18 +834,18 @@ std::int64_t Value::to_int64() const {
   case ValueImpl::IMPL_BOOL:
     return (prv->b ? 1 : 0);
   case ValueImpl::IMPL_DOUBLE:
-    return static_cast<std::int64_t>(prv->d);
+    return static_cast<long long>(prv->d);
   case ValueImpl::IMPL_INT64:
     return prv->i;
   case ValueImpl::IMPL_STRING:
-    std::int64_t ret;
+    long long ret;
     std::stringstream ss(*((std::string*)prv->p));
 
     ss >> ret;
 
     if (!ss.eof() || ss.fail()) {
       // Perhaps the string contains a decimal point or exponential part.
-      return static_cast<std::int64_t>(to_double());
+      return static_cast<long long>(to_double());
     }
 
     return ret;
