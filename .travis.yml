@@ -11,12 +11,14 @@ jobs:
           packages:
             - g++-4.9
       env:
-         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+        - CC=gcc-4.9
+        - CXX=g++-4.9
+        - BUILD_TYPE=Debug
     - os: linux
       dist: bionic
       compiler: gcc
       env:
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE=Release
     - os: linux
       dist: bionic
       compiler: gcc
@@ -25,16 +27,17 @@ jobs:
         - sudo apt-get -q update
         - sudo apt-get -y install g++-9
       env:
-         - MATRIX_EVAL="CC=gcc-9 && CXX=g++-9"
+        - CC=gcc-9
+        - CXX=g++-9
+        - BUILD_TYPE=Debug
     - os: osx
       compiler: clang
+      env:
+        - BUILD_TYPE=Debug
     - os: windows
       env:
         - GENERATOR="Visual Studio 15 2017 Win64"
         - ARTIFACT=vs2017-64bit
-env:
-  - BUILD_TYPE="Debug"
-before_install:
-  - eval "${MATRIX_EVAL}"
+        - BUILD_TYPE=Debug
 script:
   - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON .. && cmake --build . --target runtest
