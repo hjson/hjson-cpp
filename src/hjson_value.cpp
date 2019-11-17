@@ -36,6 +36,7 @@ public:
   ValueImpl();
   ValueImpl(bool);
   ValueImpl(double);
+  ValueImpl(std::int64_t, Int64_tag);
   ValueImpl(const std::string&);
   ValueImpl(Type);
   ~ValueImpl();
@@ -58,6 +59,13 @@ Value::ValueImpl::ValueImpl(bool input)
 Value::ValueImpl::ValueImpl(double input)
   : type(IMPL_DOUBLE),
   d(input)
+{
+}
+
+
+Value::ValueImpl::ValueImpl(std::int64_t input, Int64_tag)
+  : type(IMPL_INT64),
+  i(input)
 {
 }
 
@@ -150,7 +158,13 @@ Value::Value(double input)
 
 
 Value::Value(int input)
-  : prv(std::make_shared<ValueImpl>(input))
+  : prv(std::make_shared<ValueImpl>(input, Int64_tag{}))
+{
+}
+
+
+Value::Value(std::int64_t input, Int64_tag)
+  : prv(std::make_shared<ValueImpl>(input, Int64_tag{}))
 {
 }
 
@@ -174,15 +188,6 @@ Value::Value(Type _type)
 
 
 Value::~Value() {
-}
-
-
-Value Value::from_int64(std::int64_t input) {
-  Value val;
-  val.prv->type = ValueImpl::IMPL_INT64;
-  val.prv->i = input;
-
-  return val;
 }
 
 

@@ -70,10 +70,14 @@ public:
     MAP
   };
 
+  // Exists only to avoid ambiguos conversions for the constructor.
+  struct Int64_tag {};
+
   Value();
   Value(bool);
   Value(double);
   Value(int);
+  Value(std::int64_t, Int64_tag);
   Value(const char*);
   Value(const std::string&);
   Value(Type);
