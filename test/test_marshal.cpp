@@ -1,8 +1,8 @@
 #include <hjson.h>
-#include <assert.h>
 #include <fstream>
 #include <iostream>
 #include <cstring>
+#include "hjson_test.h"
 
 
 static std::string _readStream(std::ifstream *pInfile) {

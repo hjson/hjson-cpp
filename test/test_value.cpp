@@ -1,7 +1,7 @@
 #include <hjson.h>
-#include <assert.h>
 #include <cmath>
 #include <cstring>
+#include "hjson_test.h"
 
 
 static std::string _test_string_param(std::string param) {
