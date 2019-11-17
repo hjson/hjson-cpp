@@ -13,6 +13,7 @@ namespace Hjson {
 // Exists only to avoid ambiguous conversions for the Hjson::Value constructors.
 struct Int64_tag {};
 
+
 class type_mismatch : public std::logic_error {
   using std::logic_error::logic_error;
 };
