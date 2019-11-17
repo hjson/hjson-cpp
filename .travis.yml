@@ -15,6 +15,8 @@ jobs:
     - os: linux
       dist: bionic
       compiler: gcc
+      env:
+        - BUILD_TYPE="Release"
     - os: linux
       dist: bionic
       compiler: gcc
@@ -30,7 +32,9 @@ jobs:
       env:
         - GENERATOR="Visual Studio 15 2017 Win64"
         - ARTIFACT=vs2017-64bit
+env:
+  - BUILD_TYPE="Debug"
 before_install:
-    - eval "${MATRIX_EVAL}"
+  - eval "${MATRIX_EVAL}"
 script:
-  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=DEBUG -DHJSON_ENABLE_TEST=ON .. && cmake --build . --target runtest
+  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON .. && cmake --build . --target runtest
