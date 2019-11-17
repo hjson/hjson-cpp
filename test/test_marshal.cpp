@@ -79,7 +79,8 @@ static void _examine(std::string filename) {
   if (std::strcmp(rhjson.c_str(), actualHjson.c_str())) {
     for (int a = 0; a < rhjson.size() && a < actualHjson.size(); a++) {
       if (actualHjson[a] != rhjson[a]) {
-        std::cout << std::endl << "diff on index " << a << std::endl;
+        std::cout << std::endl << "first diff at index " << a << std::endl;
+        break;
       }
     }
     std::cout << std::endl << "Expected: (size " << rhjson.size() << ")" <<
@@ -102,7 +103,8 @@ static void _examine(std::string filename) {
   if (std::strcmp(rjson.c_str(), actualJson.c_str())) {
     for (int a = 0; a < rjson.size() && a < actualJson.size(); a++) {
       if (actualJson[a] != rjson[a]) {
-        std::cout << std::endl << "diff on index " << a << std::endl;
+        std::cout << std::endl << "first diff at index " << a << std::endl;
+        break;
       }
     }
     std::cout << std::endl << "Expected: (size " << rjson.size() << ")" <<
