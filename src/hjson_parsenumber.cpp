@@ -130,7 +130,7 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
   } else {
     std::int64_t i;
     ret = _parseInt(&i, std::string((char*)p.data, end - 1));
-    *pValue = Value::from_int64(i);
+    *pValue = Value(i, Int64_tag{});
   }
 
   return ret;

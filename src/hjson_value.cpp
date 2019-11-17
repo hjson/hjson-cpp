@@ -475,7 +475,7 @@ Value Value::operator+(const Value &other) const {
   case ValueImpl::IMPL_DOUBLE:
     return prv->d + other.prv->d;
   case ValueImpl::IMPL_INT64:
-    return from_int64(prv->i + other.prv->i);
+    return Value(prv->i + other.prv->i, Int64_tag{});
   case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p) + *((std::string*)other.prv->p);
   }
