@@ -315,7 +315,7 @@ static void _white(Parser *p) {
       _next(p);
     }
     // Hjson allows comments
-    if (p->ch == '#' || p->ch == '/' && _peek(p, 0) == '/') {
+    if (p->ch == '#' || (p->ch == '/' && _peek(p, 0) == '/')) {
       while (p->ch > 0 && p->ch != '\n') {
         _next(p);
       }
@@ -353,7 +353,7 @@ static Value _readTfnns(Parser *p) {
     if (isEol ||
       p->ch == ',' || p->ch == '}' || p->ch == ']' ||
       p->ch == '#' ||
-      p->ch == '/' && (_peek(p, 0) == '/' || _peek(p, 0) == '*'))
+      (p->ch == '/' && (_peek(p, 0) == '/' || _peek(p, 0) == '*')))
     {
       auto trimmed = _trim(std::string(value.data(), value.size()));
 
@@ -374,7 +374,7 @@ static Value _readTfnns(Parser *p) {
         }
         break;
       default:
-        if (chf == '-' || chf >= '0' && chf <= '9') {
+        if (chf == '-' || (chf >= '0' && chf <= '9')) {
           Value number;
           if (tryParseNumber(&number, value.data(), value.size(), false)) {
             return number;

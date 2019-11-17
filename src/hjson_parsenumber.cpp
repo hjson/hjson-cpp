@@ -112,7 +112,7 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
   if (stopAtNext) {
     // end scan if we find a punctuator character like ,}] or a comment
     if (p.ch == ',' || p.ch == '}' || p.ch == ']' ||
-      p.ch == '#' || p.ch == '/' && (p.data[p.at] == '/' || p.data[p.at] == '*'))
+      p.ch == '#' || (p.ch == '/' && (p.data[p.at] == '/' || p.data[p.at] == '*')))
     {
       p.ch = 0;
     }

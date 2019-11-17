@@ -124,6 +124,8 @@ Value::ValueImpl::~ValueImpl() {
   case IMPL_MAP:
     delete (ValueMap*)p;
     break;
+  default:
+    break;
   }
 }
 
@@ -410,6 +412,8 @@ bool Value::operator>(const Value &other) const {
     return prv->i > other.prv->i;
   case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p) > *((std::string*)other.prv->p);
+  default:
+    break;
   }
 
   throw type_mismatch("The compared values must be of type DOUBLE or STRING.");
@@ -434,6 +438,8 @@ bool Value::operator<(const Value &other) const {
     return prv->i < other.prv->i;
   case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p) < *((std::string*)other.prv->p);
+  default:
+    break;
   }
 
   throw type_mismatch("The compared values must be of type DOUBLE or STRING.");
@@ -478,6 +484,8 @@ Value Value::operator+(const Value &other) const {
     return Value(prv->i + other.prv->i, Int64_tag{});
   case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p) + *((std::string*)other.prv->p);
+  default:
+    break;
   }
 
   throw type_mismatch("The values must be of type DOUBLE or STRING for this operation.");
@@ -508,6 +516,8 @@ Value::operator bool() const {
     return !!prv->i;
   case ValueImpl::IMPL_BOOL:
     return prv->b;
+  default:
+    break;
   }
 
   return !empty();
@@ -521,6 +531,8 @@ Value::operator double() const {
     return prv->d;
   case ValueImpl::IMPL_INT64:
     return static_cast<double>(prv->i);
+  default:
+    break;
   }
 
   throw type_mismatch("Must be of type DOUBLE for that operation.");
@@ -555,9 +567,9 @@ bool Value::defined() const {
 bool Value::empty() const {
   return (prv->type == ValueImpl::IMPL_UNDEFINED ||
     prv->type == ValueImpl::IMPL_HJSON_NULL ||
-    prv->type == ValueImpl::IMPL_STRING && ((std::string*)prv->p)->empty() ||
-    prv->type == ValueImpl::IMPL_VECTOR && ((ValueVec*)prv->p)->empty() ||
-    prv->type == ValueImpl::IMPL_MAP && ((ValueMap*)prv->p)->empty());
+    (prv->type == ValueImpl::IMPL_STRING && ((std::string*)prv->p)->empty()) ||
+    (prv->type == ValueImpl::IMPL_VECTOR && ((ValueVec*)prv->p)->empty()) ||
+    (prv->type == ValueImpl::IMPL_MAP && ((ValueMap*)prv->p)->empty()));
 }
 
 
@@ -602,6 +614,8 @@ size_t Value::size() const {
     return ((ValueVec*)prv->p)->size();
   case ValueImpl::IMPL_MAP:
     return ((ValueMap*)prv->p)->size();
+  default:
+    break;
   }
 
   assert(prv->type == ValueImpl::IMPL_BOOL || prv->type == ValueImpl::IMPL_DOUBLE ||
@@ -649,6 +663,9 @@ bool Value::deep_equal(const Value &other) const {
       }
     }
     return true;
+
+  default:
+    break;
   }
 
   return false;
@@ -656,7 +673,7 @@ bool Value::deep_equal(const Value &other) const {
 
 
 Value Value::clone() const {
-  switch (type()) {
+  switch (prv->type) {
   case ValueImpl::IMPL_VECTOR:
     {
       Value ret;
@@ -674,6 +691,9 @@ Value Value::clone() const {
       }
       return ret;
     }
+
+  default:
+    break;
   }
 
   return *this;
@@ -777,19 +797,23 @@ double Value::to_double() const {
   case ValueImpl::IMPL_INT64:
     return static_cast<double>(prv->i);
   case ValueImpl::IMPL_STRING:
-    double ret;
-    std::stringstream ss(*((std::string*)prv->p));
+    {
+      double ret;
+      std::stringstream ss(*((std::string*)prv->p));
 
-    // Make sure we expect dot (not comma) as decimal point.
-    ss.imbue(std::locale::classic());
+      // Make sure we expect dot (not comma) as decimal point.
+      ss.imbue(std::locale::classic());
 
-    ss >> ret;
+      ss >> ret;
 
-    if (!ss.eof() || ss.fail()) {
-      return 0.0;
+      if (!ss.eof() || ss.fail()) {
+        return 0.0;
+      }
+
+      return ret;
     }
-
-    return ret;
+  default:
+    break;
   }
 
   throw type_mismatch("Illegal type for this operation.");
@@ -808,17 +832,21 @@ std::int64_t Value::to_int64() const {
   case ValueImpl::IMPL_INT64:
     return prv->i;
   case ValueImpl::IMPL_STRING:
-    std::int64_t ret;
-    std::stringstream ss(*((std::string*)prv->p));
+    {
+      std::int64_t ret;
+      std::stringstream ss(*((std::string*)prv->p));
 
-    ss >> ret;
+      ss >> ret;
 
-    if (!ss.eof() || ss.fail()) {
-      // Perhaps the string contains a decimal point or exponential part.
-      return static_cast<std::int64_t>(to_double());
+      if (!ss.eof() || ss.fail()) {
+        // Perhaps the string contains a decimal point or exponential part.
+        return static_cast<std::int64_t>(to_double());
+      }
+
+      return ret;
     }
-
-    return ret;
+  default:
+    break;
   }
 
   throw type_mismatch("Illegal type for this operation.");
@@ -855,6 +883,8 @@ std::string Value::to_string() const {
     }
   case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p);
+  default:
+    break;
   }
 
   throw type_mismatch("Illegal type for this operation.");
