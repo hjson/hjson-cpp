@@ -30,7 +30,7 @@ if(HJSON_VERSIONED_INSTALL)
   set(lib_dest "lib/hjson-${HJSON_VERSION}")
 else()
   set(include_dest "include/hjson")
-  set(lib_dest "lib/hjson")
+  set(lib_dest "lib")
 endif()
 
 add_subdirectory(src)
