@@ -21,6 +21,7 @@ option(HJSON_ENABLE_TEST "Enable testing" OFF)
 option(HJSON_ENABLE_INSTALL "Enable installation" OFF)
 option(HJSON_VERSIONED_INSTALL "Include version in installation path" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+option(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS "Needed for shared libs on Windows" ON)
 
 if(HJSON_VERSIONED_INSTALL)
   set(include_dest "include/hjson-${PROJECT_VERSION}")
