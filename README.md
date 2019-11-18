@@ -53,6 +53,7 @@ A list of Hjson Cmake options and their default values:
 
 ```bash
 BUILD_SHARED_LIBS=OFF
+BUILD_WITH_STATIC_CRT=  # Can be set to Yes or No. Only used on Windows.
 CMAKE_BUILD_TYPE=  # Set to Debug for debug symbols, or Release for optimization.
 CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON  # Needed for shared libs on Windows. Introduced in Cmake 3.4.
 HJSON_ENABLE_INSTALL=OFF
