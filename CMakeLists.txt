@@ -34,7 +34,7 @@ else()
 endif()
 
 add_subdirectory(src)
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND HJSON_ENABLE_TEST)
+if(HJSON_ENABLE_TEST)
   add_subdirectory(test)
 endif()
 
