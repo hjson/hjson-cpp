@@ -40,4 +40,4 @@ jobs:
         - ARTIFACT=vs2017-64bit
         - BUILD_TYPE=Debug
 script:
-  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON .. && cmake --build . --target runtest
+  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DBUILD_TESTING=ON .. && cmake --build . --target test
