@@ -21,12 +21,12 @@ if(MSVC)
   include(cmake/msvc_crt.cmake)
 endif(MSVC)
 
-option(BUILD_TESTING "Enable testing" OFF)
-option(BUILD_INSTALLING "Enable installation" OFF)
-option(BUILD_VERSIONED_INSTALLING "Include version in installation path" OFF)
+option(HJSON_ENABLE_TEST "Enable testing" OFF)
+option(HJSON_ENABLE_INSTALL "Enable installation" OFF)
+option(HJSON_VERSIONED_INSTALL "Include version in installation path" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
-if(BUILD_VERSIONED_INSTALLING)
+if(HJSON_VERSIONED_INSTALL)
   set(include_dest "include/hjson-${HJSON_VERSION}")
   set(cmake_dest "lib/hjson-${HJSON_VERSION}")
   set(lib_dest "lib/hjson-${HJSON_VERSION}")
@@ -37,7 +37,7 @@ else()
 endif()
 
 add_subdirectory(src)
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND HJSON_ENABLE_TEST)
   add_subdirectory(test)
 endif()
 
@@ -46,7 +46,7 @@ configure_file(cmake/hjson-config-version.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/h
 
 export(TARGETS hjson FILE "${CMAKE_BINARY_DIR}/hjson.cmake")
 
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND (BUILD_INSTALLING OR BUILD_VERSIONED_INSTALLING))
+if(HJSON_ENABLE_INSTALL)
   install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/hjson-config.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/hjson-config-version.cmake
