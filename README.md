@@ -35,7 +35,7 @@ GCC 4.8 has the C++11 headers for regex, but unfortunately not a working impleme
 
 ## Cmake
 
-The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the hjson lib on your system by using Cmake. Works on Linux and Windows. Your mileage may vary on other platforms.
+The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms.
 
 ### Cmake subfolder
 
@@ -45,6 +45,19 @@ add_executable(myapp main.cpp)
 
 add_subdirectory(../hjson-cpp ${CMAKE_BINARY_DIR}/hjson)
 target_link_libraries(myapp hjson)
+```
+
+### Cmake options
+
+A list of Hjson Cmake options and their default values:
+
+```bash
+BUILD_SHARED_LIBS=OFF
+CMAKE_BUILD_TYPE=  # Set to Debug for debug symbols, or Release for optimization.
+CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON  # Needed for shared libs on Windows. Introduced in Cmake 3.4.
+HJSON_ENABLE_INSTALL=OFF
+HJSON_ENABLE_TEST=OFF
+HJSON_VERSIONED_INSTALL=OFF  # Use version suffix on header and lib folders.
 ```
 
 ### Linux lib
@@ -60,7 +73,7 @@ $ cmake .. -DHJSON_ENABLE_TEST=ON -DHJSON_ENABLE_INSTALL=ON -DCMAKE_BUILD_TYPE=R
 ```bash
 $ make runtest
 ```
-3. Install the include files and static lib to make them accessible system wide (optional).
+3. Install the include files and lib to make them accessible system wide (optional).
 ```bash
 $ sudo make install
 ```
@@ -73,7 +86,7 @@ $ make
 
 The Cmake GUI is the most convenient way to generate a Visual Studio solution. Make sure that you tick the boxes for `HJSON_ENABLE_TEST` and `HJSON_ENABLE_INSTALL` if you want to run tests or make the hjson lib accessible system wide.
 
-After generating the solution and opening it in Visual Studio you can run the tests by right-clicking the project `runtest` and selecting `Build`. Make sure to have selected a Debug target, otherwise the assertions will have been optimized away.
+After generating the solution and opening it in Visual Studio you can run the tests by right-clicking the project `runtest` and selecting `Build`. The test results are shown in the `Output` window (the same window that shows the build result).
 
 In order to make the hjson lib accessible system wide you must run Visual Studio as an administrator. In Windows 7 you can do that by right-clicking on the Visual Studio icon in the start menu and selecting `Run as an administrator`. Then open the hjson solution, right-click the `INSTALL` project and select `Build`. Make sure to do that for both the `Debug` and `Release` targets.
 
