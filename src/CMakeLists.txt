@@ -22,7 +22,7 @@ set_target_properties(hjson PROPERTIES
   DEBUG_POSTFIX "d"
 )
 
-if(HJSON_ENABLE_INSTALL)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_INSTALLING)
   install(TARGETS hjson EXPORT hjson DESTINATION ${lib_dest})
   install(FILES ${header} DESTINATION ${include_dest})
 endif()

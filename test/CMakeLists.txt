@@ -13,7 +13,7 @@ set_target_properties(testbin PROPERTIES
 
 target_link_libraries(testbin hjson)
 
-add_custom_target(runtest
+add_custom_target(test
   COMMAND testbin
   WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 )

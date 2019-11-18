@@ -1,9 +1,18 @@
 cmake_minimum_required(VERSION 3.1)
 
-project(hjson)
+if(${CMAKE_VERSION} VERSION_LESS 3.15)
+  cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
+else()
+  cmake_policy(VERSION 3.15)
+endif()
+
+project(hjson
+  VERSION 1.2
+  DESCRIPTION "Human readable JSON"
+  LANGUAGES CXX)
 
 if(MSVC)
-  set(BUILD_WITH_STATIC_CRT "Manual flags" CACHE STRING "Use staticaly linked CRT")
+  set(BUILD_WITH_STATIC_CRT "Manual flags" CACHE STRING "Use statically linked CRT")
   set_property(CACHE BUILD_WITH_STATIC_CRT PROPERTY STRINGS "Manual flags" "Yes" "No")
   include(cmake/msvc_crt.cmake)
 endif(MSVC)
@@ -12,8 +21,8 @@ set(HJSON_VERSION_MAJOR 1 CACHE STRING "major version" FORCE)
 set(HJSON_VERSION_MINOR 2 CACHE STRING "minor version" FORCE)
 set(HJSON_VERSION ${HJSON_VERSION_MAJOR}.${HJSON_VERSION_MINOR} CACHE STRING "version" FORCE)
 
-option(HJSON_ENABLE_TEST "Enable testing" OFF)
-option(HJSON_ENABLE_INSTALL "Enable installation" OFF)
+option(BUILD_TESTING "Enable testing" OFF)
+option(BUILD_INSTALLING "Enable installation" OFF)
 option(HJSON_VERSIONED_INSTALL "Include version in installation path" OFF)
 
 if(HJSON_VERSIONED_INSTALL)
@@ -25,7 +34,7 @@ else()
 endif()
 
 add_subdirectory(src)
-if(HJSON_ENABLE_TEST)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
   add_subdirectory(test)
 endif()
 
@@ -34,7 +43,7 @@ configure_file(cmake/hjson-config-version.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/h
 
 export(TARGETS hjson FILE "${CMAKE_BINARY_DIR}/hjson.cmake")
 
-if(HJSON_ENABLE_INSTALL)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_INSTALLING)
   install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/hjson-config.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/hjson-config-version.cmake
