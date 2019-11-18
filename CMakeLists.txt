@@ -6,8 +6,12 @@ else()
   cmake_policy(VERSION 3.15)
 endif()
 
+set(HJSON_VERSION_MAJOR 1 CACHE STRING "major version" FORCE)
+set(HJSON_VERSION_MINOR 2 CACHE STRING "minor version" FORCE)
+set(HJSON_VERSION ${HJSON_VERSION_MAJOR}.${HJSON_VERSION_MINOR} CACHE STRING "version" FORCE)
+
 project(hjson
-  VERSION 1.2
+  VERSION ${HJSON_VERSION}
   DESCRIPTION "Human readable JSON"
   LANGUAGES CXX)
 
@@ -17,19 +21,18 @@ if(MSVC)
   include(cmake/msvc_crt.cmake)
 endif(MSVC)
 
-set(HJSON_VERSION_MAJOR 1 CACHE STRING "major version" FORCE)
-set(HJSON_VERSION_MINOR 2 CACHE STRING "minor version" FORCE)
-set(HJSON_VERSION ${HJSON_VERSION_MAJOR}.${HJSON_VERSION_MINOR} CACHE STRING "version" FORCE)
-
 option(BUILD_TESTING "Enable testing" OFF)
 option(BUILD_INSTALLING "Enable installation" OFF)
 option(HJSON_VERSIONED_INSTALL "Include version in installation path" OFF)
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
 if(HJSON_VERSIONED_INSTALL)
   set(include_dest "include/hjson-${HJSON_VERSION}")
+  set(cmake_dest "lib/hjson-${HJSON_VERSION}")
   set(lib_dest "lib/hjson-${HJSON_VERSION}")
 else()
   set(include_dest "include/hjson")
+  set(cmake_dest "lib/hjson")
   set(lib_dest "lib")
 endif()
 
@@ -47,8 +50,8 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_INSTALLING)
   install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/hjson-config.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/hjson-config-version.cmake
-    DESTINATION ${lib_dest}
+    DESTINATION ${cmake_dest}
   )
 
-  install(EXPORT hjson DESTINATION ${lib_dest})
+  install(EXPORT hjson DESTINATION ${cmake_dest})
 endif()
