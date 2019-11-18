@@ -6,12 +6,8 @@ else()
   cmake_policy(VERSION 3.15)
 endif()
 
-set(HJSON_VERSION_MAJOR 1 CACHE STRING "major version" FORCE)
-set(HJSON_VERSION_MINOR 2 CACHE STRING "minor version" FORCE)
-set(HJSON_VERSION ${HJSON_VERSION_MAJOR}.${HJSON_VERSION_MINOR} CACHE STRING "version" FORCE)
-
 project(hjson
-  VERSION ${HJSON_VERSION}
+  VERSION 1.2
   DESCRIPTION "Human readable JSON"
   LANGUAGES CXX)
 
@@ -27,9 +23,9 @@ option(HJSON_VERSIONED_INSTALL "Include version in installation path" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
 if(HJSON_VERSIONED_INSTALL)
-  set(include_dest "include/hjson-${HJSON_VERSION}")
-  set(cmake_dest "lib/hjson-${HJSON_VERSION}")
-  set(lib_dest "lib/hjson-${HJSON_VERSION}")
+  set(include_dest "include/hjson-${PROJECT_VERSION}")
+  set(cmake_dest "lib/hjson-${PROJECT_VERSION}")
+  set(lib_dest "lib/hjson-${PROJECT_VERSION}")
 else()
   set(include_dest "include/hjson")
   set(cmake_dest "lib/hjson")
