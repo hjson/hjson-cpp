@@ -3,13 +3,22 @@
 #include <vector>
 #include <assert.h>
 #include <cstring>
+#include <algorithm>
 
 
 namespace Hjson {
 
 
+typedef std::vector<std::string> KeyVec;
 typedef std::vector<Value> ValueVec;
 typedef std::map<std::string, Value> ValueMap;
+
+
+class ValueVecMap {
+public:
+  KeyVec v;
+  ValueMap m;
+};
 
 
 class Value::ValueImpl {
@@ -103,7 +112,7 @@ Value::ValueImpl::ValueImpl(Type _type) {
     break;
   case MAP:
     type = IMPL_MAP;
-    p = new ValueMap();
+    p = new ValueVecMap();
     break;
   default:
     assert(!"Unknown type");
@@ -122,7 +131,7 @@ Value::ValueImpl::~ValueImpl() {
     delete (ValueVec*)p;
     break;
   case IMPL_MAP:
-    delete (ValueMap*)p;
+    delete (ValueVecMap*)p;
     break;
   default:
     break;
@@ -197,8 +206,8 @@ const Value Value::operator[](const std::string& name) const {
   if (prv->type == ValueImpl::IMPL_UNDEFINED) {
     return Value();
   } else if (prv->type == ValueImpl::IMPL_MAP) {
-    auto it = ((ValueMap*)prv->p)->find(name);
-    if (it == ((ValueMap*)prv->p)->end()) {
+    auto it = ((ValueVecMap*)prv->p)->m.find(name);
+    if (it == ((ValueVecMap*)prv->p)->m.end()) {
       return Value();
     }
     return it->second;
@@ -217,8 +226,8 @@ MapProxy Value::operator[](const std::string& name) {
     throw type_mismatch("Must be of type UNDEFINED or MAP for that operation.");
   }
 
-  auto it = ((ValueMap*)prv->p)->find(name);
-  if (it == ((ValueMap*)prv->p)->end()) {
+  auto it = ((ValueVecMap*)prv->p)->m.find(name);
+  if (it == ((ValueVecMap*)prv->p)->m.end()) {
     return MapProxy(prv, std::make_shared<ValueImpl>(UNDEFINED), name);
   }
   return MapProxy(prv, it->second.prv, name);
@@ -569,7 +578,7 @@ bool Value::empty() const {
     prv->type == ValueImpl::IMPL_HJSON_NULL ||
     (prv->type == ValueImpl::IMPL_STRING && ((std::string*)prv->p)->empty()) ||
     (prv->type == ValueImpl::IMPL_VECTOR && ((ValueVec*)prv->p)->empty()) ||
-    (prv->type == ValueImpl::IMPL_MAP && ((ValueMap*)prv->p)->empty()));
+    (prv->type == ValueImpl::IMPL_MAP && ((ValueVecMap*)prv->p)->m.empty()));
 }
 
 
@@ -613,7 +622,7 @@ size_t Value::size() const {
   case ValueImpl::IMPL_VECTOR:
     return ((ValueVec*)prv->p)->size();
   case ValueImpl::IMPL_MAP:
-    return ((ValueMap*)prv->p)->size();
+    return ((ValueVecMap*)prv->p)->m.size();
   default:
     break;
   }
@@ -732,7 +741,7 @@ ValueMap::iterator Value::begin() {
     return ValueMap::iterator();
   }
 
-  return ((ValueMap*)prv->p)->begin();
+  return ((ValueVecMap*)prv->p)->m.begin();
 }
 
 
@@ -743,7 +752,7 @@ ValueMap::iterator Value::end() {
     return ValueMap::iterator();
   }
 
-  return ((ValueMap*)prv->p)->end();
+  return ((ValueVecMap*)prv->p)->m.end();
 }
 
 
@@ -754,7 +763,7 @@ ValueMap::const_iterator Value::begin() const {
     return ValueMap::const_iterator();
   }
 
-  return ((const ValueMap*)prv->p)->begin();
+  return ((const ValueVecMap*)prv->p)->m.begin();
 }
 
 
@@ -765,7 +774,7 @@ ValueMap::const_iterator Value::end() const {
     return ValueMap::const_iterator();
   }
 
-  return ((const ValueMap*)prv->p)->end();
+  return ((const ValueVecMap*)prv->p)->m.end();
 }
 
 
@@ -776,7 +785,19 @@ size_t Value::erase(const std::string &key) {
     throw type_mismatch("Must be of type MAP for that operation.");
   }
 
-  return ((ValueMap*)(prv->p))->erase(key);
+  size_t ret = ((ValueVecMap*)(prv->p))->m.erase(key);
+
+  if (ret > 0) {
+    auto v = &((ValueVecMap*)(prv->p))->v;
+    auto i = std::find(v->begin(), v->end(), key);
+    if (i == v->end()) {
+      assert(!"Value found in map but not in vector");
+    } else {
+      v->erase(i);
+    }
+  }
+
+  return ret;
 }
 
 
@@ -903,13 +924,21 @@ MapProxy::MapProxy(std::shared_ptr<ValueImpl> _parent,
 
 MapProxy::~MapProxy() {
   if (wasAssigned || !empty()) {
+    auto m = &((ValueVecMap*)parentPrv->p)->m;
+    Value val(prv);
+
+    if (m->find(key) == m->end()) {
+      // If the key is new we must add it to the order vector also.
+      ((ValueVecMap*)parentPrv->p)->v.push_back(key);
+    }
+
     // We waited until now because we don't want to insert a Value object of
     // type UNDEFINED into the parent map, unless such an object was explicitly
     // assigned (e.g. `val["key"] = Hjson::Value()`).
     // Without this requirement, checking for the existence of an element
     // would create an UNDEFINED element for that key if it didn't already exist
     // (e.g. `if (val["key"] == 1) {` would create an element for "key").
-    ((ValueMap*)parentPrv->p)[0][key] = Value(prv);
+    m[0][key] = val;
   }
 }
 
