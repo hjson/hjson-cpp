@@ -14,16 +14,29 @@ typedef std::map<std::string, Value> ValueMap;
 
 class Value::ValueImpl {
 public:
-  Type type;
+  enum TypeImpl {
+    IMPL_UNDEFINED,
+    IMPL_HJSON_NULL,
+    IMPL_BOOL,
+    IMPL_DOUBLE,
+    IMPL_STRING,
+    IMPL_VECTOR,
+    IMPL_MAP,
+    IMPL_INT64
+  };
+
+  TypeImpl type;
   union {
     bool b;
     double d;
+    std::int64_t i;
     void *p;
   };
 
   ValueImpl();
   ValueImpl(bool);
   ValueImpl(double);
+  ValueImpl(std::int64_t, Int64_tag);
   ValueImpl(const std::string&);
   ValueImpl(Type);
   ~ValueImpl();
@@ -31,48 +44,69 @@ public:
 
 
 Value::ValueImpl::ValueImpl()
-  : type(UNDEFINED)
+  : type(IMPL_UNDEFINED)
 {
 }
 
 
 Value::ValueImpl::ValueImpl(bool input)
-  : type(BOOL),
+  : type(IMPL_BOOL),
   b(input)
 {
 }
 
 
 Value::ValueImpl::ValueImpl(double input)
-  : type(DOUBLE),
+  : type(IMPL_DOUBLE),
   d(input)
 {
 }
 
 
+Value::ValueImpl::ValueImpl(std::int64_t input, Int64_tag)
+  : type(IMPL_INT64),
+  i(input)
+{
+}
+
+
 Value::ValueImpl::ValueImpl(const std::string &input)
-  : type(STRING),
+  : type(IMPL_STRING),
   p(new std::string(input))
 {
 }
 
 
-Value::ValueImpl::ValueImpl(Type _type)
-  : type(_type)
-{
+Value::ValueImpl::ValueImpl(Type _type) {
   switch (_type)
   {
+  case UNDEFINED:
+    type = IMPL_UNDEFINED;
+    break;
+  case HJSON_NULL:
+    type = IMPL_HJSON_NULL;
+    break;
+  case BOOL:
+    type = IMPL_BOOL;
+    break;
   case DOUBLE:
+    type = IMPL_DOUBLE;
     d = 0.0;
     break;
   case STRING:
+    type = IMPL_STRING;
     p = new std::string();
     break;
   case VECTOR:
+    type = IMPL_VECTOR;
     p = new ValueVec();
     break;
   case MAP:
+    type = IMPL_MAP;
     p = new ValueMap();
+    break;
+  default:
+    assert(!"Unknown type");
     break;
   }
 }
@@ -81,14 +115,16 @@ Value::ValueImpl::ValueImpl(Type _type)
 Value::ValueImpl::~ValueImpl() {
   switch (type)
   {
-  case STRING:
+  case IMPL_STRING:
     delete (std::string*) p;
     break;
-  case VECTOR:
+  case IMPL_VECTOR:
     delete (ValueVec*)p;
     break;
-  case MAP:
+  case IMPL_MAP:
     delete (ValueMap*)p;
+    break;
+  default:
     break;
   }
 }
@@ -124,7 +160,13 @@ Value::Value(double input)
 
 
 Value::Value(int input)
-  : prv(std::make_shared<ValueImpl>((double) input))
+  : prv(std::make_shared<ValueImpl>(input, Int64_tag{}))
+{
+}
+
+
+Value::Value(std::int64_t input, Int64_tag)
+  : prv(std::make_shared<ValueImpl>(input, Int64_tag{}))
 {
 }
 
@@ -152,9 +194,9 @@ Value::~Value() {
 
 
 const Value Value::operator[](const std::string& name) const {
-  if (prv->type == UNDEFINED) {
+  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
     return Value();
-  } else if (prv->type == MAP) {
+  } else if (prv->type == ValueImpl::IMPL_MAP) {
     auto it = ((ValueMap*)prv->p)->find(name);
     if (it == ((ValueMap*)prv->p)->end()) {
       return Value();
@@ -167,11 +209,11 @@ const Value Value::operator[](const std::string& name) const {
 
 
 MapProxy Value::operator[](const std::string& name) {
-  if (prv->type == UNDEFINED) {
+  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
     prv->~ValueImpl();
     // Recreate the private object using the same memory block.
     new(&(*prv)) ValueImpl(MAP);
-  } else if (prv->type != MAP) {
+  } else if (prv->type != ValueImpl::IMPL_MAP) {
     throw type_mismatch("Must be of type UNDEFINED or MAP for that operation.");
   }
 
@@ -194,9 +236,9 @@ MapProxy Value::operator[](const char *input) {
 
 
 const Value Value::operator[](int index) const {
-  if (prv->type == UNDEFINED) {
+  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
     throw index_out_of_bounds("Index out of bounds.");
-  } else if (prv->type != VECTOR) {
+  } else if (prv->type != ValueImpl::IMPL_VECTOR) {
     throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
   }
 
@@ -209,9 +251,9 @@ const Value Value::operator[](int index) const {
 
 
 Value &Value::operator[](int index) {
-  if (prv->type == UNDEFINED) {
+  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
     throw index_out_of_bounds("Index out of bounds.");
-  } else if (prv->type != VECTOR) {
+  } else if (prv->type != ValueImpl::IMPL_VECTOR) {
     throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
   }
 
@@ -244,7 +286,7 @@ bool Value::operator!=(double input) const {
 
 
 bool Value::operator==(int input) const {
-  return operator double() == input;
+  return (prv->type == ValueImpl::IMPL_INT64 ? prv->i == input : operator double() == input);
 }
 
 
@@ -274,23 +316,31 @@ bool Value::operator!=(const std::string &input) const {
 
 
 bool Value::operator==(const Value &other) const {
+  if (prv->type == ValueImpl::IMPL_DOUBLE && other.prv->type == ValueImpl::IMPL_INT64) {
+    return prv->d == other.prv->i;
+  } else if (prv->type == ValueImpl::IMPL_INT64 && other.prv->type == ValueImpl::IMPL_DOUBLE) {
+    return prv->i == other.prv->d;
+  }
+
   if (prv->type != other.prv->type) {
     return false;
   }
 
   switch (prv->type) {
-  case UNDEFINED:
-  case HJSON_NULL:
+  case ValueImpl::IMPL_UNDEFINED:
+  case ValueImpl::IMPL_HJSON_NULL:
     return true;
-  case BOOL:
+  case ValueImpl::IMPL_BOOL:
     return prv->b == other.prv->b;
-  case DOUBLE:
+  case ValueImpl::IMPL_DOUBLE:
     return prv->d == other.prv->d;
-  case STRING:
+  case ValueImpl::IMPL_STRING:
     return *((std::string*) prv->p) == *((std::string*)other.prv->p);
-  case VECTOR:
-  case MAP:
+  case ValueImpl::IMPL_VECTOR:
+  case ValueImpl::IMPL_MAP:
     return prv->p == other.prv->p;
+  case ValueImpl::IMPL_INT64:
+    return prv->i == other.prv->i;
   }
 
   assert(!"Unknown type");
@@ -315,12 +365,12 @@ bool Value::operator<(double input) const {
 
 
 bool Value::operator>(int input) const {
-  return operator double() > input;
+  return (prv->type == ValueImpl::IMPL_INT64 ? prv->i > input : operator double() > input);
 }
 
 
 bool Value::operator<(int input) const {
-  return operator double() < input;
+  return (prv->type == ValueImpl::IMPL_INT64 ? prv->i < input : operator double() < input);
 }
 
 
@@ -345,15 +395,25 @@ bool Value::operator<(const std::string &input) const {
 
 
 bool Value::operator>(const Value &other) const {
+  if (prv->type == ValueImpl::IMPL_DOUBLE && other.prv->type == ValueImpl::IMPL_INT64) {
+    return prv->d > other.prv->i;
+  } else if (prv->type == ValueImpl::IMPL_INT64 && other.prv->type == ValueImpl::IMPL_DOUBLE) {
+    return prv->i > other.prv->d;
+  }
+
   if (prv->type != other.prv->type) {
     throw type_mismatch("The compared values must be of the same type.");
   }
 
   switch (prv->type) {
-  case DOUBLE:
+  case ValueImpl::IMPL_DOUBLE:
     return prv->d > other.prv->d;
-  case STRING:
+  case ValueImpl::IMPL_INT64:
+    return prv->i > other.prv->i;
+  case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p) > *((std::string*)other.prv->p);
+  default:
+    break;
   }
 
   throw type_mismatch("The compared values must be of type DOUBLE or STRING.");
@@ -361,15 +421,25 @@ bool Value::operator>(const Value &other) const {
 
 
 bool Value::operator<(const Value &other) const {
+  if (prv->type == ValueImpl::IMPL_DOUBLE && other.prv->type == ValueImpl::IMPL_INT64) {
+    return prv->d < other.prv->i;
+  } else if (prv->type == ValueImpl::IMPL_INT64 && other.prv->type == ValueImpl::IMPL_DOUBLE) {
+    return prv->i < other.prv->d;
+  }
+
   if (prv->type != other.prv->type) {
     throw type_mismatch("The compared values must be of the same type.");
   }
 
   switch (prv->type) {
-  case DOUBLE:
+  case ValueImpl::IMPL_DOUBLE:
     return prv->d < other.prv->d;
-  case STRING:
+  case ValueImpl::IMPL_INT64:
+    return prv->i < other.prv->i;
+  case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p) < *((std::string*)other.prv->p);
+  default:
+    break;
   }
 
   throw type_mismatch("The compared values must be of type DOUBLE or STRING.");
@@ -397,15 +467,25 @@ std::string Value::operator+(const std::string &input) const {
 
 
 Value Value::operator+(const Value &other) const {
+  if (prv->type == ValueImpl::IMPL_DOUBLE && other.prv->type == ValueImpl::IMPL_INT64) {
+    return prv->d + other.prv->i;
+  } else if (prv->type == ValueImpl::IMPL_INT64 && other.prv->type == ValueImpl::IMPL_DOUBLE) {
+    return prv->i + other.prv->d;
+  }
+
   if (prv->type != other.prv->type) {
     throw type_mismatch("The values must be of the same type for this operation.");
   }
 
   switch (prv->type) {
-  case DOUBLE:
+  case ValueImpl::IMPL_DOUBLE:
     return prv->d + other.prv->d;
-  case STRING:
+  case ValueImpl::IMPL_INT64:
+    return Value(prv->i + other.prv->i, Int64_tag{});
+  case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p) + *((std::string*)other.prv->p);
+  default:
+    break;
   }
 
   throw type_mismatch("The values must be of type DOUBLE or STRING for this operation.");
@@ -428,21 +508,41 @@ double Value::operator-(const Value &other) const {
 
 
 Value::operator bool() const {
-  return (prv->type == DOUBLE ? !!prv->d : (prv->type == BOOL ? prv->b : !empty()));
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_DOUBLE:
+    return !!prv->d;
+  case ValueImpl::IMPL_INT64:
+    return !!prv->i;
+  case ValueImpl::IMPL_BOOL:
+    return prv->b;
+  default:
+    break;
+  }
+
+  return !empty();
 }
 
 
 Value::operator double() const {
-  if (prv->type != DOUBLE) {
-    throw type_mismatch("Must be of type DOUBLE for that operation.");
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_DOUBLE:
+    return prv->d;
+  case ValueImpl::IMPL_INT64:
+    return static_cast<double>(prv->i);
+  default:
+    break;
   }
 
-  return prv->d;
+  throw type_mismatch("Must be of type DOUBLE for that operation.");
+
+  return 0.0;
 }
 
 
 Value::operator const char*() const {
-  if (prv->type != STRING) {
+  if (prv->type != ValueImpl::IMPL_STRING) {
     throw type_mismatch("Must be of type STRING for that operation.");
   }
 
@@ -451,7 +551,7 @@ Value::operator const char*() const {
 
 
 Value::operator const std::string() const {
-  if (prv->type != STRING) {
+  if (prv->type != ValueImpl::IMPL_STRING) {
     throw type_mismatch("Must be of type STRING for that operation.");
   }
 
@@ -460,40 +560,66 @@ Value::operator const std::string() const {
 
 
 bool Value::defined() const {
-  return prv->type != UNDEFINED;
+  return prv->type != ValueImpl::IMPL_UNDEFINED;
 }
 
 
 bool Value::empty() const {
-  return (prv->type == UNDEFINED ||
-    prv->type == HJSON_NULL ||
-    prv->type == STRING && ((std::string*)prv->p)->empty() ||
-    prv->type == VECTOR && ((ValueVec*)prv->p)->empty() ||
-    prv->type == MAP && ((ValueMap*)prv->p)->empty());
+  return (prv->type == ValueImpl::IMPL_UNDEFINED ||
+    prv->type == ValueImpl::IMPL_HJSON_NULL ||
+    (prv->type == ValueImpl::IMPL_STRING && ((std::string*)prv->p)->empty()) ||
+    (prv->type == ValueImpl::IMPL_VECTOR && ((ValueVec*)prv->p)->empty()) ||
+    (prv->type == ValueImpl::IMPL_MAP && ((ValueMap*)prv->p)->empty()));
 }
 
 
 Value::Type Value::type() const {
-  return prv->type;
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
+    return UNDEFINED;
+  case ValueImpl::IMPL_HJSON_NULL:
+    return HJSON_NULL;
+  case ValueImpl::IMPL_BOOL:
+    return BOOL;
+  case ValueImpl::IMPL_DOUBLE:
+  case ValueImpl::IMPL_INT64:
+    // There is no public INT64.
+    return DOUBLE;
+  case ValueImpl::IMPL_STRING:
+    return STRING;
+  case ValueImpl::IMPL_VECTOR:
+    return VECTOR;
+  case ValueImpl::IMPL_MAP:
+    return MAP;
+  default:
+    assert(!"Unknown type");
+    break;
+  }
+
+  return UNDEFINED;
 }
 
 
 size_t Value::size() const {
-  if (prv->type == UNDEFINED || prv->type == HJSON_NULL) {
+  if (prv->type == ValueImpl::IMPL_UNDEFINED || prv->type == ValueImpl::IMPL_HJSON_NULL) {
     return 0;
   }
 
   switch (prv->type)
   {
-  case STRING:
+  case ValueImpl::IMPL_STRING:
     return ((std::string*)prv->p)->size();
-  case VECTOR:
+  case ValueImpl::IMPL_VECTOR:
     return ((ValueVec*)prv->p)->size();
-  case MAP:
+  case ValueImpl::IMPL_MAP:
     return ((ValueMap*)prv->p)->size();
+  default:
+    break;
   }
 
-  assert(prv->type == BOOL || prv->type == DOUBLE);
+  assert(prv->type == ValueImpl::IMPL_BOOL || prv->type == ValueImpl::IMPL_DOUBLE ||
+    prv->type == ValueImpl::IMPL_INT64);
 
   return 1;
 }
@@ -510,7 +636,7 @@ bool Value::deep_equal(const Value &other) const {
 
   switch (prv->type)
   {
-  case VECTOR:
+  case ValueImpl::IMPL_VECTOR:
     {
       auto itA = ((ValueVec*)(this->prv->p))->begin();
       auto endA = ((ValueVec*)(this->prv->p))->end();
@@ -525,7 +651,7 @@ bool Value::deep_equal(const Value &other) const {
     }
     return true;
 
-  case MAP:
+  case ValueImpl::IMPL_MAP:
     {
       auto itA = this->begin(), endA = this->end(), itB = other.begin();
       while (itA != endA) {
@@ -537,6 +663,9 @@ bool Value::deep_equal(const Value &other) const {
       }
     }
     return true;
+
+  default:
+    break;
   }
 
   return false;
@@ -544,8 +673,8 @@ bool Value::deep_equal(const Value &other) const {
 
 
 Value Value::clone() const {
-  switch (type()) {
-  case VECTOR:
+  switch (prv->type) {
+  case ValueImpl::IMPL_VECTOR:
     {
       Value ret;
       for (int index = 0; index < int(size()); ++index) {
@@ -554,7 +683,7 @@ Value Value::clone() const {
       return ret;
     }
 
-  case MAP:
+  case ValueImpl::IMPL_MAP:
     {
       Value ret;
       for (auto it = begin(); it != end(); ++it) {
@@ -562,6 +691,9 @@ Value Value::clone() const {
       }
       return ret;
     }
+
+  default:
+    break;
   }
 
   return *this;
@@ -569,7 +701,7 @@ Value Value::clone() const {
 
 
 void Value::erase(int index) {
-  if (prv->type != UNDEFINED && prv->type != VECTOR) {
+  if (prv->type != ValueImpl::IMPL_UNDEFINED && prv->type != ValueImpl::IMPL_VECTOR) {
     throw type_mismatch("Must be of type VECTOR for that operation.");
   } else if (index < 0 || index >= size()) {
     throw index_out_of_bounds("Index out of bounds.");
@@ -581,11 +713,11 @@ void Value::erase(int index) {
 
 
 void Value::push_back(const Value &other) {
-  if (prv->type == UNDEFINED) {
+  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
     prv->~ValueImpl();
     // Recreate the private object using the same memory block.
     new(&(*prv)) ValueImpl(VECTOR);
-  } else if (prv->type != VECTOR) {
+  } else if (prv->type != ValueImpl::IMPL_VECTOR) {
     throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
   }
 
@@ -594,7 +726,7 @@ void Value::push_back(const Value &other) {
 
 
 ValueMap::iterator Value::begin() {
-  if (prv->type != MAP) {
+  if (prv->type != ValueImpl::IMPL_MAP) {
     // Some C++ compilers might not allow comparing this to another
     // default-constructed iterator.
     return ValueMap::iterator();
@@ -605,7 +737,7 @@ ValueMap::iterator Value::begin() {
 
 
 ValueMap::iterator Value::end() {
-  if (prv->type != MAP) {
+  if (prv->type != ValueImpl::IMPL_MAP) {
     // Some C++ compilers might not allow comparing this to another
     // default-constructed iterator.
     return ValueMap::iterator();
@@ -616,7 +748,7 @@ ValueMap::iterator Value::end() {
 
 
 ValueMap::const_iterator Value::begin() const {
-  if (prv->type != MAP) {
+  if (prv->type != ValueImpl::IMPL_MAP) {
     // Some C++ compilers might not allow comparing this to another
     // default-constructed iterator.
     return ValueMap::const_iterator();
@@ -627,7 +759,7 @@ ValueMap::const_iterator Value::begin() const {
 
 
 ValueMap::const_iterator Value::end() const {
-  if (prv->type != MAP) {
+  if (prv->type != ValueImpl::IMPL_MAP) {
     // Some C++ compilers might not allow comparing this to another
     // default-constructed iterator.
     return ValueMap::const_iterator();
@@ -638,9 +770,9 @@ ValueMap::const_iterator Value::end() const {
 
 
 size_t Value::erase(const std::string &key) {
-  if (prv->type == UNDEFINED) {
+  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
     return 0;
-  } else if (prv->type != MAP) {
+  } else if (prv->type != ValueImpl::IMPL_MAP) {
     throw type_mismatch("Must be of type MAP for that operation.");
   }
 
@@ -655,27 +787,66 @@ size_t Value::erase(const char *key) {
 
 double Value::to_double() const {
   switch (prv->type) {
-  case UNDEFINED:
-  case HJSON_NULL:
+  case ValueImpl::IMPL_UNDEFINED:
+  case ValueImpl::IMPL_HJSON_NULL:
     return 0;
-  case BOOL:
+  case ValueImpl::IMPL_BOOL:
     return (prv->b ? 1 : 0);
-  case DOUBLE:
+  case ValueImpl::IMPL_DOUBLE:
     return prv->d;
-  case STRING:
-    double ret;
-    std::stringstream ss(*((std::string*)prv->p));
+  case ValueImpl::IMPL_INT64:
+    return static_cast<double>(prv->i);
+  case ValueImpl::IMPL_STRING:
+    {
+      double ret;
+      std::stringstream ss(*((std::string*)prv->p));
 
-    // Make sure we expect dot (not comma) as decimal point.
-    ss.imbue(std::locale::classic());
+      // Make sure we expect dot (not comma) as decimal point.
+      ss.imbue(std::locale::classic());
 
-    ss >> ret;
+      ss >> ret;
 
-    if (!ss.eof() || ss.fail()) {
-      return 0.0;
+      if (!ss.eof() || ss.fail()) {
+        return 0.0;
+      }
+
+      return ret;
     }
+  default:
+    break;
+  }
 
-    return ret;
+  throw type_mismatch("Illegal type for this operation.");
+}
+
+
+std::int64_t Value::to_int64() const {
+  switch (prv->type) {
+  case ValueImpl::IMPL_UNDEFINED:
+  case ValueImpl::IMPL_HJSON_NULL:
+    return 0;
+  case ValueImpl::IMPL_BOOL:
+    return (prv->b ? 1 : 0);
+  case ValueImpl::IMPL_DOUBLE:
+    return static_cast<std::int64_t>(prv->d);
+  case ValueImpl::IMPL_INT64:
+    return prv->i;
+  case ValueImpl::IMPL_STRING:
+    {
+      std::int64_t ret;
+      std::stringstream ss(*((std::string*)prv->p));
+
+      ss >> ret;
+
+      if (!ss.eof() || ss.fail()) {
+        // Perhaps the string contains a decimal point or exponential part.
+        return static_cast<std::int64_t>(to_double());
+      }
+
+      return ret;
+    }
+  default:
+    break;
   }
 
   throw type_mismatch("Illegal type for this operation.");
@@ -684,13 +855,13 @@ double Value::to_double() const {
 
 std::string Value::to_string() const {
   switch (prv->type) {
-  case UNDEFINED:
+  case ValueImpl::IMPL_UNDEFINED:
     return "";
-  case HJSON_NULL:
+  case ValueImpl::IMPL_HJSON_NULL:
     return "null";
-  case BOOL:
+  case ValueImpl::IMPL_BOOL:
     return (prv->b ? "true" : "false");
-  case DOUBLE:
+  case ValueImpl::IMPL_DOUBLE:
     {
       std::ostringstream oss;
 
@@ -702,8 +873,18 @@ std::string Value::to_string() const {
 
       return oss.str();
     }
-  case STRING:
+  case ValueImpl::IMPL_INT64:
+    {
+      std::ostringstream oss;
+
+      oss << prv->i;
+
+      return oss.str();
+    }
+  case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p);
+  default:
+    break;
   }
 
   throw type_mismatch("Illegal type for this operation.");

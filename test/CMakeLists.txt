@@ -1,4 +1,5 @@
 add_executable(testbin
+  hjson_test.h
   test.cpp
   test_marshal.cpp
   test_value.cpp

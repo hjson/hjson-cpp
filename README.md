@@ -54,7 +54,7 @@ target_link_libraries(myapp hjson)
 $ cd hjson-cpp
 $ mkdir build
 $ cd build
-$ cmake .. -DHJSON_ENABLE_TEST=ON -DHJSON_ENABLE_INSTALL=ON
+$ cmake .. -DHJSON_ENABLE_TEST=ON -DHJSON_ENABLE_INSTALL=ON -DCMAKE_BUILD_TYPE=Release
 ```
 2. Then you can optionally run the tests.
 ```bash
@@ -155,6 +155,19 @@ These are the possible types for an *Hjson::Value*:
     MAP
 
 The default constructor creates an *Hjson::Value* of the type *Hjson::Value::UNDEFINED*.
+
+### 64-bit integers
+
+The C++ implementation of Hjson can both read and write 64-bit integers. But since functions and operators overloaded in C++ cannot differ on the return value alone, *Hjson::Value* is treated as *double* in arithmetic operations. That works fine up to 52 bits of integer precision. For the full 64-bit integer precision the function *Hjson::Value::to_int64()* can be used.
+
+The *Hjson::Value* constructor for 64-bit integers also requires a special solution, in order to avoid *ambiguous overload* errors for some compilers. An empty struct is used as the second parameter so that all ambiguity is avoided. An *Hjson::Value* created using the 64-bit constructor will be of the type *Hjson::Value::DOUBLE*, but has the full 64-bit integer precision internally.
+
+Example:
+
+```cpp
+Hjson::Value myValue(9223372036854775807, Hjson::Int64_tag{});
+assert(myValue.to_int64() == 9223372036854775807);
+```
 
 ### Example code
 

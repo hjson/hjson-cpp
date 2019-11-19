@@ -1,7 +1,7 @@
 #include <hjson.h>
-#include <assert.h>
 #include <cmath>
 #include <cstring>
+#include "hjson_test.h"
 
 
 static std::string _test_string_param(std::string param) {
@@ -31,10 +31,13 @@ void test_value() {
     assert(val.size() == 1);
     assert(val.to_string() == "false");
     assert(val.to_double() == 0);
+    assert(val.to_int64() == 0);
     val = true;
     assert(val.to_double() == 1);
+    assert(val.to_int64() == 1);
     assert(val.to_string() == "true");
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {
@@ -48,11 +51,14 @@ void test_value() {
     Hjson::Value val3;
     assert(val != val3);
     assert(val.to_double() == 0);
+    assert(val.to_int64() == 0);
     assert(val.to_string() == "null");
     assert(val3.to_double() == 0);
+    assert(val3.to_int64() == 0);
     assert(val3.to_string() == "");
-    assert(val.begin() == val.end());
-    assert(val3.begin() == val3.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
+    // assert(val3.begin() == val3.end());
   }
 
   {
@@ -87,8 +93,10 @@ void test_value() {
     assert(val - 1.0 == 2.0);
     assert(1.0 - val == -2.0);
     assert(val.to_double() == 3);
+    assert(val.to_int64() == 3);
     assert(val.to_string() == "3");
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {
@@ -107,6 +115,76 @@ void test_value() {
   }
 
   {
+    Hjson::Value val = 1;
+    assert(val == 1);
+    assert(val != 2);
+    assert(val != 2.0);
+    assert(val.to_double() == 1.0);
+    assert(val.to_int64() == 1);
+    assert(val.to_string() == "1");
+    int i = 2;
+    Hjson::Value val2(i);
+    assert(val2 != val);
+    assert(val2 > val);
+    assert(val < val2);
+    assert(val2 > 1);
+    assert(val2 < 3);
+    assert(1 < val2);
+    assert(3 > val2);
+    assert(3 > val2.to_int64());
+    assert(val2 == i);
+    assert((val2 + 1) == static_cast<double>(i + 1));
+    assert((val2 - 1) == static_cast<double>(i - 1));
+    char i3 = 4;
+    Hjson::Value val3(i3);
+    assert(val3 == 4);
+    Hjson::Value val4("-1");
+    assert(val4.to_double() == -1);
+    assert(val4.to_int64() == -1);
+    assert(val4.to_string() == "-1");
+    Hjson::Value val5(-1);
+    assert(val5 == -1);
+    assert(val5 < val);
+    assert(val5 < 1.0);
+  }
+
+  {
+    Hjson::Value val(144115188075855873, Hjson::Int64_tag{});
+    assert(val == Hjson::Value(144115188075855873, Hjson::Int64_tag{}));
+    assert(val != Hjson::Value(144115188075855874, Hjson::Int64_tag{}));
+    assert(val.to_int64() == 144115188075855873);
+    val = Hjson::Value(9223372036854775807, Hjson::Int64_tag{});
+    assert(val.to_string() == "9223372036854775807");
+    assert(val == Hjson::Value(9223372036854775807, Hjson::Int64_tag{}));
+    assert(val != Hjson::Value(9223372036854775806, Hjson::Int64_tag{}));
+    assert(val.to_int64() == 9223372036854775807);
+    assert(val > Hjson::Value(9223372036854775806, Hjson::Int64_tag{}));
+    std::int64_t i = 9223372036854775806;
+    std::int64_t i2 = 9223372036854775806;
+    Hjson::Value val2(i, Hjson::Int64_tag{});
+    assert(val2 == Hjson::Value(i, Hjson::Int64_tag{}));
+    assert(val2 != val);
+    assert(val2 < val);
+    assert(val > val2);
+    assert(val2 < Hjson::Value(9223372036854775807, Hjson::Int64_tag{}));
+    // Would fail, because val2 returns a double when on the right side of the comparison.
+    // assert(9223372036854775807 > val2);
+    assert(9223372036854775807 > val2.to_int64());
+    assert((val2 + 1) == static_cast<double>(i + 1));
+    assert((val2 - 1) == static_cast<double>(i - 1));
+    Hjson::Value val6("9223372036854775807");
+    assert(val6.to_int64() == 9223372036854775807);
+    Hjson::Value val7("-9223372036854775806");
+    assert(val7.to_int64() == -9223372036854775806);
+    assert(val7.to_string() == "-9223372036854775806");
+    Hjson::Value val8(-9223372036854775806, Hjson::Int64_tag{});
+    assert(val8 == Hjson::Value(-9223372036854775806, Hjson::Int64_tag{}));
+    assert(val8.to_int64() == -9223372036854775806);
+    assert(val8 < val);
+    assert(val8 < 1.0);
+  }
+
+  {
     Hjson::Value val("alpha");
     Hjson::Value val2 = "alpha";
     assert(val == val2);
@@ -121,8 +199,10 @@ void test_value() {
     assert(std::string("alpha") == val2.operator const std::string());
     assert(std::string("beta") != val2.operator const std::string());
     assert(val.to_double() == 0);
+    assert(val.to_int64() == 0);
     assert(val.to_string() == "alpha");
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {
@@ -135,12 +215,14 @@ void test_value() {
     assert("beta" > val.to_string());
     assert(val + "beta" == "alphabeta");
     assert("alpha" + val2.to_string() == "alphabeta");
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {
     Hjson::Value val("3.0");
     assert(val.to_double() == 3);
+    assert(val.to_int64() == 3);
     Hjson::Value val2(3.0);
     assert(val != val2);
     assert(!(val == val2));
@@ -246,6 +328,14 @@ void test_value() {
   }
 
   {
+    Hjson::Value root;
+    root["key1"]["key2"]["key3"]["A"] = 4;
+    auto val2 = root["key1"]["key2"]["key3"];
+    val2["B"] = 5;
+    assert(root["key1"]["key2"]["key3"]["B"] == 5);
+  }
+
+  {
     Hjson::Value val;
     try {
       val[0] = 0;
@@ -348,7 +438,8 @@ void test_value() {
     assert(val0 == 0);
     double valD = val[0];
     assert(valD == 0);
-    assert(val.begin() == val.end());
+    // The result of the comparison is undefined in C++11.
+    // assert(val.begin() == val.end());
   }
 
   {
