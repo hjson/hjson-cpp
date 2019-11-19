@@ -580,6 +580,17 @@ void test_value() {
 
   {
     Hjson::Value val1;
+    val1["zeta"] = 1;
+    val1["y"] = 2;
+    val1["xerxes"]["first"] = 3;
+    assert(val1[0] == 1);
+    val1[0] = 99;
+    assert(val1["zeta"] == 99);
+    assert(val1.key(2) == "xerxes");
+  }
+
+  {
+    Hjson::Value val1;
     val1.push_back(1);
     Hjson::Value val2 = val1.clone();
     val1.push_back(2);

@@ -295,7 +295,7 @@ Value &Value::operator[](int index) {
         auto vvm = (ValueVecMap*) prv->p;
         auto it = vvm->m.find(vvm->v[index]);
         assert(it != vvm->m.end());
-        return MapProxy(prv, it->second.prv, vvm->v[index]);
+        return it->second;
       }
     default:
       break;
