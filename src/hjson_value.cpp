@@ -790,6 +790,21 @@ void Value::push_back(const Value &other) {
 }
 
 
+std::string Value::key(int index) const {
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
+  case ValueImpl::IMPL_MAP:
+    if (index < 0 || index >= size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
+    return ((ValueVecMap*)prv->p)->v[index];
+  default:
+    throw type_mismatch("Must be of type MAP for that operation.");
+  }
+}
+
+
 ValueMap::iterator Value::begin() {
   if (prv->type != ValueImpl::IMPL_MAP) {
     // Some C++ compilers might not allow comparing this to another

@@ -49,6 +49,10 @@ struct EncoderOptions {
   // Output a comma separator between elements. If true, always place strings
   // in quotes (overriding the "quoteAlways" setting).
   bool separator;
+  // Only affects object content. If true, the key/value pairs for all objects
+  // will be placed in the same order as they were added. If false, the
+  // key/value pairs are placed in alphabetical key order.
+  bool preserveInsertionOrder;
 };
 
 
@@ -142,6 +146,7 @@ public:
   void push_back(const Value&);
 
   // MAP specific functions
+  std::string key(int) const;
   std::map<std::string, Value>::iterator begin();
   std::map<std::string, Value>::iterator end();
   std::map<std::string, Value>::const_iterator begin() const;
