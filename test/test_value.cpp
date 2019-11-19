@@ -185,6 +185,14 @@ void test_value() {
   }
 
   {
+    Hjson::Value val1("92233720368547758073829419051489548484843823585675828488686");
+    Hjson::Value val2("92233720368547758073829419051489548484843823585675828488686.0");
+    Hjson::Value val3(92233720368547758073829419051489548484843823585675828488686.0);
+    assert(val1.to_double() == val2.to_double());
+    assert(val1.to_double() == val3.to_double());
+  }
+
+  {
     Hjson::Value val("alpha");
     Hjson::Value val2 = "alpha";
     assert(val == val2);

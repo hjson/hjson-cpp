@@ -62,8 +62,6 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
 
   int leadingZeros = 0;
   bool testLeading = true;
-  bool ret = false;
-  bool isFloat = false;
 
   _next(&p);
 
@@ -87,12 +85,10 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
   } // single 0 is allowed
 
   if (p.ch == '.') {
-    isFloat = true;
     while (_next(&p) && p.ch >= '0' && p.ch <= '9') {
     }
   }
   if (p.ch == 'e' || p.ch == 'E') {
-    isFloat = true;
     _next(&p);
     if (p.ch == '-' || p.ch == '+') {
       _next(&p);
@@ -123,17 +119,19 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
     return false;
   }
 
-  if (isFloat) {
-    double d;
-    ret = _parseFloat(&d, std::string((char*)p.data, end - 1));
-    *pValue = Value(d);
-  } else {
-    std::int64_t i;
-    ret = _parseInt(&i, std::string((char*)p.data, end - 1));
+  std::int64_t i;
+  if (_parseInt(&i, std::string((char*)p.data, end - 1))) {
     *pValue = Value(i, Int64_tag{});
+    return true;
+  } else {
+    double d;
+    if (_parseFloat(&d, std::string((char*)p.data, end - 1))) {
+      *pValue = Value(d);
+      return true;
+    }
   }
 
-  return ret;
+  return false;
 }
 
 
