@@ -183,6 +183,16 @@ Hjson::Value myValue(9223372036854775807, Hjson::Int64_tag{});
 assert(myValue.to_int64() == 9223372036854775807);
 ```
 
+### Order of map elements
+
+Iterators for an *Hjson::Value* of type *Hjson::Value::MAP* are always ordered by the keys in alphabetic order. That is also the default ordering in the output from *Hjson::Marshal()*. But when editing a configuration file you might instead want the output to have the same order of elements as the file you read for input. That can be achieved by setting the option *preserveInsertionOrder* to *true* in the call to *Hjson::MarshalWithOptions()*, like this:
+
+```cpp
+auto opt = Hjson::DefaultOptions();
+opt.preserveInsertionOrder = true;
+auto out = Hjson::MarshalWithOptions(root, opt);
+```
+
 ### Example code
 
 ```cpp
