@@ -245,32 +245,64 @@ MapProxy Value::operator[](const char *input) {
 
 
 const Value Value::operator[](int index) const {
-  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
     throw index_out_of_bounds("Index out of bounds.");
-  } else if (prv->type != ValueImpl::IMPL_VECTOR) {
-    throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
-  }
+  case ValueImpl::IMPL_VECTOR:
+  case ValueImpl::IMPL_MAP:
+    if (index < 0 || index >= size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
 
-  if (index < 0 || index >= size()) {
-    throw index_out_of_bounds("Index out of bounds.");
+    switch (prv->type)
+    {
+    case ValueImpl::IMPL_VECTOR:
+      return ((const ValueVec*)prv->p)[0][index];
+    case ValueImpl::IMPL_MAP:
+      {
+        auto vvm = (const ValueVecMap*) prv->p;
+        auto it = vvm->m.find(vvm->v[index]);
+        assert(it != vvm->m.end());
+        return it->second;
+      }
+    default:
+      break;
+    }
+  default:
+    throw type_mismatch("Must be of type UNDEFINED, VECTOR or MAP for that operation.");
   }
-
-  return ((const ValueVec*)prv->p)[0][index];
 }
 
 
 Value &Value::operator[](int index) {
-  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
     throw index_out_of_bounds("Index out of bounds.");
-  } else if (prv->type != ValueImpl::IMPL_VECTOR) {
-    throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
-  }
+  case ValueImpl::IMPL_VECTOR:
+  case ValueImpl::IMPL_MAP:
+    if (index < 0 || index >= size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
 
-  if (index < 0 || index >= size()) {
-    throw index_out_of_bounds("Index out of bounds.");
+    switch (prv->type)
+    {
+    case ValueImpl::IMPL_VECTOR:
+      return ((ValueVec*)prv->p)[0][index];
+    case ValueImpl::IMPL_MAP:
+      {
+        auto vvm = (ValueVecMap*) prv->p;
+        auto it = vvm->m.find(vvm->v[index]);
+        assert(it != vvm->m.end());
+        return MapProxy(prv, it->second.prv, vvm->v[index]);
+      }
+    default:
+      break;
+    }
+  default:
+    throw type_mismatch("Must be of type UNDEFINED, VECTOR or MAP for that operation.");
   }
-
-  return ((ValueVec*)prv->p)[0][index];
 }
 
 
@@ -710,14 +742,38 @@ Value Value::clone() const {
 
 
 void Value::erase(int index) {
-  if (prv->type != ValueImpl::IMPL_UNDEFINED && prv->type != ValueImpl::IMPL_VECTOR) {
-    throw type_mismatch("Must be of type VECTOR for that operation.");
-  } else if (index < 0 || index >= size()) {
-    throw index_out_of_bounds("Index out of bounds.");
-  }
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
+  case ValueImpl::IMPL_VECTOR:
+  case ValueImpl::IMPL_MAP:
+    if (index < 0 || index >= size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
 
-  auto vec = (ValueVec*) prv->p;
-  vec->erase(vec->begin() + index);
+    switch (prv->type)
+    {
+    case ValueImpl::IMPL_VECTOR:
+      {
+        auto vec = (ValueVec*) prv->p;
+        vec->erase(vec->begin() + index);
+      }
+      break;
+    case ValueImpl::IMPL_MAP:
+      {
+        auto vvm = (ValueVecMap*) prv->p;
+        vvm->m.erase(vvm->v[index]);
+        vvm->v.erase(vvm->v.begin() + index);
+      }
+      break;
+    default:
+      break;
+    }
+    break;
+
+  default:
+    throw type_mismatch("Must be of type VECTOR or MAP for that operation.");
+  }
 }
 
 
@@ -789,11 +845,11 @@ size_t Value::erase(const std::string &key) {
 
   if (ret > 0) {
     auto v = &((ValueVecMap*)(prv->p))->v;
-    auto i = std::find(v->begin(), v->end(), key);
-    if (i == v->end()) {
+    auto it = std::find(v->begin(), v->end(), key);
+    if (it == v->end()) {
       assert(!"Value found in map but not in vector");
     } else {
-      v->erase(i);
+      v->erase(it);
     }
   }
 
@@ -926,19 +982,22 @@ MapProxy::~MapProxy() {
   if (wasAssigned || !empty()) {
     auto m = &((ValueVecMap*)parentPrv->p)->m;
     Value val(prv);
+    auto it = m->find(key);
 
-    if (m->find(key) == m->end()) {
+    if (it == m->end()) {
       // If the key is new we must add it to the order vector also.
       ((ValueVecMap*)parentPrv->p)->v.push_back(key);
-    }
 
-    // We waited until now because we don't want to insert a Value object of
-    // type UNDEFINED into the parent map, unless such an object was explicitly
-    // assigned (e.g. `val["key"] = Hjson::Value()`).
-    // Without this requirement, checking for the existence of an element
-    // would create an UNDEFINED element for that key if it didn't already exist
-    // (e.g. `if (val["key"] == 1) {` would create an element for "key").
-    m[0][key] = val;
+      // We waited until now because we don't want to insert a Value object of
+      // type UNDEFINED into the parent map, unless such an object was explicitly
+      // assigned (e.g. `val["key"] = Hjson::Value()`).
+      // Without this requirement, checking for the existence of an element
+      // would create an UNDEFINED element for that key if it didn't already exist
+      // (e.g. `if (val["key"] == 1) {` would create an element for "key").
+      m[0][key] = val;
+    } else {
+      it->second = val;
+    }
   }
 }
 

@@ -135,8 +135,10 @@ public:
   bool deep_equal(const Value&) const;
   Value clone() const;
 
-  // VECTOR specific functions
+  // VECTOR and MAP specific function
   void erase(int);
+
+  // VECTOR specific function
   void push_back(const Value&);
 
   // MAP specific functions
