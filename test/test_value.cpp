@@ -185,6 +185,14 @@ void test_value() {
   }
 
   {
+    Hjson::Value val1("92233720368547758073829419051489548484843823585675828488686");
+    Hjson::Value val2("92233720368547758073829419051489548484843823585675828488686.0");
+    Hjson::Value val3(92233720368547758073829419051489548484843823585675828488686.0);
+    assert(val1.to_double() == val2.to_double());
+    assert(val1.to_double() == val3.to_double());
+  }
+
+  {
     Hjson::Value val("alpha");
     Hjson::Value val2 = "alpha";
     assert(val == val2);
@@ -568,6 +576,26 @@ void test_value() {
     val2 = val1.clone();
     val2["third"]["second"] = 4;
     assert(val1["first"].size() == 1);
+  }
+
+  {
+    Hjson::Value val1;
+    val1["zeta"] = 1;
+    val1["y"] = 2;
+    val1["xerxes"]["first"] = 3;
+    assert(val1[0] == 1);
+    val1[0] = 99;
+    assert(val1["zeta"] == 99);
+    assert(val1.key(2) == "xerxes");
+    val1.move(0, 3);
+    assert(val1.key(0) == "y");
+    assert(val1[2] == 99);
+    val1.move(1, 0);
+    auto opt = Hjson::DefaultOptions();
+    opt.preserveInsertionOrder = true;
+    auto str = Hjson::MarshalWithOptions(val1, opt);
+    assert(val1[0]["first"] == 3);
+    assert(val1.key(1) == "y");
   }
 
   {

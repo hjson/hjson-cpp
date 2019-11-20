@@ -183,6 +183,45 @@ Hjson::Value myValue(9223372036854775807, Hjson::Int64_tag{});
 assert(myValue.to_int64() == 9223372036854775807);
 ```
 
+### Order of map elements
+
+Iterators for an *Hjson::Value* of type *Hjson::Value::MAP* are always ordered by the keys in alphabetic order. That is also the default ordering in the output from *Hjson::Marshal()*. But when editing a configuration file you might instead want the output to have the same order of elements as the file you read for input. That can be achieved by setting the option *preserveInsertionOrder* to *true* in the call to *Hjson::MarshalWithOptions()*, like this:
+
+```cpp
+auto opt = Hjson::DefaultOptions();
+opt.preserveInsertionOrder = true;
+auto out = Hjson::MarshalWithOptions(root, opt);
+```
+
+The elements in an *Hjson::Value* of type *Hjson::Value::MAP* can be accessed directly using the bracket operator with either the string key or the insertion index as input parameter.
+
+```cpp
+Hjson::Value val1;
+val1["zeta"] = 1;
+assert(val1[0] == 1);
+val1[0] = 99;
+assert(val1["zeta"] == 99);
+```
+
+The key for a given insertion index can be viewed using the function *Hjson::Value::key(int index)*.
+
+```cpp
+Hjson::Value val1;
+val1["zeta"] = 1;
+assert(val1.key(0) == "zeta");
+```
+
+The insertion order can be changed using the function *Hjson::Value::move(int from, int to)*. If the input parameter `from` is lower than the input parameter `to`, the value will end up at index `to - 1`.
+
+```cpp
+Hjson::Value val1;
+val1["zeta"] = 1;
+val1["y"] = 2;
+val1.move(0, 2);
+assert(val1.key(1) == "zeta");
+assert(val1[0] == 2);
+```
+
 ### Example code
 
 ```cpp

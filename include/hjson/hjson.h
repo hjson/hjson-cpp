@@ -49,6 +49,10 @@ struct EncoderOptions {
   // Output a comma separator between elements. If true, always place strings
   // in quotes (overriding the "quoteAlways" setting).
   bool separator;
+  // Only affects the order of elements in objects. If true, the key/value
+  // pairs for all objects will be placed in the same order as they were added.
+  // If false, the key/value pairs are placed in alphabetical key order.
+  bool preserveInsertionOrder;
 };
 
 
@@ -135,11 +139,25 @@ public:
   bool deep_equal(const Value&) const;
   Value clone() const;
 
-  // VECTOR specific functions
+  // -- VECTOR and MAP specific functions
+  // For a VECTOR, the input argument is the index in the vector for the value
+  // that should be erased. For a MAP, the input argument is the index in the
+  // insertion order of the MAP for the value that should be erased.
   void erase(int);
+  // Move value on index `from` to index `to`. If `from` is less than `to` the
+  // element will actually end up at index `to - 1`. For an Hjson::Value of
+  // type MAP, calling this function changes the insertion order but does not
+  // affect the iteration order, since iterations are always done in
+  // alphabetical key order.
+  void move(int from, int to);
+
+  // -- VECTOR specific function
   void push_back(const Value&);
 
-  // MAP specific functions
+  // -- MAP specific functions
+  // Get key by its zero-based insertion index.
+  std::string key(int) const;
+  // Iterations are always done in alphabetical key order.
   std::map<std::string, Value>::iterator begin();
   std::map<std::string, Value>::iterator end();
   std::map<std::string, Value>::const_iterator begin() const;

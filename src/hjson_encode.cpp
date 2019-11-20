@@ -20,6 +20,7 @@ EncoderOptions DefaultOptions() {
   opt.allowMinusZero = false;
   opt.unknownAsNull = false;
   opt.separator = false;
+  opt.preserveInsertionOrder = false;
 
   return opt;
 }
@@ -35,6 +36,7 @@ struct Encoder {
 
 
 bool startsWithNumber(const char *text, size_t textSize);
+static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst);
 
 
 // table of character substitutions
@@ -255,6 +257,7 @@ static void _quoteName(Encoder *e, std::string name) {
   }
 }
 
+
 // Produce a string from value.
 static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
   bool isRootObject)
@@ -328,18 +331,16 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
 
       // Join all of the member texts together, separated with newlines
       bool isFirst = true;
-      for (auto it : value) {
-        if (it.second.defined()) {
-          if (isFirst) {
-            isFirst = false;
-          } else if (e->opt.separator) {
-            e->oss << ",";
+      if (e->opt.preserveInsertionOrder) {
+        size_t limit = value.size();
+        for (int index = 0; index < limit; index++) {
+          _objElem(e, value.key(index), value[index], &isFirst);
+        }
+      } else {
+        for (auto it : value) {
+          if (it.second.defined()) {
+            _objElem(e, it.first, it.second, &isFirst);
           }
-
-          _writeIndent(e, e->indent);
-          _quoteName(e, it.first);
-          e->oss << ":";
-          _str(e, it.second, false, " ", false);
         }
       }
 
@@ -353,6 +354,20 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
   default:
     e->oss << separator << value.to_string();
   }
+}
+
+
+static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst) {
+  if (*pIsFirst) {
+    *pIsFirst = false;
+  } else if (e->opt.separator) {
+    e->oss << ",";
+  }
+
+  _writeIndent(e, e->indent);
+  _quoteName(e, key);
+  e->oss << ":";
+  _str(e, value, false, " ", false);
 }
 
 
@@ -370,13 +385,7 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
 // Array and slice values encode as JSON arrays.
 //
 // Map values encode as JSON objects. The map's key type must be a
-// string. The map keys are sorted and used as JSON object keys.
-//
-// Pointer values encode as the value pointed to.
-// A nil pointer encodes as the null JSON value.
-//
-// Interface values encode as the value contained in the interface.
-// A nil interface value encodes as the null JSON value.
+// string. The map keys are used as JSON object keys.
 //
 // JSON cannot represent cyclic data structures and Marshal does not
 // handle them. Passing cyclic structures to Marshal will result in

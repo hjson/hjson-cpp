@@ -3,13 +3,22 @@
 #include <vector>
 #include <assert.h>
 #include <cstring>
+#include <algorithm>
 
 
 namespace Hjson {
 
 
+typedef std::vector<std::string> KeyVec;
 typedef std::vector<Value> ValueVec;
 typedef std::map<std::string, Value> ValueMap;
+
+
+class ValueVecMap {
+public:
+  KeyVec v;
+  ValueMap m;
+};
 
 
 class Value::ValueImpl {
@@ -103,7 +112,7 @@ Value::ValueImpl::ValueImpl(Type _type) {
     break;
   case MAP:
     type = IMPL_MAP;
-    p = new ValueMap();
+    p = new ValueVecMap();
     break;
   default:
     assert(!"Unknown type");
@@ -122,7 +131,7 @@ Value::ValueImpl::~ValueImpl() {
     delete (ValueVec*)p;
     break;
   case IMPL_MAP:
-    delete (ValueMap*)p;
+    delete (ValueVecMap*)p;
     break;
   default:
     break;
@@ -197,8 +206,8 @@ const Value Value::operator[](const std::string& name) const {
   if (prv->type == ValueImpl::IMPL_UNDEFINED) {
     return Value();
   } else if (prv->type == ValueImpl::IMPL_MAP) {
-    auto it = ((ValueMap*)prv->p)->find(name);
-    if (it == ((ValueMap*)prv->p)->end()) {
+    auto it = ((ValueVecMap*)prv->p)->m.find(name);
+    if (it == ((ValueVecMap*)prv->p)->m.end()) {
       return Value();
     }
     return it->second;
@@ -217,8 +226,8 @@ MapProxy Value::operator[](const std::string& name) {
     throw type_mismatch("Must be of type UNDEFINED or MAP for that operation.");
   }
 
-  auto it = ((ValueMap*)prv->p)->find(name);
-  if (it == ((ValueMap*)prv->p)->end()) {
+  auto it = ((ValueVecMap*)prv->p)->m.find(name);
+  if (it == ((ValueVecMap*)prv->p)->m.end()) {
     return MapProxy(prv, std::make_shared<ValueImpl>(UNDEFINED), name);
   }
   return MapProxy(prv, it->second.prv, name);
@@ -236,32 +245,64 @@ MapProxy Value::operator[](const char *input) {
 
 
 const Value Value::operator[](int index) const {
-  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
     throw index_out_of_bounds("Index out of bounds.");
-  } else if (prv->type != ValueImpl::IMPL_VECTOR) {
-    throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
-  }
+  case ValueImpl::IMPL_VECTOR:
+  case ValueImpl::IMPL_MAP:
+    if (index < 0 || index >= size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
 
-  if (index < 0 || index >= size()) {
-    throw index_out_of_bounds("Index out of bounds.");
+    switch (prv->type)
+    {
+    case ValueImpl::IMPL_VECTOR:
+      return ((const ValueVec*)prv->p)[0][index];
+    case ValueImpl::IMPL_MAP:
+      {
+        auto vvm = (const ValueVecMap*) prv->p;
+        auto it = vvm->m.find(vvm->v[index]);
+        assert(it != vvm->m.end());
+        return it->second;
+      }
+    default:
+      break;
+    }
+  default:
+    throw type_mismatch("Must be of type UNDEFINED, VECTOR or MAP for that operation.");
   }
-
-  return ((const ValueVec*)prv->p)[0][index];
 }
 
 
 Value &Value::operator[](int index) {
-  if (prv->type == ValueImpl::IMPL_UNDEFINED) {
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
     throw index_out_of_bounds("Index out of bounds.");
-  } else if (prv->type != ValueImpl::IMPL_VECTOR) {
-    throw type_mismatch("Must be of type UNDEFINED or VECTOR for that operation.");
-  }
+  case ValueImpl::IMPL_VECTOR:
+  case ValueImpl::IMPL_MAP:
+    if (index < 0 || index >= size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
 
-  if (index < 0 || index >= size()) {
-    throw index_out_of_bounds("Index out of bounds.");
+    switch (prv->type)
+    {
+    case ValueImpl::IMPL_VECTOR:
+      return ((ValueVec*)prv->p)[0][index];
+    case ValueImpl::IMPL_MAP:
+      {
+        auto vvm = (ValueVecMap*) prv->p;
+        auto it = vvm->m.find(vvm->v[index]);
+        assert(it != vvm->m.end());
+        return it->second;
+      }
+    default:
+      break;
+    }
+  default:
+    throw type_mismatch("Must be of type UNDEFINED, VECTOR or MAP for that operation.");
   }
-
-  return ((ValueVec*)prv->p)[0][index];
 }
 
 
@@ -569,7 +610,7 @@ bool Value::empty() const {
     prv->type == ValueImpl::IMPL_HJSON_NULL ||
     (prv->type == ValueImpl::IMPL_STRING && ((std::string*)prv->p)->empty()) ||
     (prv->type == ValueImpl::IMPL_VECTOR && ((ValueVec*)prv->p)->empty()) ||
-    (prv->type == ValueImpl::IMPL_MAP && ((ValueMap*)prv->p)->empty()));
+    (prv->type == ValueImpl::IMPL_MAP && ((ValueVecMap*)prv->p)->m.empty()));
 }
 
 
@@ -613,7 +654,7 @@ size_t Value::size() const {
   case ValueImpl::IMPL_VECTOR:
     return ((ValueVec*)prv->p)->size();
   case ValueImpl::IMPL_MAP:
-    return ((ValueMap*)prv->p)->size();
+    return ((ValueVecMap*)prv->p)->m.size();
   default:
     break;
   }
@@ -701,14 +742,38 @@ Value Value::clone() const {
 
 
 void Value::erase(int index) {
-  if (prv->type != ValueImpl::IMPL_UNDEFINED && prv->type != ValueImpl::IMPL_VECTOR) {
-    throw type_mismatch("Must be of type VECTOR for that operation.");
-  } else if (index < 0 || index >= size()) {
-    throw index_out_of_bounds("Index out of bounds.");
-  }
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
+  case ValueImpl::IMPL_VECTOR:
+  case ValueImpl::IMPL_MAP:
+    if (index < 0 || index >= size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
 
-  auto vec = (ValueVec*) prv->p;
-  vec->erase(vec->begin() + index);
+    switch (prv->type)
+    {
+    case ValueImpl::IMPL_VECTOR:
+      {
+        auto vec = (ValueVec*) prv->p;
+        vec->erase(vec->begin() + index);
+      }
+      break;
+    case ValueImpl::IMPL_MAP:
+      {
+        auto vvm = (ValueVecMap*) prv->p;
+        vvm->m.erase(vvm->v[index]);
+        vvm->v.erase(vvm->v.begin() + index);
+      }
+      break;
+    default:
+      break;
+    }
+    break;
+
+  default:
+    throw type_mismatch("Must be of type VECTOR or MAP for that operation.");
+  }
 }
 
 
@@ -725,6 +790,72 @@ void Value::push_back(const Value &other) {
 }
 
 
+void Value::move(int from, int to) {
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
+  case ValueImpl::IMPL_VECTOR:
+  case ValueImpl::IMPL_MAP:
+    if (from < 0 || to < 0 || from >= size() || to > size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
+
+    if (from == to) {
+      return;
+    }
+
+    switch (prv->type)
+    {
+    case ValueImpl::IMPL_VECTOR:
+      {
+        auto vec = (ValueVec*) prv->p;
+        auto it = vec->begin();
+
+        vec->insert(it + to, it[from]);
+        if (to < from) {
+          ++from;
+        }
+        vec->erase(vec->begin() + from);
+      }
+      break;
+    case ValueImpl::IMPL_MAP:
+      {
+        auto vec = &((ValueVecMap*) prv->p)->v;
+        auto it = vec->begin();
+
+        vec->insert(it + to, it[from]);
+        if (to < from) {
+          ++from;
+        }
+        vec->erase(vec->begin() + from);
+      }
+      break;
+    default:
+      break;
+    }
+    break;
+
+  default:
+    throw type_mismatch("Must be of type VECTOR or MAP for that operation.");
+  }
+}
+
+
+std::string Value::key(int index) const {
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
+  case ValueImpl::IMPL_MAP:
+    if (index < 0 || index >= size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
+    return ((ValueVecMap*)prv->p)->v[index];
+  default:
+    throw type_mismatch("Must be of type MAP for that operation.");
+  }
+}
+
+
 ValueMap::iterator Value::begin() {
   if (prv->type != ValueImpl::IMPL_MAP) {
     // Some C++ compilers might not allow comparing this to another
@@ -732,7 +863,7 @@ ValueMap::iterator Value::begin() {
     return ValueMap::iterator();
   }
 
-  return ((ValueMap*)prv->p)->begin();
+  return ((ValueVecMap*)prv->p)->m.begin();
 }
 
 
@@ -743,7 +874,7 @@ ValueMap::iterator Value::end() {
     return ValueMap::iterator();
   }
 
-  return ((ValueMap*)prv->p)->end();
+  return ((ValueVecMap*)prv->p)->m.end();
 }
 
 
@@ -754,7 +885,7 @@ ValueMap::const_iterator Value::begin() const {
     return ValueMap::const_iterator();
   }
 
-  return ((const ValueMap*)prv->p)->begin();
+  return ((const ValueVecMap*)prv->p)->m.begin();
 }
 
 
@@ -765,7 +896,7 @@ ValueMap::const_iterator Value::end() const {
     return ValueMap::const_iterator();
   }
 
-  return ((const ValueMap*)prv->p)->end();
+  return ((const ValueVecMap*)prv->p)->m.end();
 }
 
 
@@ -776,7 +907,19 @@ size_t Value::erase(const std::string &key) {
     throw type_mismatch("Must be of type MAP for that operation.");
   }
 
-  return ((ValueMap*)(prv->p))->erase(key);
+  size_t ret = ((ValueVecMap*)(prv->p))->m.erase(key);
+
+  if (ret > 0) {
+    auto v = &((ValueVecMap*)(prv->p))->v;
+    auto it = std::find(v->begin(), v->end(), key);
+    if (it == v->end()) {
+      assert(!"Value found in map but not in vector");
+    } else {
+      v->erase(it);
+    }
+  }
+
+  return ret;
 }
 
 
@@ -903,13 +1046,24 @@ MapProxy::MapProxy(std::shared_ptr<ValueImpl> _parent,
 
 MapProxy::~MapProxy() {
   if (wasAssigned || !empty()) {
-    // We waited until now because we don't want to insert a Value object of
-    // type UNDEFINED into the parent map, unless such an object was explicitly
-    // assigned (e.g. `val["key"] = Hjson::Value()`).
-    // Without this requirement, checking for the existence of an element
-    // would create an UNDEFINED element for that key if it didn't already exist
-    // (e.g. `if (val["key"] == 1) {` would create an element for "key").
-    ((ValueMap*)parentPrv->p)[0][key] = Value(prv);
+    auto m = &((ValueVecMap*)parentPrv->p)->m;
+    Value val(prv);
+    auto it = m->find(key);
+
+    if (it == m->end()) {
+      // If the key is new we must add it to the order vector also.
+      ((ValueVecMap*)parentPrv->p)->v.push_back(key);
+
+      // We waited until now because we don't want to insert a Value object of
+      // type UNDEFINED into the parent map, unless such an object was explicitly
+      // assigned (e.g. `val["key"] = Hjson::Value()`).
+      // Without this requirement, checking for the existence of an element
+      // would create an UNDEFINED element for that key if it didn't already exist
+      // (e.g. `if (val["key"] == 1) {` would create an element for "key").
+      m[0][key] = val;
+    } else {
+      it->second = val;
+    }
   }
 }
 
