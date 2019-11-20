@@ -790,6 +790,57 @@ void Value::push_back(const Value &other) {
 }
 
 
+void Value::move(int from, int to) {
+  switch (prv->type)
+  {
+  case ValueImpl::IMPL_UNDEFINED:
+  case ValueImpl::IMPL_VECTOR:
+  case ValueImpl::IMPL_MAP:
+    if (from < 0 || to < 0 || from >= size() || to > size()) {
+      throw index_out_of_bounds("Index out of bounds.");
+    }
+
+    if (from == to) {
+      return;
+    }
+
+    switch (prv->type)
+    {
+    case ValueImpl::IMPL_VECTOR:
+      {
+        auto vec = (ValueVec*) prv->p;
+        auto it = vec->begin();
+
+        vec->insert(it + to, it[from]);
+        if (to < from) {
+          ++from;
+        }
+        vec->erase(vec->begin() + from);
+      }
+      break;
+    case ValueImpl::IMPL_MAP:
+      {
+        auto vec = &((ValueVecMap*) prv->p)->v;
+        auto it = vec->begin();
+
+        vec->insert(it + to, it[from]);
+        if (to < from) {
+          ++from;
+        }
+        vec->erase(vec->begin() + from);
+      }
+      break;
+    default:
+      break;
+    }
+    break;
+
+  default:
+    throw type_mismatch("Must be of type VECTOR or MAP for that operation.");
+  }
+}
+
+
 std::string Value::key(int index) const {
   switch (prv->type)
   {

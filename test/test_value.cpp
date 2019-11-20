@@ -587,6 +587,15 @@ void test_value() {
     val1[0] = 99;
     assert(val1["zeta"] == 99);
     assert(val1.key(2) == "xerxes");
+    val1.move(0, 3);
+    assert(val1.key(0) == "y");
+    assert(val1[2] == 99);
+    val1.move(1, 0);
+    auto opt = Hjson::DefaultOptions();
+    opt.preserveInsertionOrder = true;
+    auto str = Hjson::MarshalWithOptions(val1, opt);
+    assert(val1[0]["first"] == 3);
+    assert(val1.key(1) == "y");
   }
 
   {
