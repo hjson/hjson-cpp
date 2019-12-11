@@ -1244,5 +1244,13 @@ Value::is_map_with_key(const std::string& key) const noexcept {
   };
   return false;
 }
+bool
+Value::is_map_with_key(const char* key) const noexcept {
+  if (prv->type == ValueImpl::IMPL_MAP && key) {
+    std::string keystr(key);
+    return is_map_with_key(keystr);
+  };
+  return false;
+}
 
 } // end namespace Hjson

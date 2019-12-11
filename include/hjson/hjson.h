@@ -188,6 +188,7 @@ public:
   bool is_map(void) const noexcept;
   bool is_map(std::size_t*psiz) const noexcept;
   bool is_map_with_key(const std::string& key) const noexcept;
+  bool is_map_with_key(const char* key) const noexcept;
 };
 
 
