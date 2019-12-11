@@ -1105,4 +1105,144 @@ Value Merge(const Value base, const Value ext) {
 }
 
 
+////////////////////////////////////////////////////////////////
+
+bool
+Value::is_undefined(void) const noexcept {
+  return prv->type == ValueImpl::IMPL_UNDEFINED;
 }
+
+
+bool
+Value::is_null(void) const  noexcept {
+  return prv->type == ValueImpl::IMPL_HJSON_NULL;
+}
+
+
+//// testing booleans
+
+bool
+Value::is_bool(void) const noexcept {
+  return prv->type == ValueImpl::IMPL_BOOL;
+}
+
+
+bool
+Value::is_bool(bool *pval) const noexcept {
+  if (prv->type == ValueImpl::IMPL_BOOL) {
+    if (pval != nullptr)
+      *pval = prv->b;
+    return true;
+  }
+  return false;
+}
+
+//// testing doubles
+
+bool
+Value::is_double(void) const noexcept {
+  return prv->type == ValueImpl::IMPL_DOUBLE;
+}
+
+
+bool
+Value::is_double(double *pval) const noexcept {
+  if (prv->type == ValueImpl::IMPL_DOUBLE) {
+    if (pval != nullptr)
+      *pval = prv->d;
+    return true;
+  }
+  return false;
+}
+
+
+//// testing int64-s
+
+bool
+Value::is_int64(void) const noexcept {
+  return prv->type == ValueImpl::IMPL_INT64;
+}
+
+bool
+Value::is_int64(std::int64_t*pval) const noexcept {
+  if (prv->type == ValueImpl::IMPL_INT64) {
+    if (pval)
+      *pval = prv->i;
+    return true;
+  }
+  return false;
+}
+
+
+//// testing string-s
+
+bool
+Value::is_string(void) const noexcept {
+  return prv->type == ValueImpl::IMPL_STRING;
+}
+
+bool
+Value::is_string(std::size_t*psiz) const noexcept {
+  if (prv->type == ValueImpl::IMPL_STRING) {
+    if (psiz)
+      *psiz = ((std::string*)prv->p)->size();
+    return true;
+  };
+  return false;
+}
+
+bool
+Value::is_string(std::string*pval) const noexcept {
+  if (prv->type == ValueImpl::IMPL_STRING) {
+    if (pval)
+      *pval = *((std::string*)prv->p);
+    return true;
+  };
+  return false;
+}
+
+
+//// testing vector-s
+
+bool
+Value::is_vector(void) const noexcept {
+  return prv->type == ValueImpl::IMPL_VECTOR;
+}
+
+bool
+Value::is_vector(std::size_t*psiz) const noexcept {
+  if (prv->type == ValueImpl::IMPL_VECTOR) {
+    if (psiz)
+      *psiz =  ((ValueVec*)prv->p)->size();
+    return true;
+  }
+  return false;
+}
+
+
+/// testing map-s
+
+bool
+Value::is_map(void) const noexcept {
+  return prv->type == ValueImpl::IMPL_MAP;
+}
+
+bool
+Value::is_map(std::size_t*psiz) const noexcept {
+  if (prv->type == ValueImpl::IMPL_MAP) {
+    if (psiz)
+      *psiz = ((ValueVecMap*)prv->p)->m.size();
+    return true;
+  };
+  return false;
+}
+
+bool
+Value::is_map_with_key(const std::string& key) const noexcept {
+  if (prv->type == ValueImpl::IMPL_MAP) {
+    return ((ValueVecMap*)prv->p)->m.find(key) != ((ValueVecMap*)prv->p)->m.end();
+  };
+  return false;
+}
+
+} // end namespace Hjson

@@ -169,6 +169,25 @@ public:
   double to_double() const;
   std::int64_t to_int64() const;
   std::string to_string() const;
+
+  // Test and perhaps gives size or value thru pointer, ignored if it
+  // is the nullptr; these member functions never throw exceptions.
+  bool is_undefined(void) const noexcept;
+  bool is_null(void) const noexcept;
+  bool is_bool(void) const noexcept;
+  bool is_bool(bool*pval) const noexcept;
+  bool is_double(void) const noexcept;
+  bool is_double(double *pval) const noexcept;
+  bool is_int64(void) const noexcept;
+  bool is_int64(std::int64_t*pval) const noexcept;
+  bool is_string(void) const noexcept;
+  bool is_string(std::size_t*psiz) const noexcept;
+  bool is_string(std::string*pval) const noexcept;
+  bool is_vector(void) const noexcept;
+  bool is_vector(std::size_t*psiz) const noexcept;
+  bool is_map(void) const noexcept;
+  bool is_map(std::size_t*psiz) const noexcept;
+  bool is_map_with_key(const std::string& key) const noexcept;
 };
 
 
