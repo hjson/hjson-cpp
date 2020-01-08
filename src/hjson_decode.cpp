@@ -558,4 +558,9 @@ Value Unmarshal(const char *data) {
 }
 
 
+Value Unmarshal(const std::string &data) {
+  return Unmarshal(data.c_str(), data.size());
+}
+
+
 }

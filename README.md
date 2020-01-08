@@ -118,12 +118,13 @@ The most important functions in the Hjson namespace are:
 std::string Marshal(Value v);
 Value Unmarshal(const char *data, size_t dataSize);
 Value Unmarshal(const char *data);
+Value Unmarshal(const std::string&);
 Value Merge(const Value base, const Value ext);
 ```
 
 *Marshal* is the output-function, transforming an *Hjson::Value* tree (represented by its root node) to a string that can be written to a file.
 
-*Unmarshal* is the input-function, transforming a string to a *Hjson::Value* tree. The string is expected to be UTF8 encoded. Other encodings might work too, but have not been tested. The function comes in two flavors: with or without the `dataSize` parameter. Without it, the `data` parameter must be null-terminated (like all normal strings).
+*Unmarshal* is the input-function, transforming a string to a *Hjson::Value* tree. The string is expected to be UTF8 encoded. Other encodings might work too, but have not been tested. The function comes in three flavors: char pointer with or without the `dataSize` parameter, or std::string. For a char pointer without `dataSize` parameter the `data` parameter must be null-terminated (like all normal strings).
 
 *Merge* returns an *Hjson::Value* tree that is a cloned combination of the input *Hjson::Value* trees `base` and `ext`, with values from `ext` used whenever both `base` and `ext` has a value for some specific position in the tree. The function is convenient when implementing an application with a default configuration (`base`) that can be overridden by input parameters (`ext`).
 
