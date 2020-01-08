@@ -1,6 +1,7 @@
 #include <hjson.h>
 #include <cmath>
 #include <cstring>
+#include <sstream>
 #include "hjson_test.h"
 
 
@@ -18,6 +19,7 @@ void test_value() {
   }
 
   {
+    std::stringstream ss;
     Hjson::Value val(true);
     assert(val.type() == Hjson::Value::BOOL);
     assert(val);
@@ -25,6 +27,9 @@ void test_value() {
     assert(val != false);
     assert(true == (bool) val);
     assert(false != (bool) val);
+    ss.clear();
+    ss << val;
+    assert(ss.str() == "true");
     val = false;
     assert(!val);
     assert(!val.empty());
@@ -41,6 +46,7 @@ void test_value() {
   }
 
   {
+    std::stringstream ss;
     Hjson::Value val(Hjson::Value::HJSON_NULL);
     assert(val.type() == Hjson::Value::HJSON_NULL);
     assert(!val);
@@ -53,6 +59,9 @@ void test_value() {
     assert(val.to_double() == 0);
     assert(val.to_int64() == 0);
     assert(val.to_string() == "null");
+    ss.clear();
+    ss << val;
+    assert(ss.str() == "null");
     assert(val3.to_double() == 0);
     assert(val3.to_int64() == 0);
     assert(val3.to_string() == "");
@@ -62,6 +71,7 @@ void test_value() {
   }
 
   {
+    std::stringstream ss;
     const Hjson::Value val = 3.0;
     assert(val == 3.0);
     assert(val != 4.0);
@@ -95,6 +105,9 @@ void test_value() {
     assert(val.to_double() == 3);
     assert(val.to_int64() == 3);
     assert(val.to_string() == "3");
+    ss.clear();
+    ss << val;
+    assert(ss.str() == "3");
     // The result of the comparison is undefined in C++11.
     // assert(val.begin() == val.end());
   }
@@ -115,6 +128,7 @@ void test_value() {
   }
 
   {
+    std::stringstream ss;
     Hjson::Value val = 1;
     assert(val == 1);
     assert(val != 2);
@@ -142,6 +156,9 @@ void test_value() {
     assert(val4.to_double() == -1);
     assert(val4.to_int64() == -1);
     assert(val4.to_string() == "-1");
+    ss.clear();
+    ss << val4;
+    assert(ss.str() == "\"-1\"");
     Hjson::Value val5(-1);
     assert(val5 == -1);
     assert(val5 < val);
@@ -398,6 +415,7 @@ void test_value() {
   }
 
   {
+    std::stringstream ss;
     Hjson::Value val;
     Hjson::Value val2 = val["åäö"];
     assert(!val2.defined());
@@ -417,6 +435,9 @@ void test_value() {
     sub2["sub2"] = "åäö";
     generatedHjson = Hjson::Marshal(val);
     assert(generatedHjson == "{\n  abc:\n  {\n    sub1: abc\n  }\n  åäö:\n  {\n    sub2: åäö\n  }\n}");
+    ss.clear();
+    ss << val;
+    assert(ss.str() == "{\n  abc:\n  {\n    sub1: abc\n  }\n  åäö:\n  {\n    sub2: åäö\n  }\n}");
     Hjson::Value val3 = Hjson::Unmarshal(generatedHjson.c_str(), generatedHjson.size());
     assert(val3["abc"].defined());
     assert(val3["åäö"]["sub2"] == val["åäö"]["sub2"]);
@@ -594,6 +615,7 @@ void test_value() {
     auto opt = Hjson::DefaultOptions();
     opt.preserveInsertionOrder = true;
     auto str = Hjson::MarshalWithOptions(val1, opt);
+    assert(str == "{\n  xerxes:\n  {\n    first: 3\n  }\n  y: 2\n  zeta: 99\n}");
     assert(val1[0]["first"] == 3);
     assert(val1.key(1) == "y");
   }

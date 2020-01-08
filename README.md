@@ -135,6 +135,22 @@ EncoderOptions DefaultOptions();
 std::string MarshalWithOptions(Value v, EncoderOptions options);
 ```
 
+### Stream operator
+
+An *Hjson::Value* can be inserted into a stream, for example like this:
+
+```cpp
+Hjson::Value myValue = 3.0;
+std::cout << myValue;
+```
+
+The stream operator marshals the *Hjson::Value* using standard options, so this code will produce the exact same result:
+
+```cpp
+Hjson::Value myValue = 3.0;
+std::cout << Hjson::Marshal(myValue);
+```
+
 ### Hjson::Value
 
 Input strings are unmarshalled into a tree representation where each node in the tree is an object of the type *Hjson::Value*. The class *Hjson::Value* mimics the behavior of Javascript in that you can assign any type of primitive value to it without casting. Examples:
@@ -272,7 +288,7 @@ Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::VECTO
 
 ```cpp
 for (int index = 0; index < int(arr.size()); ++index) {
-  std::cout << arr[index].to_string() << std::endl;
+  std::cout << arr[index] << std::endl;
 }
 ```
 
@@ -280,7 +296,7 @@ Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::MAP*:
 
 ```cpp
 for (auto it = map.begin(); it != map.end(); ++it) {
-  std::cout << "key: " << it->first << "  value: " << it->second.to_string() << std::endl;
+  std::cout << "key: " << it->first << "  value: " << it->second << std::endl;
 }
 ```
 
