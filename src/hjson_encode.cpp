@@ -453,4 +453,11 @@ std::string MarshalJson(Value v) {
   return MarshalWithOptions(v, opt);
 }
 
+
+std::ostream &operator <<(std::ostream&out, Value v) {
+  out << Marshal(v);
+  return out;
+}
+
+
 }
