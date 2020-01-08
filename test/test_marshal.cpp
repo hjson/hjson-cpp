@@ -72,7 +72,7 @@ static void _examine(std::string filename) {
   auto testContent = _getTestContent(name);
   Hjson::Value root;
   try {
-    root = Hjson::Unmarshal(testContent.c_str(), testContent.size());
+    root = Hjson::Unmarshal(testContent);
     if (shouldFail) {
       std::cout << "Should have failed on " << name << std::endl;
       assert(false);

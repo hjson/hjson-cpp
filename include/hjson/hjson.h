@@ -211,6 +211,9 @@ Value Unmarshal(const char *data, size_t dataSize);
 // The input parameter "data" must be null-terminated.
 Value Unmarshal(const char *data);
 
+// Creates a Value tree from input text.
+Value Unmarshal(const std::string&);
+
 // Returns a Value tree that is a combination of the input parameters "base"
 // and "ext".
 //
