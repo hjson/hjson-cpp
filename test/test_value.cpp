@@ -105,11 +105,11 @@ void test_value() {
     assert(1.0 - val == -2.0);
     assert(val.to_double() == 3);
     assert(val.to_int64() == 3);
-    assert(val.to_string() == "3");
+    assert(val.to_string() == "3.0");
     {
       std::stringstream ss;
       ss << val;
-      assert(ss.str() == "3");
+      assert(ss.str() == "3.0");
     }
     // The result of the comparison is undefined in C++11.
     // assert(val.begin() == val.end());

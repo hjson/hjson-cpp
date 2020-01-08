@@ -1008,11 +1008,18 @@ std::string Value::to_string() const {
     {
       std::ostringstream oss;
 
-      // Make sure we expect dot (not comma) as decimal point.
+      // Make sure we use dot (not comma) as decimal point.
       oss.imbue(std::locale::classic());
       oss.precision(15);
 
       oss << prv->d;
+
+      // Always output a decimal point. Done like this to avoid printing more
+      // decimals than needed, which would be the result of using
+      // std::ios::showpoint.
+      if (oss.str().find_first_of('.', 0) == std::string::npos) {
+        oss << ".0";
+      }
 
       return oss.str();
     }
