@@ -205,7 +205,7 @@ std::string Marshal(Value v);
 std::string MarshalJson(Value v);
 
 // Calls `Marshal(v)` and outputs the result to the stream.
-std::ostream &operator <<(std::ostream&out, Value v);
+std::ostream &operator <<(std::ostream &out, Value v);
 
 // Creates a Value tree from input text.
 Value Unmarshal(const char *data, size_t dataSize);
