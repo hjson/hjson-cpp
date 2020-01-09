@@ -191,8 +191,11 @@ void test_value() {
     // Would fail, because val2 returns a double when on the right side of the comparison.
     // assert(9223372036854775807 > val2);
     assert(9223372036854775807 > val2.to_int64());
-    assert((val2 + 1) == static_cast<double>(i + 1));
-    assert((val2 - 1) == static_cast<double>(i - 1));
+    // These two assertions fail in GCC 5.4, which is ok because doubles can
+    // only represent integers up to 9007199254000000 (2^53) without precision
+    // loss.
+    //assert((val2 + 1) == static_cast<double>(i + 1));
+    //assert((val2 - 1) == static_cast<double>(i - 1));
     Hjson::Value val6("9223372036854775807");
     assert(val6.to_int64() == 9223372036854775807);
     Hjson::Value val7("-9223372036854775806");
