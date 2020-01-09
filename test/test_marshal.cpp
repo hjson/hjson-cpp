@@ -53,7 +53,7 @@ static void _evaluate(std::string expected, std::string got) {
       std::endl << expected << std::endl << std::endl << "Got: (size " <<
       got.size() << ")" << std::endl << got << std::endl <<
       std::endl;
-    assert(std::strcmp(expected.c_str(), got.c_str()));
+    assert(std::strcmp(expected.c_str(), got.c_str()) == 0);
   }
 }
 
