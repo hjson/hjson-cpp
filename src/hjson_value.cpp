@@ -642,6 +642,11 @@ Value::Type Value::type() const {
 }
 
 
+bool Value::is_int64() const {
+  return prv->type == ValueImpl::IMPL_INT64;
+}
+
+
 size_t Value::size() const {
   if (prv->type == ValueImpl::IMPL_UNDEFINED || prv->type == ValueImpl::IMPL_HJSON_NULL) {
     return 0;
@@ -1008,11 +1013,18 @@ std::string Value::to_string() const {
     {
       std::ostringstream oss;
 
-      // Make sure we expect dot (not comma) as decimal point.
+      // Make sure we use dot (not comma) as decimal point.
       oss.imbue(std::locale::classic());
       oss.precision(15);
 
       oss << prv->d;
+
+      // Always output a decimal point. Done like this to avoid printing more
+      // decimals than needed, which would be the result of using
+      // std::ios::showpoint.
+      if (oss.str().find_first_of('.', 0) == std::string::npos) {
+        oss << ".0";
+      }
 
       return oss.str();
     }

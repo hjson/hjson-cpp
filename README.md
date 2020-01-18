@@ -187,7 +187,7 @@ These are the possible types for an *Hjson::Value*:
 
 The default constructor creates an *Hjson::Value* of the type *Hjson::Value::UNDEFINED*.
 
-### 64-bit integers
+### Number representations
 
 The C++ implementation of Hjson can both read and write 64-bit integers. But since functions and operators overloaded in C++ cannot differ on the return value alone, *Hjson::Value* is treated as *double* in arithmetic operations. That works fine up to 52 bits of integer precision. For the full 64-bit integer precision the function *Hjson::Value::to_int64()* can be used.
 
@@ -199,6 +199,12 @@ Example:
 Hjson::Value myValue(9223372036854775807, Hjson::Int64_tag{});
 assert(myValue.to_int64() == 9223372036854775807);
 ```
+
+The function *Hjson::Value::is_int64()* returns *true* if the *Hjson::Value* in question internally contains a 64-bit integer. All integers are stored with 64-bit precision. The only other way that a number is stored in an *Hjson::Value* is in the form of a double precision floating point representation.
+
+An *Hjson::Value* that has been unmarshalled from a string that contains a decimal point (for example the string `"1.0"`), or a string containing a number that is bigger or smaller than what can be represented by an *std::int64_t* variable (bigger than 9223372036854775807 or smaller than -9223372036854775808) will be stored as a double precision floating point number internally in the *Hjson::Value*.
+
+Any number stored internally as a *double* will be represented by a string containing a decimal point when marshalled (for example `"1.0"`), so that the string can be unmarshalled back into an *Hjson::Value* containing a *double*, i.e. no information is lost in the marshall-unmarshall cycle.
 
 ### Order of map elements
 
