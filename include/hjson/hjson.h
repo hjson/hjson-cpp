@@ -135,6 +135,15 @@ public:
   bool defined() const;
   bool empty() const;
   Type type() const;
+  // Returns true if this Value was unmarshalled from a string representation
+  // of an integer without decimal point (i.e. not "1.0", because that string
+  // will cause this function to return false, since it contains a decimal
+  // point). The number must also be within the valid range for being
+  // represented by an int64_t variable (min: -9223372036854775808,
+  // max: 9223372036854775807), otherwise the number will be stored as
+  // floating point internally in this Value. This function also returns true
+  // if this Value was created using the int or int64_t Value constructor.
+  bool is_int64() const;
   size_t size() const;
   bool deep_equal(const Value&) const;
   Value clone() const;
@@ -165,7 +174,7 @@ public:
   size_t erase(const std::string&);
   size_t erase(const char*);
 
-  // Throws if used on VECTOR or MAP
+  // These functions throw an error if used on VECTOR or MAP
   double to_double() const;
   std::int64_t to_int64() const;
   std::string to_string() const;

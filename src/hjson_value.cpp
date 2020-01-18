@@ -642,6 +642,11 @@ Value::Type Value::type() const {
 }
 
 
+bool Value::is_int64() const {
+  return prv->type == ValueImpl::IMPL_INT64;
+}
+
+
 size_t Value::size() const {
   if (prv->type == ValueImpl::IMPL_UNDEFINED || prv->type == ValueImpl::IMPL_HJSON_NULL) {
     return 0;

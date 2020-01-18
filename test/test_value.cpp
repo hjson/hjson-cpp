@@ -111,6 +111,7 @@ void test_value() {
       ss << val;
       assert(ss.str() == "3.0");
     }
+    assert(!val.is_int64());
     // The result of the comparison is undefined in C++11.
     // assert(val.begin() == val.end());
   }
@@ -138,6 +139,12 @@ void test_value() {
     assert(val.to_double() == 1.0);
     assert(val.to_int64() == 1);
     assert(val.to_string() == "1");
+    {
+      std::stringstream ss;
+      ss << val;
+      assert(ss.str() == "1");
+    }
+    assert(val.is_int64());
     int i = 2;
     Hjson::Value val2(i);
     assert(val2 != val);
@@ -171,6 +178,8 @@ void test_value() {
 
   {
     Hjson::Value val(144115188075855873, Hjson::Int64_tag{});
+    assert(val.type() == Hjson::Value::DOUBLE);
+    assert(val.is_int64());
     assert(val == Hjson::Value(144115188075855873, Hjson::Int64_tag{}));
     assert(val != Hjson::Value(144115188075855874, Hjson::Int64_tag{}));
     assert(val.to_int64() == 144115188075855873);
