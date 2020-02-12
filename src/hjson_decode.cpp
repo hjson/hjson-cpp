@@ -495,6 +495,7 @@ static Value _hasTrailing(Parser *p) {
 // Braces for the root object are optional
 static Value _rootValue(Parser *p) {
   Value res;
+  std::string errMsg;
 
   _white(p);
 
@@ -519,13 +520,19 @@ static Value _rootValue(Parser *p) {
     if (!_hasTrailing(p)) {
       return res;
     }
-  } catch(syntax_error e) {}
+  } catch(syntax_error e) {
+    errMsg = std::string(e.what());
+  }
 
   // test if we are dealing with a single JSON value instead (true/false/null/num/"")
   _resetAt(p);
   res = _readValue(p);
   if (!_hasTrailing(p)) {
     return res;
+  }
+
+  if (!errMsg.empty()) {
+    throw syntax_error(errMsg);
   }
 
   throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
