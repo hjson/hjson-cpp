@@ -58,6 +58,7 @@ CMAKE_BUILD_TYPE=  # Set to Debug for debug symbols, or Release for optimization
 CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON  # Needed for shared libs on Windows. Introduced in Cmake 3.4.
 HJSON_ENABLE_INSTALL=OFF
 HJSON_ENABLE_TEST=OFF
+HJSON_ENABLE_PERFTEST=OFF
 HJSON_VERSIONED_INSTALL=OFF  # Use version suffix on header and lib folders.
 ```
 
