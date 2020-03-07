@@ -1,3 +1,5 @@
+find_package(Threads REQUIRED)
+
 add_executable(perfbin
   perf.cpp
   perf_multithread.cpp
@@ -9,7 +11,7 @@ set_target_properties(perfbin PROPERTIES
   CXX_EXTENSIONS NO
 )
 
-target_link_libraries(perfbin hjson)
+target_link_libraries(perfbin hjson Threads::Threads)
 
 add_custom_target(runperf
   COMMAND perfbin
