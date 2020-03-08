@@ -249,7 +249,7 @@ assert(val1[0] == 2);
 
 ### Performance
 
-Hjson is not much optimized for speed. But if you require fast(-ish) unmarshalling, escpecially in a multithreaded application, you are advised to set `CMAKE_CXX_STANDARD=17` or higher when running Cmake. Then the use of `stringstream` can be avoided internally in *Hjson*.
+Hjson is not much optimized for speed. But if you require fast(-ish) unmarshalling, escpecially in a multithreaded application, you are advised to set `CMAKE_CXX_STANDARD=17` or higher when running Cmake. Then the use of `stringstream` can be avoided internally in *Hjson*. Unfortunately GCC does not currently (March 8, 2020) implement the required features of C++17 (*std::from_chars()* for *double*) in any version. It does work in Visual Studio.
 
 ### Example code
 
