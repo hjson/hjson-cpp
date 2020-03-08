@@ -64,8 +64,14 @@ static int _run_test() {
 
   for (int a = 0; a < 10000; ++a) {
     auto root = Hjson::Unmarshal(inString);
-    auto str = Hjson::Marshal(root);
-    if (str.at(0) == '{') {
+
+    // Fewer marshals, because it is slower.
+    if ((a & 0x11) == 0x11) {
+      auto str = Hjson::Marshal(root);
+      if (str.at(0) == '{') {
+        ++loopCount;
+      }
+    } else if (!root.empty()) {
       ++loopCount;
     }
   }
