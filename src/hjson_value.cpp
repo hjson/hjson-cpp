@@ -1,9 +1,14 @@
 #include "hjson.h"
-#include <sstream>
 #include <vector>
 #include <assert.h>
 #include <cstring>
 #include <algorithm>
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+# include <charconv>
+# include <array>
+#else
+# include <sstream>
+#endif
 
 
 namespace Hjson {
@@ -947,7 +952,19 @@ double Value::to_double() const {
   case ValueImpl::IMPL_STRING:
     {
       double ret;
-      std::stringstream ss(*((std::string*)prv->p));
+      std::string *pStr = ((std::string*)prv->p);
+
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+      const char *pCh = pStr->c_str();
+      const char *pEnd = pCh + pStr->size();
+
+      auto res = std::from_chars(pCh, pEnd, ret);
+
+      if (res.ptr != pEnd || res.ec == std::errc::result_out_of_range) {
+        return 0.0;
+      }
+#else
+      std::stringstream ss(*pStr);
 
       // Make sure we expect dot (not comma) as decimal point.
       ss.imbue(std::locale::classic());
@@ -957,6 +974,7 @@ double Value::to_double() const {
       if (!ss.eof() || ss.fail()) {
         return 0.0;
       }
+#endif
 
       return ret;
     }
@@ -982,7 +1000,20 @@ std::int64_t Value::to_int64() const {
   case ValueImpl::IMPL_STRING:
     {
       std::int64_t ret;
-      std::stringstream ss(*((std::string*)prv->p));
+      std::string *pStr = ((std::string*)prv->p);
+
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+      const char *pCh = pStr->c_str();
+      const char *pEnd = pCh + pStr->size();
+
+      auto res = std::from_chars(pCh, pEnd, ret);
+
+      if (res.ptr != pEnd || res.ec == std::errc::result_out_of_range) {
+        // Perhaps the string contains a decimal point or exponential part.
+        return static_cast<std::int64_t>(to_double());
+      }
+#else
+      std::stringstream ss(*pStr);
 
       ss >> ret;
 
@@ -990,6 +1021,7 @@ std::int64_t Value::to_int64() const {
         // Perhaps the string contains a decimal point or exponential part.
         return static_cast<std::int64_t>(to_double());
       }
+#endif
 
       return ret;
     }
@@ -1011,6 +1043,29 @@ std::string Value::to_string() const {
     return (prv->b ? "true" : "false");
   case ValueImpl::IMPL_DOUBLE:
     {
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+      std::array<char, 24> buf;
+
+      auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->d);
+
+      if (res.ptr - buf.data() >= buf.size() || res.ec != std::errc()) {
+        return "";
+      }
+
+      // to_chars() does not set a zero termination, which is needed by strchr().
+      *res.ptr = '\0';
+
+      // Always output a decimal point.
+      if (strchr(buf.data(), '.') == nullptr) {
+        if (res.ptr - buf.data() >= buf.size() - 1) {
+          return "";
+        }
+        *(res.ptr++) = '.';
+        *(res.ptr++) = '0';
+      }
+
+      return std::string(buf.data(), res.ptr);
+#else
       std::ostringstream oss;
 
       // Make sure we use dot (not comma) as decimal point.
@@ -1027,14 +1082,27 @@ std::string Value::to_string() const {
       }
 
       return oss.str();
+#endif
     }
   case ValueImpl::IMPL_INT64:
     {
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+      std::array<char, 24> buf;
+
+      auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->i);
+
+      if (res.ec != std::errc()) {
+        return "";
+      }
+
+      return std::string(buf.data(), res.ptr);
+#else
       std::ostringstream oss;
 
       oss << prv->i;
 
       return oss.str();
+#endif
     }
   case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p);
