@@ -3,10 +3,12 @@
 #include <assert.h>
 #include <cstring>
 #include <algorithm>
-#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+#if (__cplusplus >= 201703L || _MSVC_LANG >= 201703L) && __has_include(<charconv>)
+# define HAS_CHARCONV 1
 # include <charconv>
 # include <array>
 #else
+# define HAS_CHARCONV 0
 # include <sstream>
 #endif
 
@@ -954,7 +956,7 @@ double Value::to_double() const {
       double ret;
       std::string *pStr = ((std::string*)prv->p);
 
-#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+#if HAS_CHARCONV
       const char *pCh = pStr->c_str();
       const char *pEnd = pCh + pStr->size();
 
@@ -1002,7 +1004,7 @@ std::int64_t Value::to_int64() const {
       std::int64_t ret;
       std::string *pStr = ((std::string*)prv->p);
 
-#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+#if HAS_CHARCONV
       const char *pCh = pStr->c_str();
       const char *pEnd = pCh + pStr->size();
 
@@ -1043,7 +1045,7 @@ std::string Value::to_string() const {
     return (prv->b ? "true" : "false");
   case ValueImpl::IMPL_DOUBLE:
     {
-#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+#if HAS_CHARCONV
       std::array<char, 24> buf;
 
       auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->d);
@@ -1086,7 +1088,7 @@ std::string Value::to_string() const {
     }
   case ValueImpl::IMPL_INT64:
     {
-#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+#if HAS_CHARCONV
       std::array<char, 24> buf;
 
       auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->i);
