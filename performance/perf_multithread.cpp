@@ -8,7 +8,7 @@
 
 
 static int _run_test() {
-  int elementCount = 0;
+  int loopCount = 0;
 
   std::string inString = R"(
 {
@@ -63,24 +63,28 @@ static int _run_test() {
 )";
 
   for (int a = 0; a < 10000; ++a) {
-     elementCount += Hjson::Unmarshal(inString).size();
+    auto root = Hjson::Unmarshal(inString);
+    auto str = Hjson::Marshal(root);
+    if (str.at(0) == '{') {
+      ++loopCount;
+    }
   }
 
-  return elementCount;
+  return loopCount;
 }
 
 
 void perf_multithread() {
   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
   std::vector<std::future<int> > futures;
-  int elementCount = 0;
+  int loopCount = 0;
 
   for (int a = 0; a < 16; ++a) {
     futures.push_back(std::async(_run_test));
   }
 
   for (auto &fut : futures) {
-    elementCount += fut.get();
+    loopCount += fut.get();
   }
 
   std::chrono::steady_clock::time_point stop = std::chrono::steady_clock::now();
@@ -90,5 +94,5 @@ void perf_multithread() {
 
   // Also output total first level element count, to prove that the unmarshal
   // calls have not been optimized away.
-  std::cout << "Total first level element count: " << elementCount << std::endl;
+  std::cout << "Total loop count: " << loopCount << std::endl;
 }
