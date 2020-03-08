@@ -35,7 +35,7 @@ GCC 4.8 has the C++11 headers for regex, but unfortunately not a working impleme
 
 ## Cmake
 
-The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms.
+The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms. Cmake version 3.8 or newer is required.
 
 ### Cmake subfolder
 
@@ -55,6 +55,7 @@ A list of Hjson Cmake options and their default values:
 BUILD_SHARED_LIBS=OFF
 BUILD_WITH_STATIC_CRT=  # Can be set to Yes or No. Only used on Windows.
 CMAKE_BUILD_TYPE=  # Set to Debug for debug symbols, or Release for optimization.
+CMAKE_CXX_STANDARD=  # Set to 17 or higher for faster code.
 CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON  # Needed for shared libs on Windows. Introduced in Cmake 3.4.
 HJSON_ENABLE_INSTALL=OFF
 HJSON_ENABLE_TEST=OFF
@@ -245,6 +246,10 @@ val1.move(0, 2);
 assert(val1.key(1) == "zeta");
 assert(val1[0] == 2);
 ```
+
+### Performance
+
+Hjson is not much optimized for speed. But if you require fast(-ish) unmarshalling, escpecially in a multithreaded application, you are advised to set `CMAKE_CXX_STANDARD=17` or higher when running Cmake. Then the use of `stringstream` can be avoided internally in *Hjson*.
 
 ### Example code
 
