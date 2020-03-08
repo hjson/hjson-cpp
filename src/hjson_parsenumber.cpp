@@ -1,6 +1,10 @@
 #include "hjson.h"
-#include <sstream>
 #include <cmath>
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+# include <charconv>
+#else
+# include <sstream>
+#endif
 
 
 namespace Hjson {
@@ -14,7 +18,14 @@ struct Parser {
 };
 
 
-static bool _parseFloat(double *pNumber, const std::string &str) {
+static bool _parseFloat(double *pNumber, const char *pCh, size_t nCh) {
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+  auto res = std::from_chars(pCh, pCh + nCh, *pNumber);
+
+  return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range &&
+    !std::isinf(*pNumber) && !std::isnan(*pNumber);
+#else
+  std::string str(pCh, nCh);
   std::stringstream ss(str);
 
   // Make sure we expect dot (not comma) as decimal point.
@@ -23,15 +34,23 @@ static bool _parseFloat(double *pNumber, const std::string &str) {
   ss >> *pNumber;
 
   return ss.eof() && !ss.fail() && !std::isinf(*pNumber) && !std::isnan(*pNumber);
+#endif
 }
 
 
-static bool _parseInt(std::int64_t *pNumber, const std::string &str) {
+static bool _parseInt(std::int64_t *pNumber, const char *pCh, size_t nCh) {
+#if __cplusplus >= 201703L || _MSVC_LANG >= 201703L
+  auto res = std::from_chars(pCh, pCh + nCh, *pNumber);
+
+  return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range;
+#else
+  std::string str(pCh, nCh);
   std::stringstream ss(str);
 
   ss >> *pNumber;
 
   return ss.eof() && !ss.fail();
+#endif
 }
 
 
@@ -120,12 +139,12 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
   }
 
   std::int64_t i;
-  if (_parseInt(&i, std::string((char*)p.data, end - 1))) {
+  if (_parseInt(&i, (char*) p.data, end - 1)) {
     *pValue = Value(i, Int64_tag{});
     return true;
   } else {
     double d;
-    if (_parseFloat(&d, std::string((char*)p.data, end - 1))) {
+    if (_parseFloat(&d, (char*) p.data, end - 1)) {
       *pValue = Value(d);
       return true;
     }
