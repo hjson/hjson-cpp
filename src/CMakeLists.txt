@@ -15,7 +15,12 @@ target_include_directories(hjson PUBLIC
   $<INSTALL_INTERFACE:${include_dest}>
 )
 
-target_compile_features(hjson PUBLIC cxx_std_11)
+if(${HJSON_NUMBER_PARSER} MATCHES "CharConv")
+  target_compile_features(hjson PUBLIC cxx_std_17)
+  target_compile_definitions(hjson PRIVATE HJSON_USE_CHARCONV=1)
+else()
+  target_compile_features(hjson PUBLIC cxx_std_11)
+endif()
 
 set_target_properties(hjson PROPERTIES
   VERSION ${PROJECT_VERSION}

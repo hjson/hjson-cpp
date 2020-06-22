@@ -1,10 +1,8 @@
 #include "hjson.h"
 #include <cmath>
-#if (__cplusplus >= 201703L || _MSVC_LANG >= 201703L) && __has_include(<charconv>)
-# define HAS_CHARCONV 1
+#if HJSON_USE_CHARCONV
 # include <charconv>
 #else
-# define HAS_CHARCONV 0
 # include <sstream>
 #endif
 
@@ -21,7 +19,7 @@ struct Parser {
 
 
 static bool _parseFloat(double *pNumber, const char *pCh, size_t nCh) {
-#if HAS_CHARCONV
+#if HJSON_USE_CHARCONV
   auto res = std::from_chars(pCh, pCh + nCh, *pNumber);
 
   return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range &&
@@ -41,7 +39,7 @@ static bool _parseFloat(double *pNumber, const char *pCh, size_t nCh) {
 
 
 static bool _parseInt(std::int64_t *pNumber, const char *pCh, size_t nCh) {
-#if HAS_CHARCONV
+#if HJSON_USE_CHARCONV
   auto res = std::from_chars(pCh, pCh + nCh, *pNumber);
 
   return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range;
