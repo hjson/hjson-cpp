@@ -18,8 +18,13 @@ static std::string _readStream(std::ifstream *pInfile) {
 }
 
 
-static std::string _readFile(std::string path) {
-  std::ifstream infile(path, std::ifstream::ate);
+static std::string _readFile(std::string pathBeginning, std::string extra,
+  std::string pathEnd)
+{
+  std::ifstream infile(pathBeginning + extra + pathEnd, std::ifstream::ate);
+  if (!infile.is_open()) {
+    infile = std::ifstream(pathBeginning + pathEnd, std::ifstream::ate);
+  }
 
   return _readStream(&infile);
 }
@@ -86,7 +91,12 @@ static void _examine(std::string filename) {
     }
   }
 
-  auto rhjson = _readFile("assets/sorted/" + name + "_result.hjson");
+  std::string extra = "";
+#if HJSON_USE_CHARCONV
+  extra = "charconv/";
+#endif
+
+  auto rhjson = _readFile("assets/sorted/", extra, name + "_result.hjson");
   auto actualHjson = Hjson::Marshal(root);
 
   //std::ofstream outputFile("out.hjson");
@@ -95,7 +105,7 @@ static void _examine(std::string filename) {
 
   _evaluate(rhjson, actualHjson);
 
-  auto rjson = _readFile("assets/sorted/" + name + "_result.json");
+  auto rjson = _readFile("assets/sorted/", extra, name + "_result.json");
   auto actualJson = Hjson::MarshalJson(root);
 
   //std::ofstream outputFile("out.json");
@@ -107,7 +117,7 @@ static void _examine(std::string filename) {
   auto opt = Hjson::DefaultOptions();
   opt.preserveInsertionOrder = true;
 
-  rhjson = _readFile("assets/" + name + "_result.hjson");
+  rhjson = _readFile("assets/", extra, name + "_result.hjson");
   actualHjson = Hjson::MarshalWithOptions(root, opt);
   _evaluate(rhjson, actualHjson);
 
@@ -116,7 +126,7 @@ static void _examine(std::string filename) {
   opt.quoteKeys = true;
   opt.separator = true;
 
-  rjson = _readFile("assets/" + name + "_result.json");
+  rjson = _readFile("assets/", extra, name + "_result.json");
   actualJson = Hjson::MarshalWithOptions(root, opt);
   _evaluate(rjson, actualJson);
 }
