@@ -2,6 +2,9 @@
 #include <cmath>
 #if HJSON_USE_CHARCONV
 # include <charconv>
+#elif HJSON_USE_STRTOD
+# include <cstdlib>
+# include <cerrno>
 #else
 # include <sstream>
 #endif
@@ -24,6 +27,14 @@ static bool _parseFloat(double *pNumber, const char *pCh, size_t nCh) {
 
   return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range &&
     !std::isinf(*pNumber) && !std::isnan(*pNumber);
+#elif HJSON_USE_STRTOD
+  char *endptr;
+  errno = 0;
+  *pNumber = std::strtod(pCh, &endptr);
+
+  printf("errno: %d\npCh: %s\nrest: %d", errno, pCh, endptr - pCh);
+
+  return !errno && endptr - pCh == nCh && !std::isinf(*pNumber) && !std::isnan(*pNumber);
 #else
   std::string str(pCh, nCh);
   std::stringstream ss(str);
@@ -43,6 +54,12 @@ static bool _parseInt(std::int64_t *pNumber, const char *pCh, size_t nCh) {
   auto res = std::from_chars(pCh, pCh + nCh, *pNumber);
 
   return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range;
+#elif HJSON_USE_STRTOD
+  char *endptr;
+  errno = 0;
+  *pNumber = std::strtol(pCh, &endptr, 0);
+
+  return !errno && endptr - pCh == nCh;
 #else
   std::string str(pCh, nCh);
   std::stringstream ss(str);
@@ -70,7 +87,7 @@ static bool _next(Parser *p) {
 }
 
 
-// Parse a number value.
+// Parse a number value. The parameter "text" must be zero terminated.
 bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopAtNext) {
   Parser p = {
     (const unsigned char*) text,

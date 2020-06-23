@@ -22,7 +22,7 @@ option(HJSON_ENABLE_PERFTEST "Enable performance testing" OFF)
 option(HJSON_ENABLE_INSTALL "Enable installation" OFF)
 option(HJSON_VERSIONED_INSTALL "Include version in installation path" OFF)
 set(HJSON_NUMBER_PARSER "StringStream" CACHE STRING "Which number parsing tool to use")
-set_property(CACHE HJSON_NUMBER_PARSER PROPERTY STRINGS "StringStream" "CharConv")
+set_property(CACHE HJSON_NUMBER_PARSER PROPERTY STRINGS "StringStream" "StrToD" "CharConv")
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS "Needed for shared libs on Windows" ON)
 

@@ -9,6 +9,8 @@ target_compile_features(testbin PUBLIC cxx_std_11)
 
 if(${HJSON_NUMBER_PARSER} MATCHES "CharConv")
   target_compile_definitions(testbin PRIVATE HJSON_USE_CHARCONV=1)
+elseif(${HJSON_NUMBER_PARSER} MATCHES "StrToD")
+  target_compile_definitions(testbin PRIVATE HJSON_USE_STRTOD=1)
 endif()
 
 target_link_libraries(testbin hjson)

@@ -19,6 +19,10 @@ if(${HJSON_NUMBER_PARSER} MATCHES "CharConv")
   target_compile_features(hjson PUBLIC cxx_std_17)
   target_compile_definitions(hjson PRIVATE HJSON_USE_CHARCONV=1)
 else()
+  if(${HJSON_NUMBER_PARSER} MATCHES "StrToD")
+    target_compile_definitions(hjson PRIVATE HJSON_USE_STRTOD=1)
+  endif()
+
   target_compile_features(hjson PUBLIC cxx_std_11)
 endif()
 
