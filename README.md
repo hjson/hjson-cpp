@@ -55,11 +55,11 @@ A list of Hjson Cmake options and their default values:
 BUILD_SHARED_LIBS=OFF
 BUILD_WITH_STATIC_CRT=  # Can be set to Yes or No. Only used on Windows.
 CMAKE_BUILD_TYPE=  # Set to Debug for debug symbols, or Release for optimization.
-CMAKE_CXX_STANDARD=  # Set to 17 or higher for faster code.
 CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON  # Needed for shared libs on Windows. Introduced in Cmake 3.4.
 HJSON_ENABLE_INSTALL=OFF
 HJSON_ENABLE_TEST=OFF
 HJSON_ENABLE_PERFTEST=OFF
+HJSON_NUMBER_PARSER=StringStream  # Possible values are StringStream, StrToD and CharConv.
 HJSON_VERSIONED_INSTALL=OFF  # Use version suffix on header and lib folders.
 ```
 
@@ -249,7 +249,11 @@ assert(val1[0] == 2);
 
 ### Performance
 
-Hjson is not much optimized for speed. But if you require fast(-ish) unmarshalling, escpecially in a multithreaded application, you are advised to set `CMAKE_CXX_STANDARD=17` or higher when running Cmake. Then the use of `stringstream` can be avoided internally in *Hjson*. Unfortunately GCC does not currently (March 8, 2020) implement the required features of C++17 (*std::from_chars()* for *double*) in any version. It does work in Visual Studio.
+Hjson is not much optimized for speed. But if you require fast(-ish) execution, escpecially in a multithreaded application, you can experiment with different values for the Cmake option `HJSON_NUMBER_PARSER`. The default value `StringStream` uses C++ string streams with the locale `classic` imbued to ensure that dots are used as decimal separators rather than commas.
+
+The value `StrToD` gives better performance, especially in multi threaded applications, but will use whatever locale the application is using. If the current locale uses commas as decimal separator *Hjson* will umarshal floating point numbers into strings, and will use commas in floating point numbers in the marshal output, which means that other parsers will treat that value as a string.
+
+Setting `HJSON_NUMBER_PARSER` to `CharConv` gives the best performance, and uses dots as comma separator regardless of the application locale. Using `CharConv` will automatically cause the code to be compiled using the C++17 standard (or a newer standard if required by your project). Unfortunately neither GCC 10.1 or Clang 10.0 implement the required features of C++17 (*std::from_chars()* for *double*). It does work in Visual Studio 17 and later.
 
 ### Example code
 
