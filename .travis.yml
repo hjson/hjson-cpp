@@ -24,7 +24,7 @@ jobs:
       compiler: gcc
       env:
         - BUILD_TYPE=Debug
-        - EXTRA_CMAKE_FLAGS="-DCMAKE_CXX_FLAGS=\"-g -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -fstack-protector-all -fsanitize=undefined -fno-sanitize-recover\""
+        - HJSON_CXX_FLAGS="-g -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -fstack-protector-all -fsanitize=undefined -fno-sanitize-recover"
     - os: linux
       dist: focal
       compiler: gcc
@@ -40,4 +40,4 @@ jobs:
         - ARTIFACT=vs2017-64bit
         - BUILD_TYPE=Debug
 script:
-  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON ${EXTRA_CMAKE_FLAGS} .. && cmake --build . --target runtest
+  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_CXX_FLAGS="${HJSON_CXX_FLAGS}" .. && cmake --build . --target runtest
