@@ -32,8 +32,6 @@ static bool _parseFloat(double *pNumber, const char *pCh, size_t nCh) {
   errno = 0;
   *pNumber = std::strtod(pCh, &endptr);
 
-  printf("errno: %d\npCh: %s\nrest: %d", errno, pCh, endptr - pCh);
-
   return !errno && endptr - pCh == nCh && !std::isinf(*pNumber) && !std::isnan(*pNumber);
 #else
   std::string str(pCh, nCh);

@@ -3,12 +3,13 @@
 #include <assert.h>
 #include <cstring>
 #include <algorithm>
-#if (__cplusplus >= 201703L || _MSVC_LANG >= 201703L) && __has_include(<charconv>)
-# define HAS_CHARCONV 1
+#if HJSON_USE_CHARCONV
 # include <charconv>
 # include <array>
+#elif HJSON_USE_STRTOD
+# include <cstdlib>
+# include <cerrno>
 #else
-# define HAS_CHARCONV 0
 # include <sstream>
 #endif
 
@@ -954,17 +955,23 @@ double Value::to_double() const {
   case ValueImpl::IMPL_STRING:
     {
       double ret;
-      std::string *pStr = ((std::string*)prv->p);
+      const std::string *pStr = ((std::string*)prv->p);
 
-#if HAS_CHARCONV
+#if HJSON_USE_CHARCONV
       const char *pCh = pStr->c_str();
       const char *pEnd = pCh + pStr->size();
 
       auto res = std::from_chars(pCh, pEnd, ret);
 
       if (res.ptr != pEnd || res.ec == std::errc::result_out_of_range) {
-        return 0.0;
-      }
+#elif HJSON_USE_STRTOD
+      const char *pCh = pStr->c_str();
+      char *endptr;
+      errno = 0;
+
+      ret = std::strtod(pCh, &endptr);
+
+      if (errno || endptr - pCh != pStr->size()) {
 #else
       std::stringstream ss(*pStr);
 
@@ -974,9 +981,9 @@ double Value::to_double() const {
       ss >> ret;
 
       if (!ss.eof() || ss.fail()) {
+#endif
         return 0.0;
       }
-#endif
 
       return ret;
     }
@@ -1004,26 +1011,31 @@ std::int64_t Value::to_int64() const {
       std::int64_t ret;
       std::string *pStr = ((std::string*)prv->p);
 
-#if HAS_CHARCONV
+#if HJSON_USE_CHARCONV
       const char *pCh = pStr->c_str();
       const char *pEnd = pCh + pStr->size();
 
       auto res = std::from_chars(pCh, pEnd, ret);
 
       if (res.ptr != pEnd || res.ec == std::errc::result_out_of_range) {
-        // Perhaps the string contains a decimal point or exponential part.
-        return static_cast<std::int64_t>(to_double());
-      }
+#elif HJSON_USE_STRTOD
+      const char *pCh = pStr->c_str();
+      char *endptr;
+      errno = 0;
+
+      ret = std::strtol(pCh, &endptr, 0);
+
+      if (errno || endptr - pCh != pStr->size()) {
 #else
       std::stringstream ss(*pStr);
 
       ss >> ret;
 
       if (!ss.eof() || ss.fail()) {
+#endif
         // Perhaps the string contains a decimal point or exponential part.
         return static_cast<std::int64_t>(to_double());
-      }
-#endif
+      };
 
       return ret;
     }
@@ -1045,7 +1057,7 @@ std::string Value::to_string() const {
     return (prv->b ? "true" : "false");
   case ValueImpl::IMPL_DOUBLE:
     {
-#if HAS_CHARCONV
+#if HJSON_USE_CHARCONV
       std::array<char, 24> buf;
 
       auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->d);
@@ -1067,6 +1079,14 @@ std::string Value::to_string() const {
       }
 
       return std::string(buf.data(), res.ptr);
+#elif HJSON_USE_STRTOD
+      std::string res = std::to_string(prv->d);
+
+      if (res.find('.') == std::string::npos) {
+        res.append(".0");
+      }
+
+      return res;
 #else
       std::ostringstream oss;
 
@@ -1088,7 +1108,7 @@ std::string Value::to_string() const {
     }
   case ValueImpl::IMPL_INT64:
     {
-#if HAS_CHARCONV
+#if HJSON_USE_CHARCONV
       std::array<char, 24> buf;
 
       auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->i);
@@ -1098,6 +1118,8 @@ std::string Value::to_string() const {
       }
 
       return std::string(buf.data(), res.ptr);
+#elif HJSON_USE_STRTOD
+      return std::to_string(prv->i);
 #else
       std::ostringstream oss;
 

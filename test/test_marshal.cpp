@@ -133,18 +133,6 @@ static void _examine(std::string filename) {
 
 
 void test_marshal() {
-//  auto out = std::strtod("1e1,", NULL);
-//  printf("%f\n", out);
-
-  auto root = Hjson::Unmarshal(R"(
-[
-"1066",
-1e1,
-"rosebud"]
-)");
-  std::cout << root;
-  return;
-
   std::ifstream infile("assets/testlist.txt");
 
   std::string line;
