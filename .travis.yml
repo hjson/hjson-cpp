@@ -20,16 +20,16 @@ jobs:
       env:
         - BUILD_TYPE=Release
     - os: linux
-      dist: bionic
+      dist: focal
       compiler: gcc
-      before_install:
-        - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-        - sudo apt-get -q update
-        - sudo apt-get -y install g++-9
       env:
-        - CC=gcc-9
-        - CXX=g++-9
         - BUILD_TYPE=Debug
+        - HJSON_CXX_FLAGS="-g -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -fstack-protector-all -fsanitize=undefined -fno-sanitize-recover"
+    - os: linux
+      dist: focal
+      compiler: gcc
+      env:
+        - BUILD_TYPE=Release
     - os: osx
       compiler: clang
       env:
@@ -40,4 +40,4 @@ jobs:
         - ARTIFACT=vs2017-64bit
         - BUILD_TYPE=Debug
 script:
-  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON .. && cmake --build . --target runtest
+  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_CXX_FLAGS="${HJSON_CXX_FLAGS}" .. && cmake --build . --target runtest
