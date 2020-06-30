@@ -1023,11 +1023,14 @@ std::int64_t Value::to_int64() const {
       char *endptr;
       errno = 0;
 
-      ret = std::strtol(pCh, &endptr, 0);
+      ret = std::strtoll(pCh, &endptr, 0);
 
       if (errno || endptr - pCh != pStr->size()) {
 #else
       std::stringstream ss(*pStr);
+
+      // Avoid localization surprises.
+      ss.imbue(std::locale::classic());
 
       ss >> ret;
 
@@ -1035,7 +1038,7 @@ std::int64_t Value::to_int64() const {
 #endif
         // Perhaps the string contains a decimal point or exponential part.
         return static_cast<std::int64_t>(to_double());
-      };
+      }
 
       return ret;
     }
@@ -1082,8 +1085,25 @@ std::string Value::to_string() const {
 #elif HJSON_USE_STRTOD
       std::string res = std::to_string(prv->d);
 
-      if (res.find('.') == std::string::npos) {
+      auto pos = res.find('.');
+      if (pos == std::string::npos) {
         res.append(".0");
+      } else {
+        auto pCh = res.c_str() + res.size();
+        size_t zeroCount = 0;
+        while (*(--pCh) == '0') {
+          ++zeroCount;
+        }
+
+        if (*pCh == '.') {
+          // We should keep or add a single trailing zero.
+          --zeroCount;
+        }
+
+        // If negative, the string is extended. If positive, the string is reduced.
+        if (zeroCount) {
+          res.resize(res.size() - zeroCount, '0');
+        }
       }
 
       return res;
@@ -1122,6 +1142,9 @@ std::string Value::to_string() const {
       return std::to_string(prv->i);
 #else
       std::ostringstream oss;
+
+      // Avoid localization surprises.
+      ss.imbue(std::locale::classic());
 
       oss << prv->i;
 

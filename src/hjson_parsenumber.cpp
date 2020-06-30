@@ -55,12 +55,15 @@ static bool _parseInt(std::int64_t *pNumber, const char *pCh, size_t nCh) {
 #elif HJSON_USE_STRTOD
   char *endptr;
   errno = 0;
-  *pNumber = std::strtol(pCh, &endptr, 0);
+  *pNumber = std::strtoll(pCh, &endptr, 0);
 
   return !errno && endptr - pCh == nCh;
 #else
   std::string str(pCh, nCh);
   std::stringstream ss(str);
+
+  // Avoid localization surprises.
+  ss.imbue(std::locale::classic());
 
   ss >> *pNumber;
 
