@@ -1084,7 +1084,7 @@ std::string Value::to_string() const {
       return std::string(buf.data(), res.ptr);
 #elif HJSON_USE_STRTOD
       char buf[32];
-      int nChars = snprintf(buf, sizeof(buf), "%.15Lg", prv->d);
+      int nChars = snprintf(buf, sizeof(buf), "%.15g", prv->d);
 
       if (nChars < 0 || nChars >= static_cast<int>(sizeof(buf))) {
         return "";
