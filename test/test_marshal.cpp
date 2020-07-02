@@ -5,6 +5,9 @@
 #include "hjson_test.h"
 
 
+#define WRITE_FACIT 0
+
+
 static std::string _readStream(std::ifstream *pInfile) {
   assert(pInfile->is_open());
 
@@ -99,18 +102,22 @@ static void _examine(std::string filename) {
   auto rhjson = _readFile("assets/sorted/", extra, name + "_result.hjson");
   auto actualHjson = Hjson::Marshal(root);
 
-  //std::ofstream outputFile("out.hjson");
-  //outputFile << actualHjson;
-  //outputFile.close();
+#if WRITE_FACIT
+  std::ofstream outputFile("assets/sorted/" + name + "_result.hjson", std::ofstream::binary);
+  outputFile << actualHjson;
+  outputFile.close();
+#endif
 
   _evaluate(rhjson, actualHjson);
 
   auto rjson = _readFile("assets/sorted/", extra, name + "_result.json");
   auto actualJson = Hjson::MarshalJson(root);
 
-  //std::ofstream outputFile("out.json");
-  //outputFile << actualJson;
-  //outputFile.close();
+#if WRITE_FACIT
+  outputFile = std::ofstream("assets/sorted/" + name + "_result.json", std::ofstream::binary);
+  outputFile << actualJson;
+  outputFile.close();
+#endif
 
   _evaluate(rjson, actualJson);
 
@@ -119,6 +126,13 @@ static void _examine(std::string filename) {
 
   rhjson = _readFile("assets/", extra, name + "_result.hjson");
   actualHjson = Hjson::MarshalWithOptions(root, opt);
+
+#if WRITE_FACIT
+  outputFile = std::ofstream("assets/" + name + "_result.hjson", std::ofstream::binary);
+  outputFile << actualHjson;
+  outputFile.close();
+#endif
+
   _evaluate(rhjson, actualHjson);
 
   opt.bracesSameLine = true;
@@ -128,6 +142,13 @@ static void _examine(std::string filename) {
 
   rjson = _readFile("assets/", extra, name + "_result.json");
   actualJson = Hjson::MarshalWithOptions(root, opt);
+
+#if WRITE_FACIT
+  outputFile = std::ofstream("assets/" + name + "_result.json", std::ofstream::binary);
+  outputFile << actualJson;
+  outputFile.close();
+#endif
+
   _evaluate(rjson, actualJson);
 }
 

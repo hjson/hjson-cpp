@@ -1061,7 +1061,7 @@ std::string Value::to_string() const {
   case ValueImpl::IMPL_DOUBLE:
     {
 #if HJSON_USE_CHARCONV
-      std::array<char, 24> buf;
+      std::array<char, 32> buf;
 
       auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->d);
 
@@ -1083,30 +1083,23 @@ std::string Value::to_string() const {
 
       return std::string(buf.data(), res.ptr);
 #elif HJSON_USE_STRTOD
-      std::string res = std::to_string(prv->d);
+      char buf[32];
+      int nChars = snprintf(buf, sizeof(buf), "%.15Lg", prv->d);
 
-      auto pos = res.find('.');
-      if (pos == std::string::npos) {
-        res.append(".0");
-      } else {
-        auto pCh = res.c_str() + res.size();
-        size_t zeroCount = 0;
-        while (*(--pCh) == '0') {
-          ++zeroCount;
-        }
-
-        if (*pCh == '.') {
-          // We should keep or add a single trailing zero.
-          --zeroCount;
-        }
-
-        // If negative, the string is extended. If positive, the string is reduced.
-        if (zeroCount) {
-          res.resize(res.size() - zeroCount, '0');
-        }
+      if (nChars < 0 || nChars >= static_cast<int>(sizeof(buf))) {
+        return "";
       }
 
-      return res;
+      // Always output a decimal point.
+      if (strchr(buf, '.') == nullptr) {
+        if (nChars >= static_cast<int>(sizeof(buf)) - 1) {
+          return "";
+        }
+        buf[nChars++] = '.';
+        buf[nChars++] = '0';
+      }
+
+      return std::string(buf, nChars);
 #else
       std::ostringstream oss;
 
@@ -1129,7 +1122,7 @@ std::string Value::to_string() const {
   case ValueImpl::IMPL_INT64:
     {
 #if HJSON_USE_CHARCONV
-      std::array<char, 24> buf;
+      std::array<char, 32> buf;
 
       auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->i);
 
@@ -1144,7 +1137,7 @@ std::string Value::to_string() const {
       std::ostringstream oss;
 
       // Avoid localization surprises.
-      ss.imbue(std::locale::classic());
+      oss.imbue(std::locale::classic());
 
       oss << prv->i;
 
