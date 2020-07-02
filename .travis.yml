@@ -13,7 +13,7 @@ jobs:
       env:
         - CC=gcc-4.9
         - CXX=g++-4.9
-        - BUILD_TYPE=Debug
+        - BUILD_TYPE=Release
     - os: linux
       dist: bionic
       compiler: gcc
@@ -30,14 +30,45 @@ jobs:
       compiler: gcc
       env:
         - BUILD_TYPE=Release
+    - os: linux
+      dist: focal
+      compiler: gcc
+      env:
+        - BUILD_TYPE=Release
+        - HJSON_NUMBER_PARSER=StrToD
+    - os: linux
+      dist: focal
+      compiler: gcc
+      env:
+        - BUILD_TYPE=Release
+        - HJSON_NUMBER_PARSER=CharConv
     - os: osx
       compiler: clang
       env:
-        - BUILD_TYPE=Debug
+        - BUILD_TYPE=Release
+    - os: osx
+      compiler: clang
+      env:
+        - BUILD_TYPE=Release
+        - HJSON_NUMBER_PARSER=StrToD
+    - os: osx
+      compiler: clang
+      env:
+        - BUILD_TYPE=Release
+        - HJSON_NUMBER_PARSER=CharConv
     - os: windows
       env:
         - GENERATOR="Visual Studio 15 2017 Win64"
         - ARTIFACT=vs2017-64bit
-        - BUILD_TYPE=Debug
+    - os: windows
+      env:
+        - GENERATOR="Visual Studio 15 2017 Win64"
+        - ARTIFACT=vs2017-64bit
+        - HJSON_NUMBER_PARSER=StrToD
+    - os: windows
+      env:
+        - GENERATOR="Visual Studio 15 2017 Win64"
+        - ARTIFACT=vs2017-64bit
+        - HJSON_NUMBER_PARSER=CharConv
 script:
-  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DCMAKE_CXX_FLAGS="${HJSON_CXX_FLAGS}" .. && cmake --build . --target runtest
+  - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DHJSON_NUMBER_PARSER=${HJSON_NUMBER_PARSER} -DCMAKE_CXX_FLAGS="${HJSON_CXX_FLAGS}" .. && cmake --build . --target runtest
