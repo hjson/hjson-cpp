@@ -36,12 +36,6 @@ jobs:
       env:
         - BUILD_TYPE=Release
         - HJSON_NUMBER_PARSER=StrToD
-    - os: linux
-      dist: focal
-      compiler: gcc
-      env:
-        - BUILD_TYPE=Release
-        - HJSON_NUMBER_PARSER=CharConv
     - os: osx
       compiler: clang
       env:
@@ -51,11 +45,6 @@ jobs:
       env:
         - BUILD_TYPE=Release
         - HJSON_NUMBER_PARSER=StrToD
-    - os: osx
-      compiler: clang
-      env:
-        - BUILD_TYPE=Release
-        - HJSON_NUMBER_PARSER=CharConv
     - os: windows
       env:
         - GENERATOR="Visual Studio 15 2017 Win64"
