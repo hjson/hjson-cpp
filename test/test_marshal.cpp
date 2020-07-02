@@ -26,7 +26,7 @@ static std::string _readFile(std::string pathBeginning, std::string extra,
 {
   std::ifstream infile(pathBeginning + extra + pathEnd, std::ifstream::ate);
   if (!infile.is_open()) {
-    infile = std::ifstream(pathBeginning + pathEnd, std::ifstream::ate);
+    infile.open(pathBeginning + pathEnd, std::ifstream::ate);
   }
 
   return _readStream(&infile);
