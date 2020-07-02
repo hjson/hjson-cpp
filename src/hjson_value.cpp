@@ -9,6 +9,7 @@
 #elif HJSON_USE_STRTOD
 # include <cstdlib>
 # include <cerrno>
+# include <cstdio>
 #else
 # include <sstream>
 #endif
