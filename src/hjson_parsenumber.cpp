@@ -1,6 +1,13 @@
 #include "hjson.h"
-#include <sstream>
 #include <cmath>
+#if HJSON_USE_CHARCONV
+# include <charconv>
+#elif HJSON_USE_STRTOD
+# include <cstdlib>
+# include <cerrno>
+#else
+# include <sstream>
+#endif
 
 
 namespace Hjson {
@@ -14,7 +21,20 @@ struct Parser {
 };
 
 
-static bool _parseFloat(double *pNumber, const std::string &str) {
+static bool _parseFloat(double *pNumber, const char *pCh, size_t nCh) {
+#if HJSON_USE_CHARCONV
+  auto res = std::from_chars(pCh, pCh + nCh, *pNumber);
+
+  return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range &&
+    !std::isinf(*pNumber) && !std::isnan(*pNumber);
+#elif HJSON_USE_STRTOD
+  char *endptr;
+  errno = 0;
+  *pNumber = std::strtod(pCh, &endptr);
+
+  return !errno && endptr - pCh == nCh && !std::isinf(*pNumber) && !std::isnan(*pNumber);
+#else
+  std::string str(pCh, nCh);
   std::stringstream ss(str);
 
   // Make sure we expect dot (not comma) as decimal point.
@@ -23,15 +43,32 @@ static bool _parseFloat(double *pNumber, const std::string &str) {
   ss >> *pNumber;
 
   return ss.eof() && !ss.fail() && !std::isinf(*pNumber) && !std::isnan(*pNumber);
+#endif
 }
 
 
-static bool _parseInt(std::int64_t *pNumber, const std::string &str) {
+static bool _parseInt(std::int64_t *pNumber, const char *pCh, size_t nCh) {
+#if HJSON_USE_CHARCONV
+  auto res = std::from_chars(pCh, pCh + nCh, *pNumber);
+
+  return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range;
+#elif HJSON_USE_STRTOD
+  char *endptr;
+  errno = 0;
+  *pNumber = std::strtoll(pCh, &endptr, 0);
+
+  return !errno && endptr - pCh == nCh;
+#else
+  std::string str(pCh, nCh);
   std::stringstream ss(str);
+
+  // Avoid localization surprises.
+  ss.imbue(std::locale::classic());
 
   ss >> *pNumber;
 
   return ss.eof() && !ss.fail();
+#endif
 }
 
 
@@ -51,7 +88,7 @@ static bool _next(Parser *p) {
 }
 
 
-// Parse a number value.
+// Parse a number value. The parameter "text" must be zero terminated.
 bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopAtNext) {
   Parser p = {
     (const unsigned char*) text,
@@ -120,12 +157,12 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
   }
 
   std::int64_t i;
-  if (_parseInt(&i, std::string((char*)p.data, end - 1))) {
+  if (_parseInt(&i, (char*) p.data, end - 1)) {
     *pValue = Value(i, Int64_tag{});
     return true;
   } else {
     double d;
-    if (_parseFloat(&d, std::string((char*)p.data, end - 1))) {
+    if (_parseFloat(&d, (char*) p.data, end - 1)) {
       *pValue = Value(d);
       return true;
     }

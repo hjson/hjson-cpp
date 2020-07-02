@@ -5,11 +5,11 @@ add_executable(testbin
   test_value.cpp
 )
 
-set_target_properties(testbin PROPERTIES
-  CXX_STANDARD 11
-  CXX_STANDARD_REQUIRED YES
-  CXX_EXTENSIONS NO
-)
+target_compile_features(testbin PUBLIC cxx_std_11)
+
+if(${HJSON_NUMBER_PARSER} MATCHES "CharConv")
+  target_compile_definitions(testbin PRIVATE HJSON_USE_CHARCONV=1)
+endif()
 
 target_link_libraries(testbin hjson)
 

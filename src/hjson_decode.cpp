@@ -376,14 +376,13 @@ static Value _readTfnns(Parser *p) {
       default:
         if (chf == '-' || (chf >= '0' && chf <= '9')) {
           Value number;
-          if (tryParseNumber(&number, value.data(), value.size(), false)) {
+          if (tryParseNumber(&number, trimmed.c_str(), trimmed.size(), false)) {
             return number;
           }
         }
       }
       if (isEol) {
-        // remove any whitespace at the end (ignored in quoteless strings)
-        return _trim(std::string(value.data(), value.size()));
+        return trimmed;
       }
     }
     value.push_back(p->ch);

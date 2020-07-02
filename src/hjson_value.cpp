@@ -1,9 +1,18 @@
 #include "hjson.h"
-#include <sstream>
 #include <vector>
 #include <assert.h>
 #include <cstring>
 #include <algorithm>
+#if HJSON_USE_CHARCONV
+# include <charconv>
+# include <array>
+#elif HJSON_USE_STRTOD
+# include <cstdlib>
+# include <cerrno>
+# include <cstdio>
+#else
+# include <sstream>
+#endif
 
 
 namespace Hjson {
@@ -947,7 +956,25 @@ double Value::to_double() const {
   case ValueImpl::IMPL_STRING:
     {
       double ret;
-      std::stringstream ss(*((std::string*)prv->p));
+      const std::string *pStr = ((std::string*)prv->p);
+
+#if HJSON_USE_CHARCONV
+      const char *pCh = pStr->c_str();
+      const char *pEnd = pCh + pStr->size();
+
+      auto res = std::from_chars(pCh, pEnd, ret);
+
+      if (res.ptr != pEnd || res.ec == std::errc::result_out_of_range) {
+#elif HJSON_USE_STRTOD
+      const char *pCh = pStr->c_str();
+      char *endptr;
+      errno = 0;
+
+      ret = std::strtod(pCh, &endptr);
+
+      if (errno || endptr - pCh != pStr->size()) {
+#else
+      std::stringstream ss(*pStr);
 
       // Make sure we expect dot (not comma) as decimal point.
       ss.imbue(std::locale::classic());
@@ -955,6 +982,7 @@ double Value::to_double() const {
       ss >> ret;
 
       if (!ss.eof() || ss.fail()) {
+#endif
         return 0.0;
       }
 
@@ -982,11 +1010,33 @@ std::int64_t Value::to_int64() const {
   case ValueImpl::IMPL_STRING:
     {
       std::int64_t ret;
-      std::stringstream ss(*((std::string*)prv->p));
+      std::string *pStr = ((std::string*)prv->p);
+
+#if HJSON_USE_CHARCONV
+      const char *pCh = pStr->c_str();
+      const char *pEnd = pCh + pStr->size();
+
+      auto res = std::from_chars(pCh, pEnd, ret);
+
+      if (res.ptr != pEnd || res.ec == std::errc::result_out_of_range) {
+#elif HJSON_USE_STRTOD
+      const char *pCh = pStr->c_str();
+      char *endptr;
+      errno = 0;
+
+      ret = std::strtoll(pCh, &endptr, 0);
+
+      if (errno || endptr - pCh != pStr->size()) {
+#else
+      std::stringstream ss(*pStr);
+
+      // Avoid localization surprises.
+      ss.imbue(std::locale::classic());
 
       ss >> ret;
 
       if (!ss.eof() || ss.fail()) {
+#endif
         // Perhaps the string contains a decimal point or exponential part.
         return static_cast<std::int64_t>(to_double());
       }
@@ -1011,6 +1061,47 @@ std::string Value::to_string() const {
     return (prv->b ? "true" : "false");
   case ValueImpl::IMPL_DOUBLE:
     {
+#if HJSON_USE_CHARCONV
+      std::array<char, 32> buf;
+
+      auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->d);
+
+      if (res.ptr - buf.data() >= buf.size() || res.ec != std::errc()) {
+        return "";
+      }
+
+      // to_chars() does not set a zero termination, which is needed by strchr().
+      *res.ptr = '\0';
+
+      // Always output a decimal point.
+      if (strchr(buf.data(), '.') == nullptr) {
+        if (res.ptr - buf.data() >= buf.size() - 1) {
+          return "";
+        }
+        *(res.ptr++) = '.';
+        *(res.ptr++) = '0';
+      }
+
+      return std::string(buf.data(), res.ptr);
+#elif HJSON_USE_STRTOD
+      char buf[32];
+      int nChars = snprintf(buf, sizeof(buf), "%.15g", prv->d);
+
+      if (nChars < 0 || nChars >= static_cast<int>(sizeof(buf))) {
+        return "";
+      }
+
+      // Always output a decimal point.
+      if (strchr(buf, '.') == nullptr) {
+        if (nChars >= static_cast<int>(sizeof(buf)) - 1) {
+          return "";
+        }
+        buf[nChars++] = '.';
+        buf[nChars++] = '0';
+      }
+
+      return std::string(buf, nChars);
+#else
       std::ostringstream oss;
 
       // Make sure we use dot (not comma) as decimal point.
@@ -1027,14 +1118,32 @@ std::string Value::to_string() const {
       }
 
       return oss.str();
+#endif
     }
   case ValueImpl::IMPL_INT64:
     {
+#if HJSON_USE_CHARCONV
+      std::array<char, 32> buf;
+
+      auto res = std::to_chars(buf.data(), buf.data() + buf.size(), prv->i);
+
+      if (res.ec != std::errc()) {
+        return "";
+      }
+
+      return std::string(buf.data(), res.ptr);
+#elif HJSON_USE_STRTOD
+      return std::to_string(prv->i);
+#else
       std::ostringstream oss;
+
+      // Avoid localization surprises.
+      oss.imbue(std::locale::classic());
 
       oss << prv->i;
 
       return oss.str();
+#endif
     }
   case ValueImpl::IMPL_STRING:
     return *((std::string*)prv->p);

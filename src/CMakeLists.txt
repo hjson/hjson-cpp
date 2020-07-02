@@ -15,12 +15,20 @@ target_include_directories(hjson PUBLIC
   $<INSTALL_INTERFACE:${include_dest}>
 )
 
+if(${HJSON_NUMBER_PARSER} MATCHES "CharConv")
+  target_compile_features(hjson PUBLIC cxx_std_17)
+  target_compile_definitions(hjson PRIVATE HJSON_USE_CHARCONV=1)
+else()
+  if(${HJSON_NUMBER_PARSER} MATCHES "StrToD")
+    target_compile_definitions(hjson PRIVATE HJSON_USE_STRTOD=1)
+  endif()
+
+  target_compile_features(hjson PUBLIC cxx_std_11)
+endif()
+
 set_target_properties(hjson PROPERTIES
   VERSION ${PROJECT_VERSION}
   SOVERSION ${PROJECT_VERSION_MAJOR}
-  CXX_STANDARD 11
-  CXX_STANDARD_REQUIRED YES
-  CXX_EXTENSIONS NO
   DEBUG_POSTFIX "d"
 )
 

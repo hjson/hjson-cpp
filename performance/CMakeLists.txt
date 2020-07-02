@@ -5,11 +5,7 @@ add_executable(perfbin
   perf_multithread.cpp
 )
 
-set_target_properties(perfbin PROPERTIES
-  CXX_STANDARD 11
-  CXX_STANDARD_REQUIRED YES
-  CXX_EXTENSIONS NO
-)
+target_compile_features(perfbin PUBLIC cxx_std_11)
 
 target_link_libraries(perfbin hjson Threads::Threads)
 

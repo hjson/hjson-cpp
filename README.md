@@ -35,7 +35,7 @@ GCC 4.8 has the C++11 headers for regex, but unfortunately not a working impleme
 
 ## Cmake
 
-The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms.
+The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms. Cmake version 3.8 or newer is required.
 
 ### Cmake subfolder
 
@@ -59,6 +59,7 @@ CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON  # Needed for shared libs on Windows. Introd
 HJSON_ENABLE_INSTALL=OFF
 HJSON_ENABLE_TEST=OFF
 HJSON_ENABLE_PERFTEST=OFF
+HJSON_NUMBER_PARSER=StringStream  # Possible values are StringStream, StrToD and CharConv.
 HJSON_VERSIONED_INSTALL=OFF  # Use version suffix on header and lib folders.
 ```
 
@@ -245,6 +246,14 @@ val1.move(0, 2);
 assert(val1.key(1) == "zeta");
 assert(val1[0] == 2);
 ```
+
+### Performance
+
+Hjson is not much optimized for speed. But if you require fast(-ish) execution, escpecially in a multithreaded application, you can experiment with different values for the Cmake option `HJSON_NUMBER_PARSER`. The default value `StringStream` uses C++ string streams with the locale `classic` imbued to ensure that dots are used as decimal separators rather than commas.
+
+The value `StrToD` gives better performance, especially in multi threaded applications, but will use whatever locale the application is using. If the current locale uses commas as decimal separator *Hjson* will umarshal floating point numbers into strings, and will use commas in floating point numbers in the marshal output, which means that other parsers will treat that value as a string.
+
+Setting `HJSON_NUMBER_PARSER` to `CharConv` gives the best performance, and uses dots as comma separator regardless of the application locale. Using `CharConv` will automatically cause the code to be compiled using the C++17 standard (or a newer standard if required by your project). Unfortunately neither GCC 10.1 or Clang 10.0 implement the required features of C++17 (*std::from_chars()* for *double*). It does work in Visual Studio 17 and later.
 
 ### Example code
 
