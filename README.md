@@ -29,7 +29,7 @@ The C++ implementation of Hjson is based on [hjson-go](https://github.com/hjson/
 
 # Compiling
 
-The easiest way to use hjson-cpp is to simply include all of the files from the folders `src` and `include` into you own project. The only requirement is that your compiler fully supports C++11.
+The easiest way to use hjson-cpp is to simply include all of the files from the folders `src` and `include` into your own project. The only requirement is that your compiler fully supports C++11.
 
 GCC 4.8 has the C++11 headers for regex, but unfortunately not a working implementation, so for GCC at least version 4.9 is required.
 
@@ -246,6 +246,8 @@ val1.move(0, 2);
 assert(val1.key(1) == "zeta");
 assert(val1[0] == 2);
 ```
+
+The insertion order is kept when cloning or merging *Hjson::Value* maps.
 
 ### Performance
 

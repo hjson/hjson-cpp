@@ -741,8 +741,8 @@ Value Value::clone() const {
   case ValueImpl::IMPL_MAP:
     {
       Value ret;
-      for (auto it = begin(); it != end(); ++it) {
-        ret[it->first] = it->second.clone();
+      for (int index = 0; index < size(); ++index) {
+        ret[key(index)] = operator[](index).clone();
       }
       return ret;
     }
@@ -1209,13 +1209,17 @@ Value Merge(const Value base, const Value ext) {
   if (!ext.defined()) {
     merged = base.clone();
   } else if (base.type() == Value::MAP && ext.type() == Value::MAP) {
-    for (auto it = ext.begin(); it != ext.end(); ++it) {
-      merged[it->first] = Merge(base[it->first], it->second);
+    for (int index = 0; index < base.size(); ++index) {
+      if (ext[base.key(index)].defined()) {
+        merged[base.key(index)] = Merge(base[index], ext[base.key(index)]);
+      } else {
+        merged[base.key(index)] = base[index].clone();
+      }
     }
 
-    for (auto it = base.begin(); it != base.end(); ++it) {
-      if (!merged[it->first].defined()) {
-        merged[it->first] = it->second.clone();
+    for (int index = 0; index < ext.size(); ++index) {
+      if (!merged[ext.key(index)].defined()) {
+        merged[ext.key(index)] = ext[index].clone();
       }
     }
   } else {

@@ -650,8 +650,7 @@ void test_value() {
   }
 
   {
-    Hjson::Value base = Hjson::Unmarshal(R"(
-{
+    std::string baseStr = R"({
   debug: false
   rect: {
     x: 0
@@ -672,8 +671,8 @@ void test_value() {
     width: 200
     height: 200
   }
-}
-)");
+})";
+    Hjson::Value base = Hjson::Unmarshal(baseStr);
 
     Hjson::Value ext = Hjson::Unmarshal(R"(
 {
@@ -704,5 +703,14 @@ void test_value() {
     assert(merged["scale"] == 3);
     assert(merged["window"]["y"] == 37);
     assert(merged["otherWindow"]["x"] == 17);
+    // The insertion order must have been kept in the merge.
+    assert(merged.key(1) == "rect");
+    // The insertion order must have been kept in the clone.
+    auto baseClone = base.clone();
+    auto options = Hjson::DefaultOptions();
+    options.bracesSameLine = true;
+    options.preserveInsertionOrder = true;
+    auto baseCloneStr = Hjson::MarshalWithOptions(baseClone, options);
+    assert(baseCloneStr == baseStr);
   }
 }
