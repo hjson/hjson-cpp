@@ -7,7 +7,7 @@ else()
 endif()
 
 project(hjson
-  VERSION 1.5
+  VERSION 1.6
   DESCRIPTION "Human readable JSON"
   LANGUAGES CXX)
 
