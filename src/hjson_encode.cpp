@@ -22,6 +22,7 @@ EncoderOptions DefaultOptions() {
   opt.unknownAsNull = false;
   opt.separator = false;
   opt.preserveInsertionOrder = false;
+  opt.omitRootBraces = false;
 
   return opt;
 }
@@ -32,12 +33,14 @@ struct Encoder {
   std::ostringstream oss;
   std::locale loc;
   int indent;
-  std::regex needsEscape, needsQuotes, needsEscapeML, startsWithKeyword, needsEscapeName, lineBreak;
+  std::regex needsEscape, needsQuotes, needsEscapeML, startsWithKeyword,
+    needsEscapeName, lineBreak;
 };
 
 
 bool startsWithNumber(const char *text, size_t textSize);
-static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst);
+static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst,
+  bool isRootObject);
 
 
 // table of character substitutions
@@ -207,7 +210,9 @@ static void _mlString(Encoder *e, std::string value, std::string separator) {
 
 // Check if we can insert this string without quotes
 // see hjson syntax (must not parse as true, false, null or number)
-static void _quote(Encoder *e, std::string value, std::string separator, bool isRootObject) {
+static void _quote(Encoder *e, std::string value, std::string separator,
+  bool isRootObject)
+{
   if (value.size() == 0) {
     e->oss << separator << "\"\"";
   } else if (e->opt.quoteAlways ||
@@ -321,32 +326,36 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
       e->oss << separator << "{}";
     } else {
       auto indent1 = e->indent;
-      e->indent++;
+      if (!e->opt.omitRootBraces || !isRootObject) {
+        e->indent++;
 
-      if (!noIndent && !e->opt.bracesSameLine) {
-        _writeIndent(e, indent1);
-      } else {
-        e->oss << separator;
+        if (!noIndent && !e->opt.bracesSameLine) {
+          _writeIndent(e, indent1);
+        } else {
+          e->oss << separator;
+        }
+        e->oss << "{";
       }
-      e->oss << "{";
 
       // Join all of the member texts together, separated with newlines
       bool isFirst = true;
       if (e->opt.preserveInsertionOrder) {
         size_t limit = value.size();
         for (int index = 0; index < limit; index++) {
-          _objElem(e, value.key(index), value[index], &isFirst);
+          _objElem(e, value.key(index), value[index], &isFirst, isRootObject);
         }
       } else {
         for (auto it : value) {
           if (it.second.defined()) {
-            _objElem(e, it.first, it.second, &isFirst);
+            _objElem(e, it.first, it.second, &isFirst, isRootObject);
           }
         }
       }
 
-      _writeIndent(e, indent1);
-      e->oss << "}";
+      if (!e->opt.omitRootBraces || !isRootObject) {
+        _writeIndent(e, indent1);
+        e->oss << "}";
+      }
 
       e->indent = indent1;
     }
@@ -358,14 +367,21 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
 }
 
 
-static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst) {
+static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst,
+  bool isRootObject)
+{
   if (*pIsFirst) {
     *pIsFirst = false;
-  } else if (e->opt.separator) {
-    e->oss << ",";
+    if (!e->opt.omitRootBraces || !isRootObject) {
+      _writeIndent(e, e->indent);
+    }
+  } else {
+    if (e->opt.separator) {
+      e->oss << ",";
+    }
+    _writeIndent(e, e->indent);
   }
 
-  _writeIndent(e, e->indent);
   _quoteName(e, key);
   e->oss << ":";
   _str(e, value, false, " ", false);
