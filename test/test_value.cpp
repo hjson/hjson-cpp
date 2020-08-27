@@ -713,4 +713,26 @@ void test_value() {
     auto baseCloneStr = Hjson::MarshalWithOptions(baseClone, options);
     assert(baseCloneStr == baseStr);
   }
+
+  {
+    auto noRootBraces = R"(alfa: a
+beta: b
+obj: {
+  number: 1
+}
+arr: [
+  0
+  1
+  2
+])";
+
+    auto options = Hjson::DefaultOptions();
+    options.bracesSameLine = true;
+    options.preserveInsertionOrder = true;
+    options.omitRootBraces = true;
+
+    auto root = Hjson::Unmarshal(noRootBraces);
+    auto newStr = Hjson::MarshalWithOptions(root, options);
+    assert(newStr == noRootBraces);
+  }
 }
