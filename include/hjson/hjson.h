@@ -53,6 +53,8 @@ struct EncoderOptions {
   // pairs for all objects will be placed in the same order as they were added.
   // If false, the key/value pairs are placed in alphabetical key order.
   bool preserveInsertionOrder;
+  // If true, omits root braces.
+  bool omitRootBraces;
 };
 
 
