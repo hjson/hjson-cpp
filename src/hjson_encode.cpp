@@ -269,23 +269,23 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
   bool isRootObject)
 {
   switch (value.type()) {
-  case Value::DOUBLE:
+  case Value::Type::Double:
     e->oss << separator;
 
-    if (std::isnan(double(value)) || std::isinf(double(value))) {
-      e->oss << Value(Value::HJSON_NULL).to_string();
-    } else if (!e->opt.allowMinusZero && value == 0 && std::signbit(double(value))) {
+    if (std::isnan(static_cast<double>(value)) || std::isinf(static_cast<double>(value))) {
+      e->oss << Value(Value::Type::Null).to_string();
+    } else if (!e->opt.allowMinusZero && value == 0 && std::signbit(static_cast<double>(value))) {
       e->oss << Value(0).to_string();
     } else {
       e->oss << value.to_string();
     }
     break;
 
-  case Value::STRING:
+  case Value::Type::String:
     _quote(e, value, separator, isRootObject);
     break;
 
-  case Value::VECTOR:
+  case Value::Type::Vector:
     if (value.empty()) {
       e->oss << separator << "[]";
     } else {
@@ -321,7 +321,7 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
     }
     break;
 
-  case Value::MAP:
+  case Value::Type::Map:
     if (value.empty()) {
       e->oss << separator << "{}";
     } else {

@@ -175,25 +175,26 @@ arr.push_back("first");
 std::string myString = arr[0];
 ```
 
-If you try to access a map element that doesn't exist, an *Hjson::Value* of type *Hjson::Value::UNDEFINED* is returned. But if you try to access a vector element that doesn't exist, an *Hjson::index_out_of_bounds* exception is thrown.
+If you try to access a map element that doesn't exist, an *Hjson::Value* of type *Hjson::Value::Type::Undefined* is returned. But if you try to access a vector element that doesn't exist, an *Hjson::index_out_of_bounds* exception is thrown.
 
 These are the possible types for an *Hjson::Value*:
 
-    UNDEFINED
-    HJSON_NULL
-    BOOL
-    DOUBLE
-    STRING
-    VECTOR
-    MAP
+    Undefined
+    Null
+    Bool
+    Double
+    Int64
+    String
+    Vector
+    Map
 
-The default constructor creates an *Hjson::Value* of the type *Hjson::Value::UNDEFINED*.
+The default constructor creates an *Hjson::Value* of the type *Hjson::Value::Type::Undefined*.
 
 ### Number representations
 
 The C++ implementation of Hjson can both read and write 64-bit integers. But since functions and operators overloaded in C++ cannot differ on the return value alone, *Hjson::Value* is treated as *double* in arithmetic operations. That works fine up to 52 bits of integer precision. For the full 64-bit integer precision the function *Hjson::Value::to_int64()* can be used.
 
-The *Hjson::Value* constructor for 64-bit integers also requires a special solution, in order to avoid *ambiguous overload* errors for some compilers. An empty struct is used as the second parameter so that all ambiguity is avoided. An *Hjson::Value* created using the 64-bit constructor will be of the type *Hjson::Value::DOUBLE*, but has the full 64-bit integer precision internally.
+The *Hjson::Value* constructor for 64-bit integers also requires a special solution, in order to avoid *ambiguous overload* errors for some compilers. An empty struct is used as the second parameter so that all ambiguity is avoided.
 
 Example:
 
@@ -202,7 +203,7 @@ Hjson::Value myValue(9223372036854775807, Hjson::Int64_tag{});
 assert(myValue.to_int64() == 9223372036854775807);
 ```
 
-The function *Hjson::Value::is_int64()* returns *true* if the *Hjson::Value* in question internally contains a 64-bit integer. All integers are stored with 64-bit precision. The only other way that a number is stored in an *Hjson::Value* is in the form of a double precision floating point representation.
+All integers are stored with 64-bit precision. The only other way that a number is stored in an *Hjson::Value* is in the form of a double precision floating point representation.
 
 An *Hjson::Value* that has been unmarshalled from a string that contains a decimal point (for example the string `"1.0"`), or a string containing a number that is bigger or smaller than what can be represented by an *std::int64_t* variable (bigger than 9223372036854775807 or smaller than -9223372036854775808) will be stored as a double precision floating point number internally in the *Hjson::Value*.
 
@@ -210,7 +211,7 @@ Any number stored internally as a *double* will be represented by a string conta
 
 ### Order of map elements
 
-Iterators for an *Hjson::Value* of type *Hjson::Value::MAP* are always ordered by the keys in alphabetic order. That is also the default ordering in the output from *Hjson::Marshal()*. But when editing a configuration file you might instead want the output to have the same order of elements as the file you read for input. That can be achieved by setting the option *preserveInsertionOrder* to *true* in the call to *Hjson::MarshalWithOptions()*, like this:
+Iterators for an *Hjson::Value* of type *Hjson::Value::Type::Map* are always ordered by the keys in alphabetic order. That is also the default ordering in the output from *Hjson::Marshal()*. But when editing a configuration file you might instead want the output to have the same order of elements as the file you read for input. That can be achieved by setting the option *preserveInsertionOrder* to *true* in the call to *Hjson::MarshalWithOptions()*, like this:
 
 ```cpp
 auto opt = Hjson::DefaultOptions();
@@ -218,7 +219,7 @@ opt.preserveInsertionOrder = true;
 auto out = Hjson::MarshalWithOptions(root, opt);
 ```
 
-The elements in an *Hjson::Value* of type *Hjson::Value::MAP* can be accessed directly using the bracket operator with either the string key or the insertion index as input parameter.
+The elements in an *Hjson::Value* of type *Hjson::Value::Type::Map* can be accessed directly using the bracket operator with either the string key or the insertion index as input parameter.
 
 ```cpp
 Hjson::Value val1;
@@ -302,7 +303,7 @@ int main() {
 }
 ```
 
-Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::VECTOR*:
+Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::Type::Vector*:
 
 ```cpp
 for (int index = 0; index < int(arr.size()); ++index) {
@@ -310,7 +311,7 @@ for (int index = 0; index < int(arr.size()); ++index) {
 }
 ```
 
-Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::MAP*:
+Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::Type::Map*:
 
 ```cpp
 for (auto it = map.begin(); it != map.end(); ++it) {

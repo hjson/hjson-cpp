@@ -70,14 +70,15 @@ private:
   Value(std::shared_ptr<ValueImpl>);
 
 public:
-  enum Type {
-    UNDEFINED,
-    HJSON_NULL,
-    BOOL,
-    DOUBLE,
-    STRING,
-    VECTOR,
-    MAP
+  enum class Type {
+    Undefined,
+    Null,
+    Bool,
+    Double,
+    Int64,
+    String,
+    Vector,
+    Map
   };
 
   Value();
@@ -137,35 +138,28 @@ public:
   bool defined() const;
   bool empty() const;
   Type type() const;
-  // Returns true if this Value was unmarshalled from a string representation
-  // of an integer without decimal point (i.e. not "1.0", because that string
-  // will cause this function to return false, since it contains a decimal
-  // point). The number must also be within the valid range for being
-  // represented by an int64_t variable (min: -9223372036854775808,
-  // max: 9223372036854775807), otherwise the number will be stored as
-  // floating point internally in this Value. This function also returns true
-  // if this Value was created using the int or int64_t Value constructor.
-  bool is_int64() const;
+  // Returns true if the type of this Value is Double or Int64.
+  bool is_numeric() const;
   size_t size() const;
   bool deep_equal(const Value&) const;
   Value clone() const;
 
-  // -- VECTOR and MAP specific functions
-  // For a VECTOR, the input argument is the index in the vector for the value
-  // that should be erased. For a MAP, the input argument is the index in the
+  // -- Vector and Map specific functions
+  // For a Vector, the input argument is the index in the vector for the value
+  // that should be erased. For a Map, the input argument is the index in the
   // insertion order of the MAP for the value that should be erased.
   void erase(int);
   // Move value on index `from` to index `to`. If `from` is less than `to` the
   // element will actually end up at index `to - 1`. For an Hjson::Value of
-  // type MAP, calling this function changes the insertion order but does not
+  // type Map, calling this function changes the insertion order but does not
   // affect the iteration order, since iterations are always done in
   // alphabetical key order.
   void move(int from, int to);
 
-  // -- VECTOR specific function
+  // -- Vector specific function
   void push_back(const Value&);
 
-  // -- MAP specific functions
+  // -- Map specific functions
   // Get key by its zero-based insertion index.
   std::string key(int) const;
   // Iterations are always done in alphabetical key order.
@@ -176,7 +170,7 @@ public:
   size_t erase(const std::string&);
   size_t erase(const char*);
 
-  // These functions throw an error if used on VECTOR or MAP
+  // These functions throw an error if used on Vector or Map
   double to_double() const;
   std::int64_t to_int64() const;
   std::string to_string() const;
@@ -235,7 +229,7 @@ Value Unmarshal(const std::string&);
 // returned tree will on that place have a map containing a combination of
 // all keys from the "base" and "ext" maps. If a key existed in both "base"
 // and "ext", the value from "ext" is used. Except for if the value in "ext"
-// is of type UNDEFINED: then the value from "base" is used.
+// is of type Undefined: then the value from "base" is used.
 //
 // Vectors are not merged: if a vector exists in the same place in the "base"
 // and "ext" trees, the one from "ext" will be used in the returned tree.
@@ -243,7 +237,7 @@ Value Unmarshal(const std::string&);
 // Maps and vectors are cloned, not copied. Therefore changes in the returned
 // tree will not affect the input variables "base" and "ext.
 //
-// If "ext" is of type UNDEFINED, a clone of "base" is returned.
+// If "ext" is of type Undefined, a clone of "base" is returned.
 //
 Value Merge(const Value base, const Value ext);
 

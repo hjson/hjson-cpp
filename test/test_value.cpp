@@ -12,15 +12,15 @@ static std::string _test_string_param(std::string param) {
 
 void test_value() {
   {
-    Hjson::Value valVec(Hjson::Value::VECTOR);
-    assert(valVec.type() == Hjson::Value::VECTOR);
-    Hjson::Value valMap(Hjson::Value::MAP);
-    assert(valMap.type() == Hjson::Value::MAP);
+    Hjson::Value valVec(Hjson::Value::Type::Vector);
+    assert(valVec.type() == Hjson::Value::Type::Vector);
+    Hjson::Value valMap(Hjson::Value::Type::Map);
+    assert(valMap.type() == Hjson::Value::Type::Map);
   }
 
   {
     Hjson::Value val(true);
-    assert(val.type() == Hjson::Value::BOOL);
+    assert(val.type() == Hjson::Value::Type::Bool);
     assert(val);
     assert(val == true);
     assert(val != false);
@@ -47,12 +47,12 @@ void test_value() {
   }
 
   {
-    Hjson::Value val(Hjson::Value::HJSON_NULL);
-    assert(val.type() == Hjson::Value::HJSON_NULL);
+    Hjson::Value val(Hjson::Value::Type::Null);
+    assert(val.type() == Hjson::Value::Type::Null);
     assert(!val);
     assert(val.empty());
     assert(val.size() == 0);
-    Hjson::Value val2(Hjson::Value::HJSON_NULL);
+    Hjson::Value val2(Hjson::Value::Type::Null);
     assert(val == val2);
     Hjson::Value val3;
     assert(val != val3);
@@ -111,7 +111,7 @@ void test_value() {
       ss << val;
       assert(ss.str() == "3.0");
     }
-    assert(!val.is_int64());
+    assert(val.type() != Hjson::Value::Type::Int64);
     // The result of the comparison is undefined in C++11.
     // assert(val.begin() == val.end());
   }
@@ -144,7 +144,7 @@ void test_value() {
       ss << val;
       assert(ss.str() == "1");
     }
-    assert(val.is_int64());
+    assert(val.type() == Hjson::Value::Type::Int64);
     int i = 2;
     Hjson::Value val2(i);
     assert(val2 != val);
@@ -178,8 +178,7 @@ void test_value() {
 
   {
     Hjson::Value val(144115188075855873, Hjson::Int64_tag{});
-    assert(val.type() == Hjson::Value::DOUBLE);
-    assert(val.is_int64());
+    assert(val.type() == Hjson::Value::Type::Int64);
     assert(val == Hjson::Value(144115188075855873, Hjson::Int64_tag{}));
     assert(val != Hjson::Value(144115188075855874, Hjson::Int64_tag{}));
     assert(val.to_int64() == 144115188075855873);
@@ -343,7 +342,7 @@ void test_value() {
   {
     Hjson::Value val;
     Hjson::Value undefined = val["down1"]["down2"]["down3"];
-    assert(undefined.type() == Hjson::Value::UNDEFINED);
+    assert(undefined.type() == Hjson::Value::Type::Undefined);
   }
 
   {
@@ -380,18 +379,18 @@ void test_value() {
     Hjson::Value val;
     try {
       val[0] = 0;
-      assert(!"Did not throw error when trying to assign Value to VECTOR index that is out of bounds.");
+      assert(!"Did not throw error when trying to assign Value to Type::Vector index that is out of bounds.");
     } catch(Hjson::index_out_of_bounds e) {}
     try {
       const Hjson::Value val2;
       const auto val3 = val2[0];
-      assert(!"Did not throw error when trying to access VECTOR index that is out of bounds.");
+      assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
     } catch(Hjson::index_out_of_bounds e) {}
     try {
       if (val[0].empty()) {
-        assert(!"Did not throw error when trying to access VECTOR index that is out of bounds.");
+        assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
       }
-      assert(!"Did not throw error when trying to access VECTOR index that is out of bounds.");
+      assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
     } catch(Hjson::index_out_of_bounds e) {}
     val.push_back("first");
     val.push_back(2);
@@ -401,22 +400,22 @@ void test_value() {
     assert(val2 == "first");
     try {
       val2.push_back(0);
-      assert(!"Did not throw error when trying to push_back() on Value that is not a VECTOR.");
+      assert(!"Did not throw error when trying to push_back() on Value that is not a Type::Vector.");
     } catch(Hjson::type_mismatch e) {}
     assert(val[1] == 2);
-    assert(val[1].type() == Hjson::Value::DOUBLE);
+    assert(val[1].type() == Hjson::Value::Type::Int64);
     val[0] = 3;
     assert(val[0] == 3);
     assert(val.size() == 2);
     try {
       val[2] = 2;
-      assert(!"Did not throw error when trying to assign Value to VECTOR index that is out of bounds.");
+      assert(!"Did not throw error when trying to assign Value to Type::Vector index that is out of bounds.");
     } catch(Hjson::index_out_of_bounds e) {}
     try {
       if (val[2].empty()) {
-        assert(!"Did not throw error when trying to access VECTOR index that is out of bounds.");
+        assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
       }
-      assert(!"Did not throw error when trying to access VECTOR index that is out of bounds.");
+      assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
     } catch(Hjson::index_out_of_bounds e) {}
   }
 
@@ -434,13 +433,13 @@ void test_value() {
     Hjson::Value val;
     Hjson::Value val2 = val["åäö"];
     assert(!val2.defined());
-    assert(val["åäö"].type() == Hjson::Value::UNDEFINED);
+    assert(val["åäö"].type() == Hjson::Value::Type::Undefined);
     // Assert that the comparison didn't create an element.
     assert(val.size() == 0);
     Hjson::Value sub1, sub2;
     val["abc"] = sub1;
     val["åäö"] = sub2;
-    assert(val["åäö"].type() == Hjson::Value::UNDEFINED);
+    assert(val["åäö"].type() == Hjson::Value::Type::Undefined);
     assert(!val["åäö"].defined());
     // Assert that explicit assignment creates an element.
     assert(val.size() == 2);
@@ -491,7 +490,7 @@ void test_value() {
   {
     Hjson::Value val;
     if (val.erase("key1")) {
-      assert(!"Returned non-zero number when trying to do MAP erase on UNDEFINED Value.");
+      assert(!"Returned non-zero number when trying to do Type::Map erase on Type::Undefined Value.");
     }
     val["key1"] = "first";
     val["key2"] = "second";
@@ -499,17 +498,17 @@ void test_value() {
     assert(val.size() == 1);
     assert(val["key1"].empty());
     if (val.erase("key1")) {
-      assert(!"Returned non-zero number when trying to do MAP erase with a non-existing key.");
+      assert(!"Returned non-zero number when trying to do Type::Map erase with a non-existing key.");
     }
     val.erase(std::string("key2"));
     assert(val.empty());
     if (val.erase("key1")) {
-      assert(!"Returned non-zero number when trying to do MAP erase on an empty MAP.");
+      assert(!"Returned non-zero number when trying to do Type::Map erase on an empty Type::Map.");
     }
     Hjson::Value val2("secondVal");
     try {
       val2.erase("key1");
-      assert(!"Did not throw error when trying to do MAP erase on a STRING Value.");
+      assert(!"Did not throw error when trying to do Type::Map erase on a STRING Value.");
     } catch(Hjson::type_mismatch e) {}
   }
 
@@ -517,7 +516,7 @@ void test_value() {
     Hjson::Value val;
     try {
       val.erase(1);
-      assert(!"Did not throw error when trying to do VECTOR erase on UNDEFINED Value.");
+      assert(!"Did not throw error when trying to do Type::Vector erase on Type::Undefined Value.");
     } catch(Hjson::index_out_of_bounds e) {}
     val.push_back("first");
     val.push_back("second");
@@ -530,18 +529,18 @@ void test_value() {
     assert(val.size() == 1);
     try {
       val.erase(1);
-      assert(!"Did not throw error when trying to do VECTOR erase with an out-of-bounds index.");
+      assert(!"Did not throw error when trying to do Type::Vector erase with an out-of-bounds index.");
     } catch(Hjson::index_out_of_bounds e) {}
     val.erase(0);
     assert(val.empty());
     try {
       val.erase(0);
-      assert(!"Did not throw error when trying to do VECTOR erase on an empty VECTOR.");
+      assert(!"Did not throw error when trying to do Type::Vector erase on an empty Type::Vector.");
     } catch(Hjson::index_out_of_bounds e) {}
     Hjson::Value val3(3);
     try {
       val3.erase(0);
-      assert(!"Did not throw error when trying to do VECTOR erase on a DOUBLE Value.");
+      assert(!"Did not throw error when trying to do Type::Vector erase on a Type::Double Value.");
     } catch(Hjson::type_mismatch e) {}
   }
 
@@ -595,12 +594,12 @@ void test_value() {
     val2 = Hjson::Value();
     val2["2"] = 2;
     assert(!val1.deep_equal(val2));
-    val1 = Hjson::Value(Hjson::Value::VECTOR);
-    val2 = Hjson::Value(Hjson::Value::VECTOR);
+    val1 = Hjson::Value(Hjson::Value::Type::Vector);
+    val2 = Hjson::Value(Hjson::Value::Type::Vector);
     assert(val1.deep_equal(val2));
-    val1 = Hjson::Value(Hjson::Value::MAP);
+    val1 = Hjson::Value(Hjson::Value::Type::Map);
     assert(!val1.deep_equal(val2));
-    val2 = Hjson::Value(Hjson::Value::MAP);
+    val2 = Hjson::Value(Hjson::Value::Type::Map);
     assert(val1.deep_equal(val2));
   }
 
