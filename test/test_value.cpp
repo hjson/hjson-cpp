@@ -26,6 +26,10 @@ void test_value() {
     assert(val != false);
     assert(true == (bool) val);
     assert(false != (bool) val);
+    assert(val && val);
+    // The assignment statement must not be performed (short-circuit of ||).
+    assert(val || (val = false));
+    assert(!!val);
     {
       std::stringstream ss;
       ss << val;
@@ -79,6 +83,10 @@ void test_value() {
     assert(3.0 == val);
     assert(4.0 != val);
     double third = val;
+    int fourth = val;
+    assert(fourth == 3);
+    third = static_cast<int>(val);
+    assert(third == 3.0);
     assert(val == 3);
     assert(val != 2);
     assert(3 == val);
@@ -88,6 +96,10 @@ void test_value() {
     assert(val < 4.0);
     assert(4.0 > val);
     assert(val * 3 == 9);
+    third = val * 3;
+    assert(third == 9);
+    third = 3 * val;
+    assert(third == 9);
     assert(3 * val == 9);
     assert(val * 3.0 == 9.0);
     assert(3.0 * val == 9.0);
@@ -96,7 +108,7 @@ void test_value() {
     assert(val / 3.0 == 1.0);
     assert(3.0 / val == 1.0);
     assert(val + 1 == 4);
-    assert(1 + int(val) == 4);
+    assert(1 + val == 4);
     assert(val + 1.0 == 4.0);
     assert(1.0 + val == 4.0);
     assert(val - 1 == 2);
@@ -161,6 +173,15 @@ void test_value() {
     char i3 = 4;
     Hjson::Value val3(i3);
     assert(val3 == 4);
+    assert(4 == val3);
+    assert(val3 == i3);
+    assert(i3 == val3);
+    assert(!(i3 > val3));
+    assert(!(val3 > i3));
+    assert(!(i3 < val3));
+    assert(!(val3 < i3));
+    i3 = val3;
+    assert(i3 == 4);
     Hjson::Value val4("-1");
     assert(val4.to_double() == -1);
     assert(val4.to_int64() == -1);
@@ -174,30 +195,84 @@ void test_value() {
     assert(val5 == -1);
     assert(val5 < val);
     assert(val5 < 1.0);
+    short i6 = -28;
+    Hjson::Value val6(i6);
+    assert(val6 == -28);
+    assert(-28 == val6);
+    assert(val6 == i6);
+    assert(i6 == val6);
+    assert(!(val6 > i6));
+    assert(!(i6 > val6));
+    assert(!(val6 < i6));
+    assert(!(i6 < val6));
+    i6 = val6;
+    assert(i6 == -28);
+    i6 = -val6;
+    assert(i6 == 28);
+    i6 = +val6;
+    assert(i6 == -28);
+    val6 += i6;
+    assert(val6 == -56);
+    val6 -= i6;
+    assert(val6 == -28);
+    unsigned short i7 = 29;
+    Hjson::Value val7(i7);
+    assert(val7 == 29);
+    assert(29 == val7);
+    assert(val7 == i7);
+    assert(i7 == val7);
+    assert(!(val7 > i7));
+    assert(!(i7 > val7));
+    assert(!(val7 < i7));
+    assert(!(i7 < val7));
+    val7 -= i7;
+    assert(val7 == 0);
+    unsigned char i8 = 4;
+    Hjson::Value val8(i8);
+    assert(val8 == 4);
+    assert(4 == val8);
+    assert(val8 == i8);
+    assert(i8 == val8);
+    assert(!(i8 > val8));
+    assert(!(val8 > i8));
+    assert(!(i8 < val8));
+    assert(!(val8 < i8));
+    unsigned int i9 = 4;
+    Hjson::Value val9(i9);
+    assert(val9 == 4);
+    assert(4 == val9);
+    assert(val9 == i9);
+    assert(i9 == val9);
+    assert(!(i9 > val9));
+    assert(!(val9 > i9));
+    assert(!(i9 < val9));
+    assert(!(val9 < i9));
+    i9 = val9;
+    assert(i9 == 4);
   }
 
   {
-    Hjson::Value val(144115188075855873, Hjson::Int64_tag{});
+    Hjson::Value val(144115188075855873);
     assert(val.type() == Hjson::Value::Type::Int64);
-    assert(val == Hjson::Value(144115188075855873, Hjson::Int64_tag{}));
-    assert(val != Hjson::Value(144115188075855874, Hjson::Int64_tag{}));
+    assert(val == Hjson::Value(144115188075855873));
+    assert(val != Hjson::Value(144115188075855874));
     assert(val.to_int64() == 144115188075855873);
-    val = Hjson::Value(9223372036854775807, Hjson::Int64_tag{});
+    assert(static_cast<std::int64_t>(val) == 144115188075855873);
+    val = Hjson::Value(9223372036854775807);
     assert(val.to_string() == "9223372036854775807");
-    assert(val == Hjson::Value(9223372036854775807, Hjson::Int64_tag{}));
-    assert(val != Hjson::Value(9223372036854775806, Hjson::Int64_tag{}));
+    assert(val == Hjson::Value(9223372036854775807));
+    assert(val != Hjson::Value(9223372036854775806));
     assert(val.to_int64() == 9223372036854775807);
-    assert(val > Hjson::Value(9223372036854775806, Hjson::Int64_tag{}));
+    assert(val > Hjson::Value(9223372036854775806));
     std::int64_t i = 9223372036854775806;
     std::int64_t i2 = 9223372036854775806;
-    Hjson::Value val2(i, Hjson::Int64_tag{});
-    assert(val2 == Hjson::Value(i, Hjson::Int64_tag{}));
+    Hjson::Value val2(i);
+    assert(val2 == Hjson::Value(i));
     assert(val2 != val);
     assert(val2 < val);
     assert(val > val2);
-    assert(val2 < Hjson::Value(9223372036854775807, Hjson::Int64_tag{}));
-    // Would fail, because val2 returns a double when on the right side of the comparison.
-    // assert(9223372036854775807 > val2);
+    assert(val2 < Hjson::Value(9223372036854775807));
+    assert(9223372036854775807 > val2);
     assert(9223372036854775807 > val2.to_int64());
     // These two assertions fail in GCC 5.4, which is ok because doubles can
     // only represent integers up to 9007199254000000 (2^53) without precision
@@ -209,11 +284,44 @@ void test_value() {
     Hjson::Value val7("-9223372036854775806");
     assert(val7.to_int64() == -9223372036854775806);
     assert(val7.to_string() == "-9223372036854775806");
-    Hjson::Value val8(-9223372036854775806, Hjson::Int64_tag{});
-    assert(val8 == Hjson::Value(-9223372036854775806, Hjson::Int64_tag{}));
+    Hjson::Value val8(-9223372036854775806);
+    assert(val8 == Hjson::Value(-9223372036854775806));
     assert(val8.to_int64() == -9223372036854775806);
     assert(val8 < val);
     assert(val8 < 1.0);
+    std::int64_t i3 = 144115188075855873;
+    Hjson::Value val9 = i3;
+    assert(val9 == i3);
+    assert(i3 == val9);
+    assert(!(val9 > i3));
+    assert(!(val9 < i3));
+    assert(!(i3 > val9));
+    assert(!(i3 > val9));
+    assert(val9 >= i3);
+    assert(val9 <= i3);
+    assert(i3 >= val9);
+    assert(i3 >= val9);
+    i3 = val9;
+    assert(i3 == 144115188075855873);
+    std::int64_t i4 = 1;
+    assert(i4 != val9);
+    assert(val9 != i4);
+    assert(val9 + i4 == 144115188075855874);
+    assert(i4 + val9 == 144115188075855874);
+    val9 += i4;
+    assert(val9 == 144115188075855874);
+    assert(val9 - i4 == 144115188075855873);
+    assert(i4 - val9  == -144115188075855873);
+    val9 -= i4;
+    assert(val9 == 144115188075855873);
+    assert(val9 / i4 == val9);
+    assert(i4 / val9 == 0);
+    val9 /= i4;
+    assert(val9 == 144115188075855873);
+    assert(val9 % i4 == 0);
+    assert(i4 % val9 == 1);
+    val9 %= i4;
+    assert(val9 == 0);
   }
 
   {
@@ -225,6 +333,26 @@ void test_value() {
   }
 
   {
+    Hjson::Value val1 = 3;
+    val1 += 1;
+    assert(val1 == 4);
+    assert(++val1 == 5);
+    assert(val1 == 5);
+    assert(val1++ == 5);
+    assert(val1 == 6);
+    val1 += 1.0;
+    assert(val1 == 7);
+    val1 -= 1;
+    assert(val1 == 6);
+    val1 -= 1.0;
+    assert(val1 == 5);
+    assert(--val1 == 4);
+    assert(val1 == 4);
+    assert(val1-- == 4);
+    assert(val1 == 3);
+  }
+
+  {
     Hjson::Value val("alpha");
     Hjson::Value val2 = "alpha";
     assert(val == val2);
@@ -233,6 +361,8 @@ void test_value() {
     assert(_test_string_param(val) == "alpha");
     val = std::string("alpha");
     std::string st = val;
+    assert(st == val);
+    assert(val == st);
     assert(val == val2);
     assert(val2 == std::string("alpha"));
     assert(val2 != std::string("beta"));
@@ -241,6 +371,24 @@ void test_value() {
     assert(val.to_double() == 0);
     assert(val.to_int64() == 0);
     assert(val.to_string() == "alpha");
+    st = val + "beta";
+    assert(st == "alphabeta");
+    val2 = val + "beta";
+    assert(val2 == "alphabeta");
+    val2 = val + std::string("beta");
+    assert(val2 == "alphabeta");
+    val2 = "beta" + val;
+    assert(val2 == "betaalpha");
+    val2 = std::string("beta") + val;
+    assert(val2 == "betaalpha");
+    val += "beta";
+    assert(val == "alphabeta");
+    val += st;
+    assert(val == "alphabetaalphabeta");
+    val = 3;
+    assert("a" + val == "a3");
+    val = 3.0;
+    assert("a" + val == "a3.0");
     // The result of the comparison is undefined in C++11.
     // assert(val.begin() == val.end());
   }

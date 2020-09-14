@@ -158,7 +158,7 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
 
   std::int64_t i;
   if (_parseInt(&i, (char*) p.data, end - 1)) {
-    *pValue = Value(i, Int64_tag{});
+    *pValue = Value(i);
     return true;
   } else {
     double d;

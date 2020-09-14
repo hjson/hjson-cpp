@@ -6,12 +6,43 @@
 #include <map>
 #include <stdexcept>
 
+#define HJSON_OP_DECL_VAL(_T, _O) \
+friend Value operator _O(_T, const Value&); \
+friend Value operator _O(const Value&, _T);
+
+#define HJSON_OP_DECL_BOOL(_T, _O) \
+friend bool operator _O(_T, const Value&); \
+friend bool operator _O(const Value&, _T);
+
+#define HJSON_OP_DECL_ASS(_T, _O) \
+Value& operator _O(_T);
+
+#define HJSON_OPERATORS_DECLARATION_A(_T) \
+HJSON_OP_DECL_BOOL(_T, <) \
+HJSON_OP_DECL_BOOL(_T, >) \
+HJSON_OP_DECL_BOOL(_T, <=) \
+HJSON_OP_DECL_BOOL(_T, >=) \
+HJSON_OP_DECL_BOOL(_T, ==) \
+HJSON_OP_DECL_BOOL(_T, !=) \
+HJSON_OP_DECL_ASS(_T, +=)
+
+#define HJSON_OPERATORS_DECLARATION_B(_T) \
+HJSON_OPERATORS_DECLARATION_A(_T) \
+HJSON_OP_DECL_VAL(_T, +) \
+HJSON_OP_DECL_VAL(_T, -) \
+HJSON_OP_DECL_VAL(_T, *) \
+HJSON_OP_DECL_VAL(_T, /) \
+HJSON_OP_DECL_ASS(_T, -=) \
+HJSON_OP_DECL_ASS(_T, *=) \
+HJSON_OP_DECL_ASS(_T, /=)
+
+#define HJSON_OPERATORS_DECLARATION_C(_T) \
+HJSON_OPERATORS_DECLARATION_B(_T) \
+HJSON_OP_DECL_VAL(_T, %) \
+HJSON_OP_DECL_ASS(_T, %=)
+
 
 namespace Hjson {
-
-
-// Exists only to avoid ambiguous conversions for the Hjson::Value constructors.
-struct Int64_tag {};
 
 
 class type_mismatch : public std::logic_error {
@@ -83,12 +114,19 @@ public:
 
   Value();
   Value(bool);
+  Value(float);
   Value(double);
+  Value(long double);
+  Value(char);
+  Value(unsigned char);
+  Value(short);
+  Value(unsigned short);
   Value(int);
-  // The int64 constructor is tagged to avoid ambiguous conversions for the
-  // overloaded constructors. Example usage:
-  //   Hjson::Value hval(9223372036854775807, Hjson::Int64_tag{});
-  Value(std::int64_t, Int64_tag);
+  Value(unsigned int);
+  Value(long);
+  Value(unsigned long);
+  Value(long long);
+  Value(unsigned long long);
   Value(const char*);
   Value(const std::string&);
   Value(Type);
@@ -99,39 +137,54 @@ public:
   const Value operator[](const char*) const;
   MapProxy operator[](const char*);
   const Value operator[](int) const;
-  Value &operator[](int);
+  Value& operator[](int);
+
   bool operator ==(bool) const;
   bool operator !=(bool) const;
-  bool operator ==(double) const;
-  bool operator !=(double) const;
-  bool operator ==(int) const;
-  bool operator !=(int) const;
-  bool operator ==(const char*) const;
-  bool operator !=(const char*) const;
-  bool operator ==(const std::string&) const;
-  bool operator !=(const std::string&) const;
-  bool operator ==(const Value&) const;
-  bool operator !=(const Value&) const;
-  bool operator <(double) const;
-  bool operator >(double) const;
-  bool operator <(int) const;
-  bool operator >(int) const;
-  bool operator <(const char*) const;
-  bool operator >(const char*) const;
-  bool operator <(const std::string&) const;
-  bool operator >(const std::string&) const;
-  bool operator <(const Value&) const;
-  bool operator >(const Value&) const;
-  double operator +(double) const;
-  double operator +(int) const;
-  std::string operator +(const char*) const;
-  std::string operator +(const std::string&) const;
-  Value operator +(const Value&) const;
-  double operator -(double) const;
-  double operator -(int) const;
-  double operator -(const Value&) const;
+
+  friend std::string operator +(const char*, const Value&);
+  friend std::string operator +(const Value&, const char*);
+  friend std::string operator +(const std::string&, const Value&);
+  friend std::string operator +(const Value&, const std::string&);
+
+  HJSON_OPERATORS_DECLARATION_A(const char*)
+  HJSON_OPERATORS_DECLARATION_A(const std::string&)
+  HJSON_OPERATORS_DECLARATION_B(float)
+  HJSON_OPERATORS_DECLARATION_B(double)
+  HJSON_OPERATORS_DECLARATION_B(long double)
+  HJSON_OPERATORS_DECLARATION_C(char)
+  HJSON_OPERATORS_DECLARATION_C(unsigned char)
+  HJSON_OPERATORS_DECLARATION_C(short)
+  HJSON_OPERATORS_DECLARATION_C(unsigned short)
+  HJSON_OPERATORS_DECLARATION_C(int)
+  HJSON_OPERATORS_DECLARATION_C(unsigned int)
+  HJSON_OPERATORS_DECLARATION_C(long)
+  HJSON_OPERATORS_DECLARATION_C(unsigned long)
+  HJSON_OPERATORS_DECLARATION_C(long long)
+  HJSON_OPERATORS_DECLARATION_C(unsigned long long)
+  HJSON_OPERATORS_DECLARATION_C(const Value&)
+
+  Value operator+() const;
+  Value operator-() const;
+  Value& operator++();
+  Value& operator--();
+  Value operator++(int);
+  Value operator--(int);
+
   explicit operator bool() const;
+  operator float() const;
   operator double() const;
+  operator long double() const;
+  operator char() const;
+  operator unsigned char() const;
+  operator short() const;
+  operator unsigned short() const;
+  operator int() const;
+  operator unsigned int() const;
+  operator long() const;
+  operator unsigned long() const;
+  operator long long() const;
+  operator unsigned long long() const;
   operator const char*() const;
   operator const std::string() const;
 
@@ -170,7 +223,9 @@ public:
   size_t erase(const std::string&);
   size_t erase(const char*);
 
-  // These functions throw an error if used on Vector or Map
+  // These functions throw an error if used on Vector or Map, but will return
+  // 0 or 0.0 for the types Undefined and Null. Will parse strings to numbers
+  // and print numbers to strings if necessary.
   double to_double() const;
   std::int64_t to_int64() const;
   std::string to_string() const;
