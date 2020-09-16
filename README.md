@@ -4,7 +4,7 @@
 [![C++](https://img.shields.io/github/release/hjson/hjson-cpp.svg?style=flat-square&label=c%2b%2b)](https://github.com/hjson/hjson-cpp/releases)
 ![license](https://img.shields.io/github/license/mashape/apistatus.svg)
 
-![Hjson Intro](http://hjson.org/hjson1.gif)
+![Hjson Intro](https://hjson.github.io/hjson1.gif)
 
 ```
 {
@@ -25,7 +25,7 @@
 }
 ```
 
-The C++ implementation of Hjson is based on [hjson-go](https://github.com/hjson/hjson-go). For other platforms see [hjson.org](http://hjson.org).
+The C++ implementation of Hjson is based on [hjson-go](https://github.com/hjson/hjson-go). For other platforms see [hjson.github.io](https://hjson.github.io).
 
 # Compiling
 
