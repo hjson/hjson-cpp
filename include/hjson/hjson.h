@@ -60,6 +60,11 @@ class syntax_error : public std::runtime_error {
 };
 
 
+class file_error : public std::runtime_error {
+  using std::runtime_error::runtime_error;
+};
+
+
 // EncoderOptions defines options for encoding to Hjson.
 struct EncoderOptions {
   // End of line, should be either \n or \r\n
@@ -133,7 +138,7 @@ public:
   virtual ~Value();
 
   const Value operator[](const std::string&) const;
-  MapProxy operator[](const std::string& name);
+  MapProxy operator[](const std::string&);
   const Value operator[](const char*) const;
   MapProxy operator[](const char*);
   const Value operator[](int) const;
@@ -253,16 +258,31 @@ public:
 
 EncoderOptions DefaultOptions();
 
-// Returns a properly indented text representation of the input value tree.
-// Extra options can be specified in the input parameter "options".
+// Deprecated, use Marshal(Value v, EncoderOptions options) instead.
 std::string MarshalWithOptions(Value v, EncoderOptions options);
 
 // Returns a properly indented text representation of the input value tree.
-std::string Marshal(Value v);
+// Extra options can be specified in the input parameter "options".
+std::string Marshal(Value v, EncoderOptions options);
+
+// Returns a properly indented text representation of the input value tree.
+std::string Marshal(Value);
+
+// Writes (in binary mode, so using Unix EOL) a properly indented text
+// representation of the input value tree to the file specified by the input
+// parameter "path". Extra options can be specified in the input parameter
+// "options". Throws Hjson::file_error if the file cannot be opened for writing.
+void MarshalToFile(Value v, const std::string &path, EncoderOptions options);
+
+// Writes (in binary mode, so using Unix EOL) a properly indented text
+// representation of the input value tree to the file specified by the input
+// parameter "path". Throws Hjson::file_error if the file cannot be opened for
+// writing.
+void MarshalToFile(Value v, const std::string &path);
 
 // Returns a properly indented JSON text representation of the input value
 // tree.
-std::string MarshalJson(Value v);
+std::string MarshalJson(Value);
 
 // Calls `Marshal(v)` and outputs the result to the stream.
 std::ostream &operator <<(std::ostream &out, Value v);
@@ -276,6 +296,10 @@ Value Unmarshal(const char *data);
 
 // Creates a Value tree from input text.
 Value Unmarshal(const std::string&);
+
+// Reads the entire file (in binary mode) and unmarshals it. Throws
+// Hjson::file_error if the file cannot be opened for reading.
+Value UnmarshalFromFile(const std::string &path);
 
 // Returns a Value tree that is a combination of the input parameters "base"
 // and "ext".

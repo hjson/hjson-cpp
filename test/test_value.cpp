@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstring>
 #include <sstream>
+#include <cstdio>
 #include "hjson_test.h"
 
 
@@ -881,5 +882,26 @@ arr: [
     auto root = Hjson::Unmarshal(noRootBraces);
     auto newStr = Hjson::MarshalWithOptions(root, options);
     assert(newStr == noRootBraces);
+  }
+
+  {
+    const char *szTmp = "tmpTestFile.hjson";
+
+    auto root1 = Hjson::UnmarshalFromFile("assets/charset_test.hjson");
+    assert(!root1.empty());
+    try {
+      root1 = Hjson::UnmarshalFromFile("does_not_exist");
+      assert(!"Did not throw error for trying to open non-existing file");
+    } catch(Hjson::file_error e) {}
+
+    Hjson::MarshalToFile(root1, szTmp);
+    try {
+      Hjson::MarshalToFile(root1, "");
+      assert(!"Did not throw error for trying to write to invalid filename");
+    } catch(Hjson::file_error e) {}
+
+    auto root2 = Hjson::UnmarshalFromFile(szTmp);
+    assert(root2.deep_equal(root1));
+    std::remove(szTmp);
   }
 }

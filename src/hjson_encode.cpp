@@ -3,6 +3,7 @@
 #include <regex>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 #include <cmath>
 
 
@@ -388,7 +389,13 @@ static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst,
 }
 
 
-// MarshalWithOptions returns the Hjson encoding of v.
+// Deprecated, use Marshal(Value, EncoderOptions) instead.
+std::string MarshalWithOptions(Value v, EncoderOptions options) {
+  return Marshal(v, options);
+}
+
+
+// Marshal returns the Hjson encoding of v.
 //
 // Marshal traverses the value v recursively.
 //
@@ -408,7 +415,7 @@ static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst,
 // handle them. Passing cyclic structures to Marshal will result in
 // an infinite recursion.
 //
-std::string MarshalWithOptions(Value v, EncoderOptions options) {
+std::string Marshal(Value v, EncoderOptions options) {
   if (options.separator) {
     options.quoteAlways = true;
   }
@@ -446,10 +453,25 @@ std::string MarshalWithOptions(Value v, EncoderOptions options) {
 // Marshal returns the Hjson encoding of v using
 // default options.
 //
-// See MarshalWithOptions.
+// See Marshal(Value, EncoderOptions).
 //
 std::string Marshal(Value v) {
-  return MarshalWithOptions(v, DefaultOptions());
+  return Marshal(v, DefaultOptions());
+}
+
+
+void MarshalToFile(Value v, const std::string &path, EncoderOptions options) {
+  std::ofstream outputFile(path, std::ofstream::binary);
+  if (!outputFile.is_open()) {
+    throw file_error("Could not open file '" + path + "' for writing");
+  }
+  outputFile << Marshal(v, options);
+  outputFile.close();
+}
+
+
+void MarshalToFile(Value v, const std::string &path) {
+  return MarshalToFile(v, path, DefaultOptions());
 }
 
 

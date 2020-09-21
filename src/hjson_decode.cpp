@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <fstream>
 
 
 namespace Hjson {
@@ -566,6 +567,21 @@ Value Unmarshal(const char *data) {
 
 Value Unmarshal(const std::string &data) {
   return Unmarshal(data.c_str(), data.size());
+}
+
+
+Value UnmarshalFromFile(const std::string &path) {
+  std::ifstream infile(path, std::ifstream::ate | std::ifstream::binary);
+  if (!infile.is_open()) {
+    throw file_error("Could not open file '" + path + "' for reading");
+  }
+  std::string inStr;
+  inStr.resize(infile.tellg());
+  infile.seekg(0, std::ios::beg);
+  infile.read(&inStr[0], inStr.size());
+  infile.close();
+
+  return Unmarshal(inStr);
 }
 
 

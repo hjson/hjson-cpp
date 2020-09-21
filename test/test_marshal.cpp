@@ -24,6 +24,9 @@ static std::string _readStream(std::ifstream *pInfile) {
 static std::string _readFile(std::string pathBeginning, std::string extra,
   std::string pathEnd)
 {
+  // The output from Hjson::Marshal() always uses Unix EOL, but git might have
+  // converted files to Windows EOL on Windows, therefore we open the file in
+  // text mode instead of binary mode.
   std::ifstream infile(pathBeginning + extra + pathEnd, std::ifstream::ate);
   if (!infile.is_open()) {
     infile.open(pathBeginning + pathEnd, std::ifstream::ate);
@@ -33,16 +36,12 @@ static std::string _readFile(std::string pathBeginning, std::string extra,
 }
 
 
-static std::string _getTestContent(std::string name) {
-  std::ifstream infile("assets/" + name + "_test.hjson",
-    std::ifstream::ate | std::ifstream::binary);
+static Hjson::Value _getTestContent(std::string name) {
+  try {
+    return Hjson::UnmarshalFromFile("assets/" + name + "_test.hjson");
+  } catch (Hjson::file_error e) {}
 
-  if (!infile.is_open()) {
-    infile.open("assets/" + name + "_test.json",
-      std::ifstream::ate | std::ifstream::binary);
-  }
-
-  return _readStream(&infile);
+  return Hjson::UnmarshalFromFile("assets/" + name + "_test.json");
 }
 
 
@@ -77,17 +76,16 @@ static void _examine(std::string filename) {
 
   bool shouldFail = !name.compare(0, 4, "fail");
 
-  auto testContent = _getTestContent(name);
   Hjson::Value root;
   try {
-    root = Hjson::Unmarshal(testContent);
+    root = _getTestContent(name);
     if (shouldFail) {
-      std::cout << "Should have failed on " << name << std::endl;
+      std::cout << "Should have failed on " << name << "\n";
       assert(false);
     }
   } catch (Hjson::syntax_error e) {
     if (!shouldFail) {
-      std::cout << "Should NOT have failed on " << name << std::endl;
+      std::cout << "Should NOT have failed on " << name << "\n";
       assert(false);
     } else {
       return;
