@@ -263,22 +263,13 @@ std::string MarshalWithOptions(Value v, EncoderOptions options);
 
 // Returns a properly indented text representation of the input value tree.
 // Extra options can be specified in the input parameter "options".
-std::string Marshal(Value v, EncoderOptions options);
-
-// Returns a properly indented text representation of the input value tree.
-std::string Marshal(Value);
+std::string Marshal(Value v, EncoderOptions options = DefaultOptions());
 
 // Writes (in binary mode, so using Unix EOL) a properly indented text
 // representation of the input value tree to the file specified by the input
 // parameter "path". Extra options can be specified in the input parameter
 // "options". Throws Hjson::file_error if the file cannot be opened for writing.
-void MarshalToFile(Value v, const std::string &path, EncoderOptions options);
-
-// Writes (in binary mode, so using Unix EOL) a properly indented text
-// representation of the input value tree to the file specified by the input
-// parameter "path". Throws Hjson::file_error if the file cannot be opened for
-// writing.
-void MarshalToFile(Value v, const std::string &path);
+void MarshalToFile(Value v, const std::string &path, EncoderOptions options = DefaultOptions());
 
 // Returns a properly indented JSON text representation of the input value
 // tree.

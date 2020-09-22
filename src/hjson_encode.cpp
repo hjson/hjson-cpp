@@ -450,16 +450,6 @@ std::string Marshal(Value v, EncoderOptions options) {
 }
 
 
-// Marshal returns the Hjson encoding of v using
-// default options.
-//
-// See Marshal(Value, EncoderOptions).
-//
-std::string Marshal(Value v) {
-  return Marshal(v, DefaultOptions());
-}
-
-
 void MarshalToFile(Value v, const std::string &path, EncoderOptions options) {
   std::ofstream outputFile(path, std::ofstream::binary);
   if (!outputFile.is_open()) {
@@ -467,11 +457,6 @@ void MarshalToFile(Value v, const std::string &path, EncoderOptions options) {
   }
   outputFile << Marshal(v, options);
   outputFile.close();
-}
-
-
-void MarshalToFile(Value v, const std::string &path) {
-  return MarshalToFile(v, path, DefaultOptions());
 }
 
 
