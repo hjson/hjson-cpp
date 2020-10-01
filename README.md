@@ -15,7 +15,7 @@
   /* feeling old fashioned? */
 
   # did you notice that rate doesn't need quotes?
-  hey: look ma, no quotes for strings either!
+  hey: look, no quotes for strings either!
 
   # best of all
   notice: []
