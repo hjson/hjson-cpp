@@ -455,7 +455,7 @@ void MarshalToFile(Value v, const std::string &path, EncoderOptions options) {
   if (!outputFile.is_open()) {
     throw file_error("Could not open file '" + path + "' for writing");
   }
-  outputFile << Marshal(v, options);
+  outputFile << Marshal(v, options) << "\n";
   outputFile.close();
 }
 
