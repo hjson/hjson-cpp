@@ -390,7 +390,7 @@ static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst,
 
 
 // Deprecated, use Marshal(Value, EncoderOptions) instead.
-std::string MarshalWithOptions(Value v, EncoderOptions options) {
+std::string MarshalWithOptions(const Value& v, EncoderOptions options) {
   return Marshal(v, options);
 }
 
@@ -415,7 +415,7 @@ std::string MarshalWithOptions(Value v, EncoderOptions options) {
 // handle them. Passing cyclic structures to Marshal will result in
 // an infinite recursion.
 //
-std::string Marshal(Value v, EncoderOptions options) {
+std::string Marshal(const Value& v, EncoderOptions options) {
   if (options.separator) {
     options.quoteAlways = true;
   }
@@ -450,7 +450,7 @@ std::string Marshal(Value v, EncoderOptions options) {
 }
 
 
-void MarshalToFile(Value v, const std::string &path, EncoderOptions options) {
+void MarshalToFile(const Value& v, const std::string &path, EncoderOptions options) {
   std::ofstream outputFile(path, std::ofstream::binary);
   if (!outputFile.is_open()) {
     throw file_error("Could not open file '" + path + "' for writing");
@@ -466,7 +466,7 @@ void MarshalToFile(Value v, const std::string &path, EncoderOptions options) {
 //
 // See MarshalWithOptions.
 //
-std::string MarshalJson(Value v) {
+std::string MarshalJson(const Value& v) {
   auto opt = DefaultOptions();
 
   opt.bracesSameLine = true;
@@ -478,7 +478,7 @@ std::string MarshalJson(Value v) {
 }
 
 
-std::ostream &operator <<(std::ostream &out, Value v) {
+std::ostream &operator <<(std::ostream &out, const Value& v) {
   out << Marshal(v);
   return out;
 }

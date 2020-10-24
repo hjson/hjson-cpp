@@ -247,7 +247,7 @@ private:
   bool wasAssigned;
 
   MapProxy(std::shared_ptr<ValueImpl> parent, std::shared_ptr<ValueImpl> child,
-    const std::string &key);
+    const std::string& key);
 
 public:
   ~MapProxy();
@@ -258,25 +258,25 @@ public:
 
 EncoderOptions DefaultOptions();
 
-// Deprecated, use Marshal(Value v, EncoderOptions options) instead.
-std::string MarshalWithOptions(Value v, EncoderOptions options);
+// Deprecated, use Marshal(const Value& v, EncoderOptions options) instead.
+std::string MarshalWithOptions(const Value&, EncoderOptions);
 
 // Returns a properly indented text representation of the input value tree.
 // Extra options can be specified in the input parameter "options".
-std::string Marshal(Value v, EncoderOptions options = DefaultOptions());
+std::string Marshal(const Value& v, EncoderOptions options = DefaultOptions());
 
 // Writes (in binary mode, so using Unix EOL) a properly indented text
 // representation of the input value tree to the file specified by the input
 // parameter "path". Extra options can be specified in the input parameter
 // "options". Throws Hjson::file_error if the file cannot be opened for writing.
-void MarshalToFile(Value v, const std::string &path, EncoderOptions options = DefaultOptions());
+void MarshalToFile(const Value& v, const std::string& path, EncoderOptions options = DefaultOptions());
 
 // Returns a properly indented JSON text representation of the input value
 // tree.
-std::string MarshalJson(Value);
+std::string MarshalJson(const Value&);
 
 // Calls `Marshal(v)` and outputs the result to the stream.
-std::ostream &operator <<(std::ostream &out, Value v);
+std::ostream &operator <<(std::ostream& out, const Value& v);
 
 // Creates a Value tree from input text.
 Value Unmarshal(const char *data, size_t dataSize);
@@ -290,7 +290,7 @@ Value Unmarshal(const std::string&);
 
 // Reads the entire file (in binary mode) and unmarshals it. Throws
 // Hjson::file_error if the file cannot be opened for reading.
-Value UnmarshalFromFile(const std::string &path);
+Value UnmarshalFromFile(const std::string& path);
 
 // Returns a Value tree that is a combination of the input parameters "base"
 // and "ext".
@@ -309,7 +309,7 @@ Value UnmarshalFromFile(const std::string &path);
 //
 // If "ext" is of type Undefined, a clone of "base" is returned.
 //
-Value Merge(const Value base, const Value ext);
+Value Merge(const Value& base, const Value& ext);
 
 
 }

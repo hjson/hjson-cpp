@@ -318,7 +318,7 @@ const Value Value::operator[](int index) const {
 }
 
 
-Value &Value::operator[](int index) {
+Value& Value::operator[](int index) {
   switch (prv->type)
   {
   case Type::Undefined:
@@ -360,18 +360,18 @@ bool Value::operator!=(bool input) const {
 
 
 #define RET_VAL(_T, _O) \
-Value operator _O(_T a, const Value &b) { \
+Value operator _O(_T a, const Value& b) { \
   return Value(a) _O b; \
 } \
-Value operator _O(const Value &a, _T b) { \
+Value operator _O(const Value& a, _T b) { \
   return a _O Value(b); \
 }
 
 #define RET_BOOL(_T, _O) \
-bool operator _O(_T a, const Value &b) { \
+bool operator _O(_T a, const Value& b) { \
   return Value(a) _O b; \
 } \
-bool operator _O(const Value &a, _T b) { \
+bool operator _O(const Value& a, _T b) { \
   return a _O Value(b); \
 }
 
@@ -411,27 +411,27 @@ HJSON_OP_IMPL_C(long long)
 HJSON_OP_IMPL_C(unsigned long long)
 
 
-std::string operator+(const char *a, const Value &b) {
+std::string operator+(const char *a, const Value& b) {
   return std::string(a) + b.to_string();
 }
 
 
-std::string operator+(const Value &a ,const char *b) {
+std::string operator+(const Value& a ,const char *b) {
   return  a.to_string() + std::string(b);
 }
 
 
-std::string operator+(const std::string &a, const Value &b) {
+std::string operator+(const std::string &a, const Value& b) {
   return a + b.to_string();
 }
 
 
-std::string operator+(const Value &a, const std::string &b) {
+std::string operator+(const Value& a, const std::string &b) {
   return a.to_string() + b;
 }
 
 
-Value operator+(const Value &a, const Value &b) {
+Value operator+(const Value& a, const Value& b) {
   if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     return a.prv->d + b.prv->i;
   } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -457,7 +457,7 @@ Value operator+(const Value &a, const Value &b) {
 }
 
 
-bool operator<(const Value &a, const Value &b) {
+bool operator<(const Value& a, const Value& b) {
   if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     return a.prv->d < b.prv->i;
   } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -483,7 +483,7 @@ bool operator<(const Value &a, const Value &b) {
 }
 
 
-bool operator>(const Value &a, const Value &b) {
+bool operator>(const Value& a, const Value& b) {
   if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     return a.prv->d > b.prv->i;
   } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -509,7 +509,7 @@ bool operator>(const Value &a, const Value &b) {
 }
 
 
-bool operator<=(const Value &a, const Value &b) {
+bool operator<=(const Value& a, const Value& b) {
   if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     return a.prv->d <= b.prv->i;
   } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -535,7 +535,7 @@ bool operator<=(const Value &a, const Value &b) {
 }
 
 
-bool operator>=(const Value &a, const Value &b) {
+bool operator>=(const Value& a, const Value& b) {
   if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     return a.prv->d >= b.prv->i;
   } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -561,7 +561,7 @@ bool operator>=(const Value &a, const Value &b) {
 }
 
 
-bool operator==(const Value &a, const Value &b) {
+bool operator==(const Value& a, const Value& b) {
   if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     return a.prv->d == b.prv->i;
   } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -595,12 +595,12 @@ bool operator==(const Value &a, const Value &b) {
 }
 
 
-bool operator!=(const Value &a, const Value &b) {
+bool operator!=(const Value& a, const Value& b) {
   return !(a == b);
 }
 
 
-Value operator-(const Value &a, const Value &b) {
+Value operator-(const Value& a, const Value& b) {
   if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     return a.prv->d - b.prv->i;
   } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -624,7 +624,7 @@ Value operator-(const Value &a, const Value &b) {
 }
 
 
-Value operator*(const Value &a, const Value &b) {
+Value operator*(const Value& a, const Value& b) {
   if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     return a.prv->d * b.prv->i;
   } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -648,7 +648,7 @@ Value operator*(const Value &a, const Value &b) {
 }
 
 
-Value operator/(const Value &a, const Value &b) {
+Value operator/(const Value& a, const Value& b) {
   if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     return a.prv->d / b.prv->i;
   } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -672,7 +672,7 @@ Value operator/(const Value &a, const Value &b) {
 }
 
 
-Value operator%(const Value &a, const Value &b) {
+Value operator%(const Value& a, const Value& b) {
   if (a.prv->type != b.prv->type || a.prv->type != Value::Type::Int64) {
     throw type_mismatch("The values must be of the Int64 type for this operation.");
   }
@@ -716,7 +716,7 @@ Value& Value::operator+=(const char *b) {
 }
 
 
-Value& Value::operator+=(const std::string &b) {
+Value& Value::operator+=(const std::string& b) {
   if (prv->type != Type::String) {
     throw type_mismatch("The value must be of type String for this operation.");
   }
@@ -727,7 +727,7 @@ Value& Value::operator+=(const std::string &b) {
 }
 
 
-Value& Value::operator+=(const Value &b) {
+Value& Value::operator+=(const Value& b) {
   if (prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     prv->d += b.prv->i;
   } else if (prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -757,14 +757,14 @@ Value& Value::operator+=(const Value &b) {
 }
 
 
-Value& Value::operator-=(const Value &b) {
+Value& Value::operator-=(const Value& b) {
   operator +=(-b);
 
   return *this;
 }
 
 
-Value& Value::operator*=(const Value &b) {
+Value& Value::operator*=(const Value& b) {
   if (prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     prv->d *= b.prv->i;
   } else if (prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -791,7 +791,7 @@ Value& Value::operator*=(const Value &b) {
 }
 
 
-Value& Value::operator/=(const Value &b) {
+Value& Value::operator/=(const Value& b) {
   if (prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
     prv->d /= b.prv->i;
   } else if (prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
@@ -818,7 +818,7 @@ Value& Value::operator/=(const Value &b) {
 }
 
 
-Value& Value::operator%=(const Value &b) {
+Value& Value::operator%=(const Value& b) {
   if (prv->type != b.prv->type || prv->type != Value::Type::Int64) {
     throw type_mismatch("The values must be of the Int64 type for this operation.");
   }
@@ -1078,7 +1078,7 @@ size_t Value::size() const {
 }
 
 
-bool Value::deep_equal(const Value &other) const {
+bool Value::deep_equal(const Value& other) const {
   if (*this == other) {
     return true;
   }
@@ -1189,7 +1189,7 @@ void Value::erase(int index) {
 }
 
 
-void Value::push_back(const Value &other) {
+void Value::push_back(const Value& other) {
   if (prv->type == Type::Undefined) {
     prv->~ValueImpl();
     // Recreate the private object using the same memory block.
@@ -1594,14 +1594,14 @@ MapProxy &MapProxy::operator =(const MapProxy &other) {
 }
 
 
-MapProxy &MapProxy::operator =(const Value &other) {
+MapProxy &MapProxy::operator =(const Value& other) {
   prv = other.prv;
   wasAssigned = true;
   return *this;
 }
 
 
-Value Merge(const Value base, const Value ext) {
+Value Merge(const Value& base, const Value& ext) {
   Value merged;
 
   if (!ext.defined()) {
