@@ -97,8 +97,11 @@ static void _examine(std::string filename) {
   extra = "charconv/";
 #endif
 
-  auto rhjson = _readFile("assets/sorted/", extra, name + "_result.hjson");
-  auto actualHjson = Hjson::Marshal(root);
+  auto opt = Hjson::DefaultOptions();
+  opt.bracesSameLine = false;
+
+  auto rhjson = _readFile("assets/", extra, name + "_result.hjson");
+  auto actualHjson = Hjson::Marshal(root, opt);
 
 #if WRITE_FACIT
   std::ofstream outputFile("assets/sorted/" + name + "_result.hjson", std::ofstream::binary);
@@ -108,7 +111,7 @@ static void _examine(std::string filename) {
 
   _evaluate(rhjson, actualHjson);
 
-  auto rjson = _readFile("assets/sorted/", extra, name + "_result.json");
+  auto rjson = _readFile("assets/", extra, name + "_result.json");
   auto actualJson = Hjson::MarshalJson(root);
 
 #if WRITE_FACIT
@@ -119,11 +122,10 @@ static void _examine(std::string filename) {
 
   _evaluate(rjson, actualJson);
 
-  auto opt = Hjson::DefaultOptions();
-  opt.preserveInsertionOrder = true;
+  opt.preserveInsertionOrder = false;
 
-  rhjson = _readFile("assets/", extra, name + "_result.hjson");
-  actualHjson = Hjson::MarshalWithOptions(root, opt);
+  rhjson = _readFile("assets/sorted/", extra, name + "_result.hjson");
+  actualHjson = Hjson::Marshal(root, opt);
 
 #if WRITE_FACIT
   outputFile = std::ofstream("assets/" + name + "_result.hjson", std::ofstream::binary);
@@ -138,8 +140,8 @@ static void _examine(std::string filename) {
   opt.quoteKeys = true;
   opt.separator = true;
 
-  rjson = _readFile("assets/", extra, name + "_result.json");
-  actualJson = Hjson::MarshalWithOptions(root, opt);
+  rjson = _readFile("assets/sorted/", extra, name + "_result.json");
+  actualJson = Hjson::Marshal(root, opt);
 
 #if WRITE_FACIT
   outputFile = std::ofstream("assets/" + name + "_result.json", std::ofstream::binary);

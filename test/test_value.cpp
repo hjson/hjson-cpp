@@ -594,14 +594,18 @@ void test_value() {
     assert(val.size() == 2);
     std::string generatedHjson = Hjson::Marshal(val);
     assert(generatedHjson == "{\n}");
+    auto options = Hjson::DefaultOptions();
+    options.preserveInsertionOrder = false;
+    generatedHjson = Hjson::Marshal(val, options);
+    assert(generatedHjson == "{\n}");
     sub1["sub1"] = "abc";
     sub2["sub2"] = "åäö";
     generatedHjson = Hjson::Marshal(val);
-    assert(generatedHjson == "{\n  abc:\n  {\n    sub1: abc\n  }\n  åäö:\n  {\n    sub2: åäö\n  }\n}");
+    assert(generatedHjson == "{\n  abc: {\n    sub1: abc\n  }\n  åäö: {\n    sub2: åäö\n  }\n}");
     {
       std::stringstream ss;
       ss << val;
-      assert(ss.str() == "{\n  abc:\n  {\n    sub1: abc\n  }\n  åäö:\n  {\n    sub2: åäö\n  }\n}");
+      assert(ss.str() == "{\n  abc: {\n    sub1: abc\n  }\n  åäö: {\n    sub2: åäö\n  }\n}");
     }
     Hjson::Value val3 = Hjson::Unmarshal(generatedHjson.c_str(), generatedHjson.size());
     assert(val3["abc"].defined());
@@ -780,7 +784,7 @@ void test_value() {
     auto opt = Hjson::DefaultOptions();
     opt.preserveInsertionOrder = true;
     auto str = Hjson::MarshalWithOptions(val1, opt);
-    assert(str == "{\n  xerxes:\n  {\n    first: 3\n  }\n  y: 2\n  zeta: 99\n}");
+    assert(str == "{\n  xerxes: {\n    first: 3\n  }\n  y: 2\n  zeta: 99\n}");
     assert(val1[0]["first"] == 3);
     assert(val1.key(1) == "y");
   }

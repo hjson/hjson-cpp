@@ -15,14 +15,14 @@ EncoderOptions DefaultOptions() {
   EncoderOptions opt;
 
   opt.eol = "\n";
-  opt.bracesSameLine = false;
+  opt.bracesSameLine = true;
   opt.quoteAlways = false;
   opt.quoteKeys = false;
   opt.indentBy = "  ";
   opt.allowMinusZero = false;
   opt.unknownAsNull = false;
   opt.separator = false;
-  opt.preserveInsertionOrder = false;
+  opt.preserveInsertionOrder = true;
   opt.omitRootBraces = false;
 
   return opt;
@@ -343,7 +343,9 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
       if (e->opt.preserveInsertionOrder) {
         size_t limit = value.size();
         for (int index = 0; index < limit; index++) {
-          _objElem(e, value.key(index), value[index], &isFirst, isRootObject);
+          if (value[index].defined()) {
+            _objElem(e, value.key(index), value[index], &isFirst, isRootObject);
+          }
         }
       } else {
         for (auto it : value) {
