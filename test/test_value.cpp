@@ -1190,4 +1190,31 @@ arr: [
 // key comment
 "")");
   }
+
+  {
+    std::string str = R"(
+
+ [
+
+awfoen
+3
+   # comment
+{
+  a: a
+   b:   b
+  #yes
+ c: "c" // c-comment
+}
+[
+1
+2
+]
+]
+)";
+    Hjson::DecoderOptions decOpt;
+    decOpt.whitespaceAsComments = true;
+    auto root = Hjson::Unmarshal(str, decOpt);
+    auto str2 = Hjson::Marshal(root);
+    assert(str2 == str);
+  }
 }

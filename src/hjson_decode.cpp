@@ -354,7 +354,7 @@ static std::string _readKeyname(Parser *p) {
 
 static CommentInfo _white(Parser *p) {
   CommentInfo ci = {
-    false,
+    p->opt.whitespaceAsComments,
     p->at - 1,
     0
   };
@@ -398,7 +398,7 @@ static CommentInfo _white(Parser *p) {
 
 static CommentInfo _getCommentAfter(Parser *p) {
   CommentInfo ci = {
-    false,
+    p->opt.whitespaceAsComments,
     p->at - 1,
     0
   };
@@ -728,6 +728,10 @@ static Value _rootValue(Parser *p) {
 // Unmarshal uses the inverse of the encodings that Marshal uses.
 //
 Value Unmarshal(const char *data, size_t dataSize, DecoderOptions options) {
+  if (options.whitespaceAsComments) {
+    options.comments = true;
+  }
+
   Parser parser = {
     (const unsigned char*) data,
     dataSize,

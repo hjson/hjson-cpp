@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <cctype>
 
 
 namespace Hjson {
@@ -270,6 +271,29 @@ static void _bracesIndent(Encoder *e, bool isObjElement, const Value& value, con
 }
 
 
+static bool _quoteForComment(Encoder *e, const std::string& comment) {
+  if (!e->opt.comments) {
+    return false;
+  }
+
+  for (char ch : comment) {
+    switch (ch)
+    {
+    case '\r':
+    case '\n':
+      return false;
+    case '/':
+    case '#':
+      return true;
+    default:
+      break;
+    }
+  }
+
+  return false;
+}
+
+
 // Produce a string from value.
 static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjElement) {
   const char *separator = ((isObjElement && (!e->opt.comments ||
@@ -296,7 +320,7 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
     break;
 
   case Type::String:
-    _quote(e, value, separator, isRootObject, e->opt.comments && !value.get_comment_after().empty());
+    _quote(e, value, separator, isRootObject, _quoteForComment(e, value.get_comment_after()));
     break;
 
   case Type::Vector:
