@@ -13,15 +13,15 @@ static std::string _test_string_param(std::string param) {
 
 void test_value() {
   {
-    Hjson::Value valVec(Hjson::Value::Type::Vector);
-    assert(valVec.type() == Hjson::Value::Type::Vector);
-    Hjson::Value valMap(Hjson::Value::Type::Map);
-    assert(valMap.type() == Hjson::Value::Type::Map);
+    Hjson::Value valVec(Hjson::Type::Vector);
+    assert(valVec.type() == Hjson::Type::Vector);
+    Hjson::Value valMap(Hjson::Type::Map);
+    assert(valMap.type() == Hjson::Type::Map);
   }
 
   {
     Hjson::Value val(true);
-    assert(val.type() == Hjson::Value::Type::Bool);
+    assert(val.type() == Hjson::Type::Bool);
     assert(val);
     assert(val == true);
     assert(val != false);
@@ -53,12 +53,12 @@ void test_value() {
   }
 
   {
-    Hjson::Value val(Hjson::Value::Type::Null);
-    assert(val.type() == Hjson::Value::Type::Null);
+    Hjson::Value val(Hjson::Type::Null);
+    assert(val.type() == Hjson::Type::Null);
     assert(!val);
     assert(val.empty());
     assert(val.size() == 0);
-    Hjson::Value val2(Hjson::Value::Type::Null);
+    Hjson::Value val2(Hjson::Type::Null);
     assert(val == val2);
     Hjson::Value val3;
     assert(val != val3);
@@ -125,7 +125,7 @@ void test_value() {
       ss << val;
       assert(ss.str() == "3.0");
     }
-    assert(val.type() != Hjson::Value::Type::Int64);
+    assert(val.type() != Hjson::Type::Int64);
     // The result of the comparison is undefined in C++11.
     // assert(val.begin() == val.end());
   }
@@ -158,7 +158,7 @@ void test_value() {
       ss << val;
       assert(ss.str() == "1");
     }
-    assert(val.type() == Hjson::Value::Type::Int64);
+    assert(val.type() == Hjson::Type::Int64);
     int i = 2;
     Hjson::Value val2(i);
     assert(val2 != val);
@@ -255,7 +255,7 @@ void test_value() {
 
   {
     Hjson::Value val(144115188075855873);
-    assert(val.type() == Hjson::Value::Type::Int64);
+    assert(val.type() == Hjson::Type::Int64);
     assert(val == Hjson::Value(144115188075855873));
     assert(val != Hjson::Value(144115188075855874));
     assert(val.to_int64() == 144115188075855873);
@@ -538,14 +538,14 @@ void test_value() {
   {
     const Hjson::Value val;
     Hjson::Value undefined = val["down1"]["down2"]["down3"];
-    assert(undefined.type() == Hjson::Value::Type::Undefined);
+    assert(undefined.type() == Hjson::Type::Undefined);
     assert(!val.defined());
   }
 
   {
     Hjson::Value val;
     Hjson::Value undefined = val["down1"]["down2"]["down3"];
-    assert(undefined.type() == Hjson::Value::Type::Undefined);
+    assert(undefined.type() == Hjson::Type::Undefined);
     // The type of val is set to Map because a MapProxy is created, no easy way
     // to avoid that.
     //assert(!val.defined());
@@ -619,7 +619,7 @@ void test_value() {
       assert(!"Did not throw error when trying to push_back() on Value that is not a Type::Vector.");
     } catch(Hjson::type_mismatch e) {}
     assert(val[1] == 2);
-    assert(val[1].type() == Hjson::Value::Type::Int64);
+    assert(val[1].type() == Hjson::Type::Int64);
     val[0] = 3;
     assert(val[0] == 3);
     assert(val.size() == 2);
@@ -649,13 +649,13 @@ void test_value() {
     Hjson::Value val;
     Hjson::Value val2 = val["åäö"];
     assert(!val2.defined());
-    assert(val["åäö"].type() == Hjson::Value::Type::Undefined);
+    assert(val["åäö"].type() == Hjson::Type::Undefined);
     // Assert that the comparison didn't create an element.
     assert(val.size() == 0);
     Hjson::Value sub1, sub2;
     val["abc"] = sub1;
     val["åäö"] = sub2;
-    assert(val["åäö"].type() == Hjson::Value::Type::Undefined);
+    assert(val["åäö"].type() == Hjson::Type::Undefined);
     assert(!val["åäö"].defined());
     // Assert that explicit assignment creates an element.
     assert(val.size() == 2);
@@ -814,12 +814,12 @@ void test_value() {
     val2 = Hjson::Value();
     val2["2"] = 2;
     assert(!val1.deep_equal(val2));
-    val1 = Hjson::Value(Hjson::Value::Type::Vector);
-    val2 = Hjson::Value(Hjson::Value::Type::Vector);
+    val1 = Hjson::Value(Hjson::Type::Vector);
+    val2 = Hjson::Value(Hjson::Type::Vector);
     assert(val1.deep_equal(val2));
-    val1 = Hjson::Value(Hjson::Value::Type::Map);
+    val1 = Hjson::Value(Hjson::Type::Map);
     assert(!val1.deep_equal(val2));
-    val2 = Hjson::Value(Hjson::Value::Type::Map);
+    val2 = Hjson::Value(Hjson::Type::Map);
     assert(val1.deep_equal(val2));
   }
 
@@ -1111,7 +1111,7 @@ arr: [
   }
 
   {
-    Hjson::Value root(Hjson::Value::Type::Map);
+    Hjson::Value root(Hjson::Type::Map);
     root.set_comment_inside("\n  // comment inside\n");
     root["one"] = 1;
     root["one"].set_comment_after(" # afterOne");
@@ -1141,7 +1141,7 @@ arr: [
   }
 
   {
-    Hjson::Value root(Hjson::Value::Type::Vector);
+    Hjson::Value root(Hjson::Type::Vector);
     root.set_comment_inside("\n  // comment inside\n");
     root.push_back(1);
     root[0].set_comment_after(" # afterOne");

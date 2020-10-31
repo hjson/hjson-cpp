@@ -65,6 +65,18 @@ class file_error : public std::runtime_error {
 };
 
 
+enum class Type {
+  Undefined,
+  Null,
+  Bool,
+  Double,
+  Int64,
+  String,
+  Vector,
+  Map
+};
+
+
 // DecoderOptions defines options for decoding from Hjson.
 struct DecoderOptions {
   // Keep all comments from the Hjson input, store them in
@@ -120,17 +132,6 @@ private:
   Value(std::shared_ptr<ValueImpl>, std::shared_ptr<Comments>);
 
 public:
-  enum class Type {
-    Undefined,
-    Null,
-    Bool,
-    Double,
-    Int64,
-    String,
-    Vector,
-    Map
-  };
-
   Value();
   Value(bool);
   Value(float);

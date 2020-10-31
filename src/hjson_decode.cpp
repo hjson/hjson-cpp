@@ -469,7 +469,7 @@ static Value _readTfnns(Parser *p) {
         break;
       case 'n':
         if (trimmed == "null") {
-          return Value(Value::Type::Null);
+          return Value(Type::Null);
         }
         break;
       case 't':
@@ -497,7 +497,7 @@ static Value _readTfnns(Parser *p) {
 // Parse an array value.
 // assuming ch == '['
 static Value _readArray(Parser *p) {
-  Value array(Hjson::Value::Type::Vector);
+  Value array(Hjson::Type::Vector);
 
   // Skip '['.
   _next(p);
@@ -544,7 +544,7 @@ static Value _readArray(Parser *p) {
 
 // Parse an object value.
 static Value _readObject(Parser *p, bool withoutBraces) {
-  Value object(Hjson::Value::Type::Map);
+  Value object(Hjson::Type::Map);
 
   if (!withoutBraces) {
     // assuming ch == '{'

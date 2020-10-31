@@ -302,11 +302,11 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
   }
 
   switch (value.type()) {
-  case Value::Type::Double:
+  case Type::Double:
     e->oss << separator;
 
     if (std::isnan(static_cast<double>(value)) || std::isinf(static_cast<double>(value))) {
-      e->oss << Value(Value::Type::Null).to_string();
+      e->oss << Value(Type::Null).to_string();
     } else if (!e->opt.allowMinusZero && value == 0 && std::signbit(static_cast<double>(value))) {
       e->oss << Value(0).to_string();
     } else {
@@ -314,11 +314,11 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
     }
     break;
 
-  case Value::Type::String:
+  case Type::String:
     _quote(e, value, separator, isRootObject, e->opt.comments && !value.get_comment_after().empty());
     break;
 
-  case Value::Type::Vector:
+  case Type::Vector:
     {
       _bracesIndent(e, isObjElement, value, separator);
       e->oss << "[";
@@ -376,7 +376,7 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
     }
     break;
 
-  case Value::Type::Map:
+  case Type::Map:
     {
       if (!e->opt.omitRootBraces || !isRootObject || value.empty()) {
         _bracesIndent(e, isObjElement, value, separator);

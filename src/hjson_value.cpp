@@ -533,9 +533,9 @@ std::string operator+(const Value& a, const std::string &b) {
 
 
 Value operator+(const Value& a, const Value& b) {
-  if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (a.prv->type == Type::Double && b.prv->type == Type::Int64) {
     return a.prv->d + b.prv->i;
-  } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (a.prv->type == Type::Int64 && b.prv->type == Type::Double) {
     return a.prv->i + b.prv->d;
   }
 
@@ -544,11 +544,11 @@ Value operator+(const Value& a, const Value& b) {
   }
 
   switch (a.prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return a.prv->d + b.prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return a.prv->i + b.prv->i;
-  case Value::Type::String:
+  case Type::String:
     return *a.prv->s + *b.prv->s;
   default:
     break;
@@ -559,9 +559,9 @@ Value operator+(const Value& a, const Value& b) {
 
 
 bool operator<(const Value& a, const Value& b) {
-  if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (a.prv->type == Type::Double && b.prv->type == Type::Int64) {
     return a.prv->d < b.prv->i;
-  } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (a.prv->type == Type::Int64 && b.prv->type == Type::Double) {
     return a.prv->i < b.prv->d;
   }
 
@@ -570,11 +570,11 @@ bool operator<(const Value& a, const Value& b) {
   }
 
   switch (a.prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return a.prv->d < b.prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return a.prv->i < b.prv->i;
-  case Value::Type::String:
+  case Type::String:
     return *a.prv->s < *b.prv->s;
   default:
     break;
@@ -585,9 +585,9 @@ bool operator<(const Value& a, const Value& b) {
 
 
 bool operator>(const Value& a, const Value& b) {
-  if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (a.prv->type == Type::Double && b.prv->type == Type::Int64) {
     return a.prv->d > b.prv->i;
-  } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (a.prv->type == Type::Int64 && b.prv->type == Type::Double) {
     return a.prv->i > b.prv->d;
   }
 
@@ -596,11 +596,11 @@ bool operator>(const Value& a, const Value& b) {
   }
 
   switch (a.prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return a.prv->d > b.prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return a.prv->i > b.prv->i;
-  case Value::Type::String:
+  case Type::String:
     return *a.prv->s > *b.prv->s;
   default:
     break;
@@ -611,9 +611,9 @@ bool operator>(const Value& a, const Value& b) {
 
 
 bool operator<=(const Value& a, const Value& b) {
-  if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (a.prv->type == Type::Double && b.prv->type == Type::Int64) {
     return a.prv->d <= b.prv->i;
-  } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (a.prv->type == Type::Int64 && b.prv->type == Type::Double) {
     return a.prv->i <= b.prv->d;
   }
 
@@ -622,11 +622,11 @@ bool operator<=(const Value& a, const Value& b) {
   }
 
   switch (a.prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return a.prv->d <= b.prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return a.prv->i <= b.prv->i;
-  case Value::Type::String:
+  case Type::String:
     return *a.prv->s <= *b.prv->s;
   default:
     break;
@@ -637,9 +637,9 @@ bool operator<=(const Value& a, const Value& b) {
 
 
 bool operator>=(const Value& a, const Value& b) {
-  if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (a.prv->type == Type::Double && b.prv->type == Type::Int64) {
     return a.prv->d >= b.prv->i;
-  } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (a.prv->type == Type::Int64 && b.prv->type == Type::Double) {
     return a.prv->i >= b.prv->d;
   }
 
@@ -648,11 +648,11 @@ bool operator>=(const Value& a, const Value& b) {
   }
 
   switch (a.prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return a.prv->d >= b.prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return a.prv->i >= b.prv->i;
-  case Value::Type::String:
+  case Type::String:
     return *a.prv->s >= *b.prv->s;
   default:
     break;
@@ -663,9 +663,9 @@ bool operator>=(const Value& a, const Value& b) {
 
 
 bool operator==(const Value& a, const Value& b) {
-  if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (a.prv->type == Type::Double && b.prv->type == Type::Int64) {
     return a.prv->d == b.prv->i;
-  } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (a.prv->type == Type::Int64 && b.prv->type == Type::Double) {
     return a.prv->i == b.prv->d;
   }
 
@@ -674,20 +674,20 @@ bool operator==(const Value& a, const Value& b) {
   }
 
   switch (a.prv->type) {
-  case Value::Type::Undefined:
-  case Value::Type::Null:
+  case Type::Undefined:
+  case Type::Null:
     return true;
-  case Value::Type::Bool:
+  case Type::Bool:
     return a.prv->b == b.prv->b;
-  case Value::Type::Double:
+  case Type::Double:
     return a.prv->d == b.prv->d;
-  case Value::Type::String:
+  case Type::String:
     return *a.prv->s == *b.prv->s;
-  case Value::Type::Vector:
+  case Type::Vector:
     return a.prv->v == b.prv->v;
-  case Value::Type::Map:
+  case Type::Map:
     return a.prv->m == b.prv->m;
-  case Value::Type::Int64:
+  case Type::Int64:
     return a.prv->i == b.prv->i;
   }
 
@@ -703,9 +703,9 @@ bool operator!=(const Value& a, const Value& b) {
 
 
 Value operator-(const Value& a, const Value& b) {
-  if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (a.prv->type == Type::Double && b.prv->type == Type::Int64) {
     return a.prv->d - b.prv->i;
-  } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (a.prv->type == Type::Int64 && b.prv->type == Type::Double) {
     return a.prv->i - b.prv->d;
   }
 
@@ -714,9 +714,9 @@ Value operator-(const Value& a, const Value& b) {
   }
 
   switch (a.prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return a.prv->d - b.prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return a.prv->i - b.prv->i;
   default:
     break;
@@ -727,9 +727,9 @@ Value operator-(const Value& a, const Value& b) {
 
 
 Value operator*(const Value& a, const Value& b) {
-  if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (a.prv->type == Type::Double && b.prv->type == Type::Int64) {
     return a.prv->d * b.prv->i;
-  } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (a.prv->type == Type::Int64 && b.prv->type == Type::Double) {
     return a.prv->i * b.prv->d;
   }
 
@@ -738,9 +738,9 @@ Value operator*(const Value& a, const Value& b) {
   }
 
   switch (a.prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return a.prv->d * b.prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return a.prv->i * b.prv->i;
   default:
     break;
@@ -751,9 +751,9 @@ Value operator*(const Value& a, const Value& b) {
 
 
 Value operator/(const Value& a, const Value& b) {
-  if (a.prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (a.prv->type == Type::Double && b.prv->type == Type::Int64) {
     return a.prv->d / b.prv->i;
-  } else if (a.prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (a.prv->type == Type::Int64 && b.prv->type == Type::Double) {
     return a.prv->i / b.prv->d;
   }
 
@@ -762,9 +762,9 @@ Value operator/(const Value& a, const Value& b) {
   }
 
   switch (a.prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return a.prv->d / b.prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return a.prv->i / b.prv->i;
   default:
     break;
@@ -775,7 +775,7 @@ Value operator/(const Value& a, const Value& b) {
 
 
 Value operator%(const Value& a, const Value& b) {
-  if (a.prv->type != b.prv->type || a.prv->type != Value::Type::Int64) {
+  if (a.prv->type != b.prv->type || a.prv->type != Type::Int64) {
     throw type_mismatch("The values must be of the Int64 type for this operation.");
   }
 
@@ -830,9 +830,9 @@ Value& Value::operator+=(const std::string& b) {
 
 
 Value& Value::operator+=(const Value& b) {
-  if (prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (prv->type == Type::Double && b.prv->type == Type::Int64) {
     prv->d += b.prv->i;
-  } else if (prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (prv->type == Type::Int64 && b.prv->type == Type::Double) {
     prv->i += b.prv->d;
   } else {
     if (prv->type != b.prv->type) {
@@ -840,13 +840,13 @@ Value& Value::operator+=(const Value& b) {
     }
 
     switch (prv->type) {
-    case Value::Type::Double:
+    case Type::Double:
       prv->d += b.prv->d;
       break;
-    case Value::Type::Int64:
+    case Type::Int64:
       prv->i += b.prv->i;
       break;
-    case Value::Type::String:
+    case Type::String:
       *prv->s += *b.prv->s;
       break;
     default:
@@ -867,9 +867,9 @@ Value& Value::operator-=(const Value& b) {
 
 
 Value& Value::operator*=(const Value& b) {
-  if (prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (prv->type == Type::Double && b.prv->type == Type::Int64) {
     prv->d *= b.prv->i;
-  } else if (prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (prv->type == Type::Int64 && b.prv->type == Type::Double) {
     prv->i *= b.prv->d;
   } else {
     if (prv->type != b.prv->type) {
@@ -877,10 +877,10 @@ Value& Value::operator*=(const Value& b) {
     }
 
     switch (prv->type) {
-    case Value::Type::Double:
+    case Type::Double:
       prv->d *= b.prv->d;
       break;
-    case Value::Type::Int64:
+    case Type::Int64:
       prv->i *= b.prv->i;
       break;
     default:
@@ -894,9 +894,9 @@ Value& Value::operator*=(const Value& b) {
 
 
 Value& Value::operator/=(const Value& b) {
-  if (prv->type == Value::Type::Double && b.prv->type == Value::Type::Int64) {
+  if (prv->type == Type::Double && b.prv->type == Type::Int64) {
     prv->d /= b.prv->i;
-  } else if (prv->type == Value::Type::Int64 && b.prv->type == Value::Type::Double) {
+  } else if (prv->type == Type::Int64 && b.prv->type == Type::Double) {
     prv->i /= b.prv->d;
   } else {
     if (prv->type != b.prv->type) {
@@ -904,10 +904,10 @@ Value& Value::operator/=(const Value& b) {
     }
 
     switch (prv->type) {
-    case Value::Type::Double:
+    case Type::Double:
       prv->d /= b.prv->d;
       break;
-    case Value::Type::Int64:
+    case Type::Int64:
       prv->i /= b.prv->i;
       break;
     default:
@@ -921,7 +921,7 @@ Value& Value::operator/=(const Value& b) {
 
 
 Value& Value::operator%=(const Value& b) {
-  if (prv->type != b.prv->type || prv->type != Value::Type::Int64) {
+  if (prv->type != b.prv->type || prv->type != Type::Int64) {
     throw type_mismatch("The values must be of the Int64 type for this operation.");
   }
 
@@ -933,9 +933,9 @@ Value& Value::operator%=(const Value& b) {
 
 Value Value::operator+() const {
   switch (prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return prv->i;
   default:
     throw type_mismatch("The value must be of type Double or Int64 for this operation.");
@@ -948,9 +948,9 @@ Value Value::operator+() const {
 
 Value Value::operator-() const {
   switch (prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     return -prv->d;
-  case Value::Type::Int64:
+  case Type::Int64:
     return -prv->i;
   default:
     throw type_mismatch("The value must be of type Double or Int64 for this operation.");
@@ -963,10 +963,10 @@ Value Value::operator-() const {
 
 Value& Value::operator++() {
   switch (prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     prv->d++;
     break;
-  case Value::Type::Int64:
+  case Type::Int64:
     prv->i++;
     break;
   default:
@@ -980,10 +980,10 @@ Value& Value::operator++() {
 
 Value& Value::operator--() {
   switch (prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     prv->d--;
     break;
-  case Value::Type::Int64:
+  case Type::Int64:
     prv->i--;
     break;
   default:
@@ -999,11 +999,11 @@ Value Value::operator++(int) {
   Value ret;
 
   switch (prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     ret = prv->d;
     prv->d++;
     break;
-  case Value::Type::Int64:
+  case Type::Int64:
     ret = prv->i;
     prv->i++;
     break;
@@ -1020,11 +1020,11 @@ Value Value::operator--(int) {
   Value ret;
 
   switch (prv->type) {
-  case Value::Type::Double:
+  case Type::Double:
     ret = prv->d;
     prv->d--;
     break;
-  case Value::Type::Int64:
+  case Type::Int64:
     ret = prv->i;
     prv->i--;
     break;
@@ -1146,7 +1146,7 @@ bool Value::empty() const {
 }
 
 
-Value::Type Value::type() const {
+Type Value::type() const {
   return prv->type;
 }
 
@@ -1875,7 +1875,7 @@ Value Merge(const Value& base, const Value& ext) {
 
   if (!ext.defined()) {
     merged = base.clone();
-  } else if (base.type() == Value::Type::Map && ext.type() == Value::Type::Map) {
+  } else if (base.type() == Type::Map && ext.type() == Type::Map) {
     for (int index = 0; index < base.size(); ++index) {
       if (ext[base.key(index)].defined()) {
         merged[base.key(index)] = Merge(base[index], ext[base.key(index)]);
