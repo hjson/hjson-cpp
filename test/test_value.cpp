@@ -927,10 +927,10 @@ void test_value() {
     auto baseClone = base.clone();
     auto baseCloneStr = Hjson::Marshal(baseClone);
     assert(baseCloneStr == baseStr);
-    Hjson::EncoderOptions options = Hjson::DefaultOptions();
+    Hjson::EncoderOptions options;
     options.bracesSameLine = true;
     options.preserveInsertionOrder = true;
-    baseCloneStr = Hjson::MarshalWithOptions(baseClone, options);
+    baseCloneStr = Hjson::Marshal(baseClone, options);
     assert(baseCloneStr == baseStr);
   }
 

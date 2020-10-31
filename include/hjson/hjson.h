@@ -361,12 +361,6 @@ public:
 };
 
 
-// Deprecated, defaults are now included in the declaration of EncoderOptions.
-EncoderOptions DefaultOptions();
-
-// Deprecated, use Marshal(const Value& v, EncoderOptions options) instead.
-std::string MarshalWithOptions(const Value&, EncoderOptions);
-
 // Returns a properly indented text representation of the input value tree.
 // Extra options can be specified in the input parameter "options".
 std::string Marshal(const Value& v, EncoderOptions options = EncoderOptions());

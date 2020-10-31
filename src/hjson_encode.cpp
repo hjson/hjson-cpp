@@ -10,25 +10,6 @@
 namespace Hjson {
 
 
-// DefaultOptions returns the default encoding options.
-EncoderOptions DefaultOptions() {
-  EncoderOptions opt;
-
-  opt.eol = "\n";
-  opt.bracesSameLine = true;
-  opt.quoteAlways = false;
-  opt.quoteKeys = false;
-  opt.indentBy = "  ";
-  opt.allowMinusZero = false;
-  opt.unknownAsNull = false;
-  opt.separator = false;
-  opt.preserveInsertionOrder = true;
-  opt.omitRootBraces = false;
-
-  return opt;
-}
-
-
 struct Encoder {
   EncoderOptions opt;
   std::ostringstream oss;
@@ -473,12 +454,6 @@ static void _objElem(Encoder *e, const std::string& key, const Value& value, boo
     false,
     true
   );
-}
-
-
-// Deprecated, use Marshal(Value, EncoderOptions) instead.
-std::string MarshalWithOptions(const Value& v, EncoderOptions options) {
-  return Marshal(v, options);
 }
 
 
