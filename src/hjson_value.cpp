@@ -52,6 +52,12 @@ public:
 };
 
 
+class Value::Comments {
+public:
+  std::string m_commentBefore, m_commentKey, m_commentInside, m_commentAfter;
+};
+
+
 Value::ValueImpl::ValueImpl()
   : type(Type::Undefined)
 {
@@ -121,12 +127,6 @@ Value::ValueImpl::~ValueImpl() {
   default:
     break;
   }
-}
-
-
-Value::Value(std::shared_ptr<ValueImpl> _prv)
-  : prv(_prv)
-{
 }
 
 
@@ -243,7 +243,108 @@ Value::Value(Type _type)
 }
 
 
+Value::Value(const Value& other)
+  : prv(other.prv)
+{
+  if (other.cm) {
+    // Clone the comments instead of sharing the reference. This way a change
+    // in the other Value does not affect the comments in this Value.
+    cm.reset(new Comments(*other.cm));
+  }
+}
+
+
+Value::Value(Value&& other)
+  : prv(other.prv),
+    cm(other.cm)
+{
+}
+
+
+// Even though the MapProxy is temporary, it contains references that are owned
+// by a non-temporary object. Make sure the lvalue constructor is called.
+Value::Value(MapProxy&& other)
+  : Value(other)
+{
+}
+
+
+Value::Value(std::shared_ptr<ValueImpl> _prv, std::shared_ptr<Comments> _cm)
+  : prv(_prv),
+    cm(_cm)
+{
+}
+
+
 Value::~Value() {
+}
+
+
+Value& Value::operator=(const Value& other) {
+  // So that comments are kept when assigning a Value to a new key in a map,
+  // or to a variable that has not been assigned any other value yet.
+  if (!this->defined()) {
+    this->set_comments(other);
+  }
+
+  this->prv = other.prv;
+
+  return *this;
+}
+
+
+Value& Value::operator=(Value&& other) {
+  // So that comments are kept when assigning a Value to a new key in a map,
+  // or to a variable that has not been assigned any other value yet.
+  if (!this->defined()) {
+    this->cm = other.cm;
+  }
+
+  this->prv = other.prv;
+
+  return *this;
+}
+
+
+const Value& Value::at(const std::string& name) const {
+  switch (prv->type)
+  {
+  case Type::Undefined:
+    throw index_out_of_bounds("Key not found.");
+  case Type::Map:
+    try {
+      return prv->m->m.at(name);
+    } catch(std::out_of_range e) {}
+    throw index_out_of_bounds("Key not found.");
+  default:
+    throw type_mismatch("Must be of type Map for that operation.");
+  }
+}
+
+
+Value& Value::at(const std::string& name) {
+  switch (prv->type)
+  {
+  case Type::Undefined:
+    throw index_out_of_bounds("Key not found.");
+  case Type::Map:
+    try {
+      return prv->m->m.at(name);
+    } catch(std::out_of_range e) {}
+    throw index_out_of_bounds("Key not found.");
+  default:
+    throw type_mismatch("Must be of type Map for that operation.");
+  }
+}
+
+
+const Value& Value::at(const char *name) const {
+  return at(std::string(name));
+}
+
+
+Value& Value::at(const char *name) {
+  return at(std::string(name));
 }
 
 
@@ -273,9 +374,9 @@ MapProxy Value::operator[](const std::string& name) {
 
   auto it = prv->m->m.find(name);
   if (it == prv->m->m.end()) {
-    return MapProxy(prv, std::make_shared<ValueImpl>(Type::Undefined), name);
+    return MapProxy(prv, name, 0);
   }
-  return MapProxy(prv, it->second.prv, name);
+  return MapProxy(prv, name, &it->second);
 }
 
 
@@ -289,7 +390,7 @@ MapProxy Value::operator[](const char *input) {
 }
 
 
-const Value Value::operator[](int index) const {
+const Value& Value::operator[](int index) const {
   switch (prv->type)
   {
   case Type::Undefined:
@@ -1050,20 +1151,19 @@ Value::Type Value::type() const {
 }
 
 
+bool Value::is_container() const {
+  return prv->type == Type::Vector || prv->type == Type::Map;
+}
+
+
 bool Value::is_numeric() const {
   return prv->type == Type::Double || prv->type == Type::Int64;
 }
 
 
 size_t Value::size() const {
-  if (prv->type == Type::Undefined || prv->type == Type::Null) {
-    return 0;
-  }
-
   switch (prv->type)
   {
-  case Type::String:
-    return prv->s->size();
   case Type::Vector:
     return prv->v->size();
   case Type::Map:
@@ -1072,10 +1172,7 @@ size_t Value::size() const {
     break;
   }
 
-  assert(prv->type == Type::Bool || prv->type == Type::Double ||
-    prv->type == Type::Int64);
-
-  return 1;
+  return 0;
 }
 
 
@@ -1151,6 +1248,23 @@ Value Value::clone() const {
   }
 
   return *this;
+}
+
+
+void Value::clear() {
+  switch (prv->type) {
+  case Type::Vector:
+    prv->v->clear();
+    break;
+
+  case Type::Map:
+    prv->m->m.clear();
+    prv->m->v.clear();
+    break;
+
+  default:
+    break;
+  }
 }
 
 
@@ -1549,23 +1663,154 @@ std::string Value::to_string() const {
 }
 
 
-MapProxy::MapProxy(std::shared_ptr<ValueImpl> _parent,
-  std::shared_ptr<ValueImpl> _child, const std::string &_key)
-  : parentPrv(_parent),
+void Value::set_comment_before(const std::string& str) {
+  if (!cm) {
+    if (str.empty()) {
+      return;
+    }
+    cm.reset(new Comments());
+  }
+
+  cm->m_commentBefore = str;
+}
+
+
+std::string Value::get_comment_before() const {
+  if (cm) {
+    return cm->m_commentBefore;
+  }
+
+  return "";
+}
+
+
+void Value::set_comment_key(const std::string& str) {
+  if (!cm) {
+    if (str.empty()) {
+      return;
+    }
+    cm.reset(new Comments());
+  }
+
+  cm->m_commentKey = str;
+}
+
+
+std::string Value::get_comment_key() const {
+  if (cm) {
+    return cm->m_commentKey;
+  }
+
+  return "";
+}
+
+
+void Value::set_comment_inside(const std::string& str) {
+  if (!cm) {
+    if (str.empty()) {
+      return;
+    }
+    cm.reset(new Comments());
+  }
+
+  cm->m_commentInside = str;
+}
+
+
+std::string Value::get_comment_inside() const {
+  if (cm) {
+    return cm->m_commentInside;
+  }
+
+  return "";
+}
+
+
+void Value::set_comment_after(const std::string& str) {
+  if (!cm) {
+    if (str.empty()) {
+      return;
+    }
+    cm.reset(new Comments());
+  }
+
+  cm->m_commentAfter = str;
+}
+
+
+std::string Value::get_comment_after() const {
+  if (cm) {
+    return cm->m_commentAfter;
+  }
+
+  return "";
+}
+
+
+void Value::set_comments(const Value& other) {
+  if (other.cm) {
+    if (!cm) {
+      cm.reset(new Comments());
+    }
+
+    *cm = *other.cm;
+  } else {
+    clear_comments();
+  }
+}
+
+
+void Value::clear_comments() {
+  cm.reset();
+}
+
+
+Value& Value::assign_with_comments(const Value& other) {
+  // If this object is of type Undefined set_comments() will be called in the
+  // assignment operator, no need to call it here.
+  if (defined()) {
+    set_comments(other);
+  }
+  return operator=(other);
+}
+
+
+Value& Value::assign_with_comments(Value&& other) {
+  // If this object is of type Undefined set_comments() will be called in the
+  // assignment operator, no need to call it here.
+  if (defined()) {
+    cm = other.cm;
+  }
+  return operator=(std::move(other));
+}
+
+
+MapProxy::MapProxy(std::shared_ptr<ValueImpl> _parent, const std::string &_key,
+  Value *_pTarget)
+  : Value(_pTarget ? _pTarget->prv : std::make_shared<ValueImpl>(Type::Undefined),
+      _pTarget ? _pTarget->cm : 0),
+    parentPrv(_parent),
     key(_key),
+    pTarget(_pTarget),
     wasAssigned(false)
 {
-  prv = _child;
+}
+
+
+MapProxy::MapProxy(Value&& other)
+  : Value(std::move(other))
+{
 }
 
 
 MapProxy::~MapProxy() {
   if (wasAssigned || !empty()) {
-    auto m = &parentPrv->m->m;
-    Value val(prv);
-    auto it = m->find(key);
-
-    if (it == m->end()) {
+    if (pTarget) {
+      // Can have changed due to assignment.
+      pTarget->prv = this->prv;
+      // In case cm was 0 but now has been created by a call to set_comment_x.
+      pTarget->cm = this->cm;
+    } else {
       // If the key is new we must add it to the order vector also.
       parentPrv->m->v.push_back(key);
 
@@ -1575,25 +1820,53 @@ MapProxy::~MapProxy() {
       // Without this requirement, checking for the existence of an element
       // would create an Undefined element for that key if it didn't already exist
       // (e.g. `if (val["key"] == 1) {` would create an element for "key").
-      m[0][key] = val;
-    } else {
-      it->second = val;
+      parentPrv->m->m.emplace(key, Value(this->prv, this->cm));
     }
   }
 }
 
 
-MapProxy &MapProxy::operator =(const MapProxy &other) {
-  prv = other.prv;
+MapProxy& MapProxy::operator =(const MapProxy &other) {
+  return operator=(static_cast<Value>(other));
+}
+
+
+MapProxy& MapProxy::operator =(const Value& other) {
+  Value::operator=(other);
   wasAssigned = true;
   return *this;
 }
 
 
-MapProxy &MapProxy::operator =(const Value& other) {
-  prv = other.prv;
+MapProxy& MapProxy::operator =(Value&& other) {
+  Value::operator=(std::move(other));
   wasAssigned = true;
   return *this;
+}
+
+
+MapProxy& MapProxy::assign_with_comments(const MapProxy& other) {
+  return assign_with_comments(static_cast<Value>(other));
+}
+
+
+MapProxy& MapProxy::assign_with_comments(const Value& other) {
+  // If this object is of type Undefined set_comments() will be called in the
+  // assignment operator, no need to call it here.
+  if (defined()) {
+    set_comments(other);
+  }
+  return operator=(other);
+}
+
+
+MapProxy& MapProxy::assign_with_comments(Value&& other) {
+  // If this object is of type Undefined set_comments() will be called in the
+  // assignment operator, no need to call it here.
+  if (defined()) {
+    cm = other.cm;
+  }
+  return operator=(std::move(other));
 }
 
 

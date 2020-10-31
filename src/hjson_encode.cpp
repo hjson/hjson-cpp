@@ -40,8 +40,8 @@ struct Encoder {
 
 
 bool startsWithNumber(const char *text, size_t textSize);
-static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst,
-  bool isRootObject);
+static void _objElem(Encoder *e, const std::string& key, const Value& value, bool *pIsFirst,
+  bool isRootObject, const std::string& commentAfterPrevObj);
 
 
 // table of character substitutions
@@ -121,7 +121,7 @@ static int _fromUtf8(const unsigned char **ppC, size_t *pnS) {
 }
 
 
-static void _quoteReplace(Encoder *e, std::string text) {
+static void _quoteReplace(Encoder *e, const std::string& text) {
   size_t uIndexStart = 0;
 
   for (std::sregex_iterator it = std::sregex_iterator(text.begin(), text.end(),
@@ -164,7 +164,7 @@ static void _quoteReplace(Encoder *e, std::string text) {
 
 
 // wrap the string into the ''' (multiline) format
-static void _mlString(Encoder *e, std::string value, std::string separator) {
+static void _mlString(Encoder *e, const std::string& value, const char *separator) {
   size_t uIndexStart = 0;
   std::sregex_iterator it = std::sregex_iterator(value.begin(), value.end(),
     e->lineBreak);
@@ -211,15 +211,16 @@ static void _mlString(Encoder *e, std::string value, std::string separator) {
 
 // Check if we can insert this string without quotes
 // see hjson syntax (must not parse as true, false, null or number)
-static void _quote(Encoder *e, std::string value, std::string separator,
-  bool isRootObject)
+static void _quote(Encoder *e, const std::string& value, const char *separator,
+  bool isRootObject, bool hasCommentAfter)
 {
   if (value.size() == 0) {
     e->oss << separator << "\"\"";
   } else if (e->opt.quoteAlways ||
     std::regex_search(value, e->needsQuotes) ||
     startsWithNumber(value.c_str(), value.size()) ||
-    std::regex_search(value, e->startsWithKeyword))
+    std::regex_search(value, e->startsWithKeyword) ||
+    hasCommentAfter)
   {
 
     // If the string contains no control characters, no quote characters, and no
@@ -235,7 +236,7 @@ static void _quote(Encoder *e, std::string value, std::string separator,
     {
       _mlString(e, value, separator);
     } else {
-      e->oss << separator + '"';
+      e->oss << separator << '"';
       _quoteReplace(e, value);
       e->oss << '"';
     }
@@ -246,7 +247,7 @@ static void _quote(Encoder *e, std::string value, std::string separator,
 }
 
 
-static void _quoteName(Encoder *e, std::string name) {
+static void _quoteName(Encoder *e, const std::string& name) {
   if (name.empty()) {
     e->oss << "\"\"";
   } else if (e->opt.quoteKeys || std::regex_search(name, e->needsEscapeName)) {
@@ -265,10 +266,41 @@ static void _quoteName(Encoder *e, std::string name) {
 }
 
 
+static void _bracesIndent(Encoder *e, bool isObjElement, const Value& value, const char *separator) {
+  if (
+    isObjElement
+    && !e->opt.bracesSameLine
+    && (
+      !value.empty()
+      || (
+        e->opt.comments
+        && !value.get_comment_inside().empty()
+      )
+    )
+    && (
+      !e->opt.comments
+      || value.get_comment_key().empty()
+    )
+  ) {
+    _writeIndent(e, e->indent);
+  } else {
+    e->oss << separator;
+  }
+}
+
+
 // Produce a string from value.
-static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
-  bool isRootObject)
-{
+static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjElement) {
+  const char *separator = ((isObjElement && (!e->opt.comments ||
+    value.get_comment_key().empty())) ? " " : "");
+
+  if (e->opt.comments) {
+    if (isRootObject) {
+      e->oss << value.get_comment_before();
+    }
+    e->oss << value.get_comment_key();
+  }
+
   switch (value.type()) {
   case Value::Type::Double:
     e->oss << separator;
@@ -283,111 +315,164 @@ static void _str(Encoder *e, Value value, bool noIndent, std::string separator,
     break;
 
   case Value::Type::String:
-    _quote(e, value, separator, isRootObject);
+    _quote(e, value, separator, isRootObject, e->opt.comments && !value.get_comment_after().empty());
     break;
 
   case Value::Type::Vector:
-    if (value.empty()) {
-      e->oss << separator << "[]";
-    } else {
-      auto indent1 = e->indent;
-      e->indent++;
-
-      if (!noIndent && !e->opt.bracesSameLine) {
-        _writeIndent(e, indent1);
-      } else {
-        e->oss << separator;
-      }
+    {
+      _bracesIndent(e, isObjElement, value, separator);
       e->oss << "[";
+
+      e->indent++;
 
       // Join all of the element texts together, separated with newlines
       bool isFirst = true;
+      std::string commentAfter = value.get_comment_inside();
       for (int i = 0; size_t(i) < value.size(); ++i) {
         if (value[i].defined()) {
+          bool shouldIndent = (!e->opt.comments || value[i].get_comment_key().empty());
+
           if (isFirst) {
             isFirst = false;
-          } else if (e->opt.separator) {
-            e->oss << ",";
+
+            if (e->opt.comments && !commentAfter.empty()) {
+              e->oss << commentAfter;
+              // This is the first element, so commentAfterPrevObj is the inner comment
+              // of the parent vector. The inner comment probably expects "]" to come
+              // after it and therefore needs one more level of indentation.
+              e->oss << e->opt.indentBy;
+              shouldIndent = false;
+            }
+          } else {
+            if (e->opt.separator) {
+              e->oss << ",";
+            }
+
+            if (e->opt.comments) {
+              e->oss << commentAfter;
+            }
           }
 
-          _writeIndent(e, e->indent);
-          _str(e, value[i], true, "", false);
+          if (e->opt.comments && !value[i].get_comment_before().empty()) {
+            e->oss << value[i].get_comment_before();
+          } else if (shouldIndent) {
+            _writeIndent(e, e->indent);
+          }
+
+          _str(e, value[i], false, false);
+
+          commentAfter = value[i].get_comment_after();
         }
       }
 
-      _writeIndent(e, indent1);
-      e->oss << "]";
+      if (e->opt.comments && !commentAfter.empty()) {
+        e->oss << commentAfter;
+      } else if (!value.empty()) {
+        _writeIndent(e, e->indent - 1);
+      }
 
-      e->indent = indent1;
+      e->oss << "]";
+      e->indent--;
     }
     break;
 
   case Value::Type::Map:
-    if (value.empty()) {
-      e->oss << separator << "{}";
-    } else {
-      auto indent1 = e->indent;
-      if (!e->opt.omitRootBraces || !isRootObject) {
-        e->indent++;
-
-        if (!noIndent && !e->opt.bracesSameLine) {
-          _writeIndent(e, indent1);
-        } else {
-          e->oss << separator;
-        }
+    {
+      if (!e->opt.omitRootBraces || !isRootObject || value.empty()) {
+        _bracesIndent(e, isObjElement, value, separator);
         e->oss << "{";
+
+        e->indent++;
       }
 
       // Join all of the member texts together, separated with newlines
       bool isFirst = true;
+      std::string commentAfter = value.get_comment_inside();
       if (e->opt.preserveInsertionOrder) {
         size_t limit = value.size();
         for (int index = 0; index < limit; index++) {
           if (value[index].defined()) {
-            _objElem(e, value.key(index), value[index], &isFirst, isRootObject);
+            _objElem(e, value.key(index), value[index], &isFirst, isRootObject, commentAfter);
+            commentAfter = value[index].get_comment_after();
           }
         }
       } else {
         for (auto it : value) {
           if (it.second.defined()) {
-            _objElem(e, it.first, it.second, &isFirst, isRootObject);
+            _objElem(e, it.first, it.second, &isFirst, isRootObject, commentAfter);
+            commentAfter = it.second.get_comment_after();
           }
         }
       }
 
-      if (!e->opt.omitRootBraces || !isRootObject) {
-        _writeIndent(e, indent1);
-        e->oss << "}";
+      if (e->opt.comments && !commentAfter.empty()) {
+        e->oss << commentAfter;
+      } else if (!value.empty() && (!e->opt.omitRootBraces || !isRootObject)) {
+        _writeIndent(e, e->indent - 1);
       }
 
-      e->indent = indent1;
+      if (!e->opt.omitRootBraces || !isRootObject || value.empty()) {
+        e->indent--;
+        e->oss << "}";
+      }
     }
     break;
 
   default:
     e->oss << separator << value.to_string();
   }
+
+  if (e->opt.comments && isRootObject) {
+    e->oss << value.get_comment_after();
+  }
 }
 
 
-static void _objElem(Encoder *e, std::string key, Value value, bool *pIsFirst,
-  bool isRootObject)
+static void _objElem(Encoder *e, const std::string& key, const Value& value, bool *pIsFirst,
+  bool isRootObject, const std::string& commentAfterPrevObj)
 {
+  bool hasCommentBefore = (e->opt.comments && !value.get_comment_before().empty());
+
   if (*pIsFirst) {
     *pIsFirst = false;
-    if (!e->opt.omitRootBraces || !isRootObject) {
+    bool shouldIndent = ((!e->opt.omitRootBraces || !isRootObject) && !hasCommentBefore);
+
+    if (e->opt.comments && !commentAfterPrevObj.empty()) {
+      e->oss << commentAfterPrevObj;
+      // This is the first element, so commentAfterPrevObj is the inner comment
+      // of the parent map. The inner comment probably expects "}" to come
+      // after it and therefore needs one more level of indentation, unless
+      // this is the root object without braces.
+      if (shouldIndent) {
+        e->oss << e->opt.indentBy;
+      }
+    } else if (shouldIndent) {
       _writeIndent(e, e->indent);
     }
   } else {
     if (e->opt.separator) {
       e->oss << ",";
     }
-    _writeIndent(e, e->indent);
+    if (e->opt.comments) {
+      e->oss << commentAfterPrevObj;
+    }
+    if (!hasCommentBefore) {
+      _writeIndent(e, e->indent);
+    }
+  }
+
+  if (hasCommentBefore) {
+    e->oss << value.get_comment_before();
   }
 
   _quoteName(e, key);
   e->oss << ":";
-  _str(e, value, false, " ", false);
+  _str(
+    e,
+    value,
+    false,
+    true
+  );
 }
 
 
@@ -446,7 +531,7 @@ std::string Marshal(const Value& v, EncoderOptions options) {
   e.needsEscapeName.assign(R"([,\{\[\}\]\s:#"']|//|/\*)");
   e.lineBreak.assign(R"(\r|\n|\r\n)");
 
-  _str(&e, v, true, "", true);
+  _str(&e, v, true, false);
 
   return e.oss.str();
 }
@@ -457,7 +542,10 @@ void MarshalToFile(const Value& v, const std::string &path, EncoderOptions optio
   if (!outputFile.is_open()) {
     throw file_error("Could not open file '" + path + "' for writing");
   }
-  outputFile << Marshal(v, options) << options.eol;
+  outputFile << Marshal(v, options);
+  if (!options.comments || v.get_comment_after().empty()) {
+    outputFile << options.eol;
+  }
   outputFile.close();
 }
 
@@ -466,17 +554,18 @@ void MarshalToFile(const Value& v, const std::string &path, EncoderOptions optio
 // default options + "bracesSameLine", "quoteAlways", "quoteKeys" and
 // "separator".
 //
-// See MarshalWithOptions.
+// See Marshal.
 //
 std::string MarshalJson(const Value& v) {
-  auto opt = DefaultOptions();
+  EncoderOptions opt;
 
   opt.bracesSameLine = true;
   opt.quoteAlways = true;
   opt.quoteKeys = true;
   opt.separator = true;
+  opt.comments = false;
 
-  return MarshalWithOptions(v, opt);
+  return Marshal(v, opt);
 }
 
 

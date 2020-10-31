@@ -65,32 +65,42 @@ class file_error : public std::runtime_error {
 };
 
 
+// DecoderOptions defines options for decoding from Hjson.
+struct DecoderOptions {
+  // Keep all comments from the Hjson input, store them in
+  // the Hjson::Value objects.
+  bool comments = false;
+};
+
+
 // EncoderOptions defines options for encoding to Hjson.
 struct EncoderOptions {
   // End of line, should be either \n or \r\n
-  std::string eol;
+  std::string eol = "\n";
   // Place braces on the same line
-  bool bracesSameLine;
+  bool bracesSameLine = true;
   // Always place string values in double quotation marks ("), and escape
   // any special chars inside the string value
-  bool quoteAlways;
+  bool quoteAlways = false;
   // Always place keys in quotes
-  bool quoteKeys;
+  bool quoteKeys = false;
   // Indent string
-  std::string indentBy;
+  std::string indentBy = "  ";
   // Allow the -0 value (unlike ES6)
-  bool allowMinusZero;
+  bool allowMinusZero = false;
   // Encode unknown values as 'null'
-  bool unknownAsNull;
+  bool unknownAsNull = false;
   // Output a comma separator between elements. If true, always place strings
   // in quotes (overriding the "quoteAlways" setting).
-  bool separator;
+  bool separator = false;
   // Only affects the order of elements in objects. If true, the key/value
   // pairs for all objects will be placed in the same order as they were added.
   // If false, the key/value pairs are placed in alphabetical key order.
-  bool preserveInsertionOrder;
+  bool preserveInsertionOrder = true;
   // If true, omits root braces.
-  bool omitRootBraces;
+  bool omitRootBraces = false;
+  // Write comments, if any are found in the Hjson::Value objects.
+  bool comments = true;
 };
 
 
@@ -102,8 +112,12 @@ class Value {
 
 private:
   class ValueImpl;
+  class Comments;
+
   std::shared_ptr<ValueImpl> prv;
-  Value(std::shared_ptr<ValueImpl>);
+  std::shared_ptr<Comments> cm;
+
+  Value(std::shared_ptr<ValueImpl>, std::shared_ptr<Comments>);
 
 public:
   enum class Type {
@@ -135,13 +149,19 @@ public:
   Value(const char*);
   Value(const std::string&);
   Value(Type);
+  Value(const Value&);
+  Value(Value&&);
+  Value(MapProxy&&);
   virtual ~Value();
+
+  Value& operator =(const Value&);
+  Value& operator =(Value&&);
 
   const Value operator[](const std::string&) const;
   MapProxy operator[](const std::string&);
   const Value operator[](const char*) const;
   MapProxy operator[](const char*);
-  const Value operator[](int) const;
+  const Value& operator[](int) const;
   Value& operator[](int);
 
   bool operator ==(bool) const;
@@ -169,12 +189,12 @@ public:
   HJSON_OPERATORS_DECLARATION_C(unsigned long long)
   HJSON_OPERATORS_DECLARATION_C(const Value&)
 
-  Value operator+() const;
-  Value operator-() const;
-  Value& operator++();
-  Value& operator--();
-  Value operator++(int);
-  Value operator--(int);
+  Value operator +() const;
+  Value operator -() const;
+  Value& operator ++();
+  Value& operator --();
+  Value operator ++(int);
+  Value operator --(int);
 
   explicit operator bool() const;
   operator float() const;
@@ -193,38 +213,79 @@ public:
   operator const char*() const;
   operator const std::string() const;
 
-  bool defined() const;
-  bool empty() const;
+  // Returns the type of this Value.
   Type type() const;
+  // Returns true if the type of this Value is anything else than Undefined.
+  bool defined() const;
+  // Returns true if this Value is of type Vector or Map and has zero child
+  // elements. Returns true if this Value is of type String and contains
+  // zero characters. Returns true if this Value is of type Undefined or Null.
+  // Returns false in all other cases.
+  bool empty() const;
+  // Returns true if the type of this Value is Vector or Map.
+  bool is_container() const;
   // Returns true if the type of this Value is Double or Int64.
   bool is_numeric() const;
-  size_t size() const;
+  // Returns true if the entire tree for which this Value is the root is equal
+  // to the entire tree for which the Value parameter is root.
   bool deep_equal(const Value&) const;
+  // Returns a full clone of the tree for which this Value is the root.
   Value clone() const;
 
   // -- Vector and Map specific functions
-  // For a Vector, the input argument is the index in the vector for the value
+  // Removes all child elements from this Value if it is of type Vector or Map.
+  // Does nothing if this Value is of any other type.
+  void clear();
+  // Removes one child element from a Value of type Vector or Map. For a
+  // Vector, the input argument is the index in the vector for the value
   // that should be erased. For a Map, the input argument is the index in the
-  // insertion order of the MAP for the value that should be erased.
+  // insertion order of the MAP for the value that should be erased. Throws
+  // Hjson::index_out_of_bounds if the index is out of bounds and this Value
+  // is of type Undefined, Vector or Map. Throws Hjson::type_mismatch if this
+  // Value is of any other type.
   void erase(int);
   // Move value on index `from` to index `to`. If `from` is less than `to` the
   // element will actually end up at index `to - 1`. For an Hjson::Value of
   // type Map, calling this function changes the insertion order but does not
   // affect the iteration order, since iterations are always done in
-  // alphabetical key order.
+  // alphabetical key order. Throws Hjson::index_out_of_bounds if the index is
+  // out of bounds and this Value is of type Undefined, Vector or Map. Throws
+  // Hjson::type_mismatch if this Value is of any other type.
   void move(int from, int to);
+  // Returns the number of child elements contained in this Value if this Value
+  // is of type Vector or Map. Returns 0 if this Value is of any other type.
+  size_t size() const;
 
   // -- Vector specific function
+  // Increases the size of this Vector by adding a Value at the end. Throws
+  // Hjson::type_mismatch if this Value is of any other type than Vector or
+  // Undefined.
   void push_back(const Value&);
 
   // -- Map specific functions
-  // Get key by its zero-based insertion index.
+  // Get key by its zero-based insertion index. Throws
+  // Hjson::index_out_of_bounds if the index is out of bounds and this Value is
+  // of type Undefined or Map. Throws Hjson::type_mismatch if this Value is of
+  // any other type.
   std::string key(int) const;
-  // Iterations are always done in alphabetical key order.
+  // Returns a reference to the Value specified by the key parameter. Throws
+  // Hjson::index_out_of_bounds if this Value does not contain the specified
+  // key and this Value is of type Undefined or Map. Throws
+  // Hjson::type_mismatch if this Value is of any other type.
+  const Value& at(const std::string& key) const;
+  Value& at(const std::string& key);
+  const Value& at(const char *key) const;
+  Value& at(const char *key);
+  // Iterations are always done in alphabetical key order. Returns a default
+  // constructed iterator if this Value is of any other type than Map.
   std::map<std::string, Value>::iterator begin();
   std::map<std::string, Value>::iterator end();
   std::map<std::string, Value>::const_iterator begin() const;
   std::map<std::string, Value>::const_iterator end() const;
+  // Removes the child element specified by the input key if this Value is of
+  // type Map. Returns the number of erased elements (0 or 1). Throws
+  // Hjson::type_mismatch if this Value is of any other type than Map or
+  // Undefined.
   size_t erase(const std::string&);
   size_t erase(const char*);
 
@@ -234,28 +295,72 @@ public:
   double to_double() const;
   std::int64_t to_int64() const;
   std::string to_string() const;
+
+  // Sets comment shown before this Value. If this Value is an element in a
+  // Map, the comment is shown before the key.
+  void set_comment_before(const std::string&);
+  std::string get_comment_before() const;
+  // Sets comment shown between the key and this Value. If this Value is
+  // not an element in a Map, the comment is shown between the "before"
+  // comment and this Value.
+  void set_comment_key(const std::string&);
+  std::string get_comment_key() const;
+  // Sets comment shown right after "[" if this Value is a Vector, or right
+  // after "{" if this Value is a Map. The comment is not shown if this Value
+  // is of any other type than Vector or Map.
+  void set_comment_inside(const std::string&);
+  std::string get_comment_inside() const;
+  // Sets comment shown after this Value.
+  void set_comment_after(const std::string&);
+  std::string get_comment_after() const;
+
+  // Copies all comments from the other Hjson::Value.
+  void set_comments(const Value&);
+  // Removes all comments from this Value.
+  void clear_comments();
+  // A combination of the assignment operator (=) and set_comments(). The
+  // normal assignment operator (=) will not change any comments, unless the
+  // receiving Value is of type Undefined.
+  Value& assign_with_comments(const Value&);
+  Value& assign_with_comments(Value&&);
 };
 
 
+// MapProxy is only used for temporary references to elements in a Map. It is
+// not possible to store a MapProxy in a variable. It only exists to make it
+// possible to check for the existence of a specific key in a Map without
+// creating an empty element in the Map with that key.
 class MapProxy : public Value {
   friend class Value;
 
 private:
   std::shared_ptr<ValueImpl> parentPrv;
   std::string key;
+  Value *pTarget;
   // True if an explicit assignment has been made to this MapProxy.
   bool wasAssigned;
 
-  MapProxy(std::shared_ptr<ValueImpl> parent, std::shared_ptr<ValueImpl> child,
-    const std::string& key);
+  MapProxy(std::shared_ptr<ValueImpl> parent, const std::string& key,
+    Value *pTarget);
+
+  // Make the copy constructor private in order to avoid accidental creation of
+  // MapProxy variables like this:
+  //   auto myVal = val["one"];
+  MapProxy(const MapProxy&) = default;
+  MapProxy(Value&&);
 
 public:
   ~MapProxy();
-  MapProxy &operator =(const MapProxy&);
-  MapProxy &operator =(const Value&);
+  MapProxy& operator =(const MapProxy&);
+  MapProxy& operator =(const Value&);
+  MapProxy& operator =(Value&&);
+  MapProxy& assign_with_comments(const MapProxy&);
+  MapProxy& assign_with_comments(const Value&);
+  MapProxy& assign_with_comments(Value&&);
 };
 
 
+// Deprecated, defaults are now included in the declaration of EncoderOptions.
 EncoderOptions DefaultOptions();
 
 // Deprecated, use Marshal(const Value& v, EncoderOptions options) instead.
@@ -263,13 +368,14 @@ std::string MarshalWithOptions(const Value&, EncoderOptions);
 
 // Returns a properly indented text representation of the input value tree.
 // Extra options can be specified in the input parameter "options".
-std::string Marshal(const Value& v, EncoderOptions options = DefaultOptions());
+std::string Marshal(const Value& v, EncoderOptions options = EncoderOptions());
 
 // Writes (in binary mode, so using Unix EOL) a properly indented text
 // representation of the input value tree to the file specified by the input
 // parameter "path". Extra options can be specified in the input parameter
 // "options". Throws Hjson::file_error if the file cannot be opened for writing.
-void MarshalToFile(const Value& v, const std::string& path, EncoderOptions options = DefaultOptions());
+void MarshalToFile(const Value& v, const std::string& path,
+  EncoderOptions options = EncoderOptions());
 
 // Returns a properly indented JSON text representation of the input value
 // tree.
@@ -279,18 +385,21 @@ std::string MarshalJson(const Value&);
 std::ostream &operator <<(std::ostream& out, const Value& v);
 
 // Creates a Value tree from input text.
-Value Unmarshal(const char *data, size_t dataSize);
+Value Unmarshal(const char *data, size_t dataSize,
+  DecoderOptions options = DecoderOptions());
 
 // Creates a Value tree from input text.
 // The input parameter "data" must be null-terminated.
-Value Unmarshal(const char *data);
+Value Unmarshal(const char *data, DecoderOptions options = DecoderOptions());
 
 // Creates a Value tree from input text.
-Value Unmarshal(const std::string&);
+Value Unmarshal(const std::string& data,
+  DecoderOptions options = DecoderOptions());
 
 // Reads the entire file (in binary mode) and unmarshals it. Throws
 // Hjson::file_error if the file cannot be opened for reading.
-Value UnmarshalFromFile(const std::string& path);
+Value UnmarshalFromFile(const std::string& path,
+  DecoderOptions options = DecoderOptions());
 
 // Returns a Value tree that is a combination of the input parameters "base"
 // and "ext".

@@ -39,7 +39,8 @@ void test_value() {
     val = false;
     assert(!val);
     assert(!val.empty());
-    assert(val.size() == 1);
+    // size() is the number of child elements, can only be > 0 for Vector or Map. 
+    assert(val.size() == 0);
     assert(val.to_string() == "false");
     assert(val.to_double() == 0);
     assert(val.to_int64() == 0);
@@ -443,8 +444,21 @@ void test_value() {
     Hjson::Value val2 = val["first"];
     val["second"] = val["first"];
     val["fourth"] = 4.0;
-    double fourth = val["fourth"];
+    const Hjson::Value& valC = val;
+    double fourth = valC.operator[]("fourth");
+    assert(fourth == valC["fourth"]);
+    assert(fourth == valC.at("fourth"));
+    try {
+      double fifth = valC.at("fifth");
+      assert(!"Did not throw error when calling at() with invalid key.");
+    } catch(Hjson::index_out_of_bounds e) {}
+    fourth = val["fourth"];
     assert(fourth == val["fourth"]);
+    assert(fourth == val.at("fourth"));
+    try {
+      double fifth = val.at("fifth");
+      assert(!"Did not throw error when calling at() with invalid key.");
+    } catch(Hjson::index_out_of_bounds e) {}
     try {
       std::string fourthString = val["fourth"];
       assert(!"Did not throw error when assigning double to string.");
@@ -452,6 +466,7 @@ void test_value() {
     std::string leaft1 = val["first"];
     assert(leaft1 == "leaf1");
     assert(val[std::string("first")] == "leaf1");
+    assert(val.at(std::string("first")) == "leaf1");
     assert(val["first"] == "leaf1");
     assert(!strcmp("leaf1", val["first"]));
 
@@ -481,6 +496,38 @@ void test_value() {
     assert(itConst == valConst.end());
   }
 
+  {
+    Hjson::Value val;
+
+    val["one"] = "uno";
+    val["two"] = "due";
+    assert(val["one"] == "uno");
+    val["one"].clear();
+    // clear() does nothing for a string, only affects vector and map.
+    assert(!val.at("one").empty());
+    assert(val["two"] == "due");
+    auto ptr = &val.at("two");
+    assert(*ptr == "due");
+    val["two"] = 2;
+    assert(*ptr == 2);
+    val.clear();
+    assert(val.empty());
+  }
+
+  {
+    Hjson::Value val;
+
+    val.push_back(3);
+    val.push_back(4);
+    assert(val.size() == 2);
+    auto ptr = &val[0];
+    assert(*ptr == 3);
+    val[0] = 5;
+    assert(*ptr == 5);
+    val.clear();
+    assert(val.empty());
+  }
+
   try {
     Hjson::Value val;
     val["first"] = "leaf1";
@@ -489,9 +536,19 @@ void test_value() {
   } catch (Hjson::type_mismatch e) {}
 
   {
+    const Hjson::Value val;
+    Hjson::Value undefined = val["down1"]["down2"]["down3"];
+    assert(undefined.type() == Hjson::Value::Type::Undefined);
+    assert(!val.defined());
+  }
+
+  {
     Hjson::Value val;
     Hjson::Value undefined = val["down1"]["down2"]["down3"];
     assert(undefined.type() == Hjson::Value::Type::Undefined);
+    // The type of val is set to Map because a MapProxy is created, no easy way
+    // to avoid that.
+    //assert(!val.defined());
   }
 
   {
@@ -500,6 +557,16 @@ void test_value() {
     std::string tld = val["down1"]["down2"]["down3"];
     assert(tld == "three levels deep!");
     assert(val["down1"]["down2"]["down3"] == "three levels deep!");
+  }
+
+  {
+    Hjson::Value root;
+    root["one"] = 1;
+    {
+      Hjson::Value test1 = root["one"];
+      root.erase(0);
+    }
+    assert(root.empty());
   }
 
   {
@@ -519,7 +586,7 @@ void test_value() {
   {
     Hjson::Value root;
     root["key1"]["key2"]["key3"]["A"] = 4;
-    auto val2 = root["key1"]["key2"]["key3"];
+    Hjson::Value val2 = root["key1"]["key2"]["key3"];
     val2["B"] = 5;
     assert(root["key1"]["key2"]["key3"]["B"] == 5);
   }
@@ -594,7 +661,7 @@ void test_value() {
     assert(val.size() == 2);
     std::string generatedHjson = Hjson::Marshal(val);
     assert(generatedHjson == "{\n}");
-    auto options = Hjson::DefaultOptions();
+    Hjson::EncoderOptions options;
     options.preserveInsertionOrder = false;
     generatedHjson = Hjson::Marshal(val, options);
     assert(generatedHjson == "{\n}");
@@ -765,7 +832,8 @@ void test_value() {
     val1["third"]["first"] = 3;
     val2 = val1.clone();
     val2["third"]["second"] = 4;
-    assert(val1["first"].size() == 1);
+    // size() is the number of child elements, can only be > 0 for Vector or Map. 
+    assert(val1["first"].size() == 0);
   }
 
   {
@@ -781,9 +849,7 @@ void test_value() {
     assert(val1.key(0) == "y");
     assert(val1[2] == 99);
     val1.move(1, 0);
-    auto opt = Hjson::DefaultOptions();
-    opt.preserveInsertionOrder = true;
-    auto str = Hjson::MarshalWithOptions(val1, opt);
+    auto str = Hjson::Marshal(val1);
     assert(str == "{\n  xerxes: {\n    first: 3\n  }\n  y: 2\n  zeta: 99\n}");
     assert(val1[0]["first"] == 3);
     assert(val1.key(1) == "y");
@@ -859,10 +925,12 @@ void test_value() {
     assert(merged.key(1) == "rect");
     // The insertion order must have been kept in the clone.
     auto baseClone = base.clone();
-    auto options = Hjson::DefaultOptions();
+    auto baseCloneStr = Hjson::Marshal(baseClone);
+    assert(baseCloneStr == baseStr);
+    Hjson::EncoderOptions options = Hjson::DefaultOptions();
     options.bracesSameLine = true;
     options.preserveInsertionOrder = true;
-    auto baseCloneStr = Hjson::MarshalWithOptions(baseClone, options);
+    baseCloneStr = Hjson::MarshalWithOptions(baseClone, options);
     assert(baseCloneStr == baseStr);
   }
 
@@ -878,13 +946,13 @@ arr: [
   2
 ])";
 
-    auto options = Hjson::DefaultOptions();
+    Hjson::EncoderOptions options;
     options.bracesSameLine = true;
     options.preserveInsertionOrder = true;
     options.omitRootBraces = true;
 
     auto root = Hjson::Unmarshal(noRootBraces);
-    auto newStr = Hjson::MarshalWithOptions(root, options);
+    auto newStr = Hjson::Marshal(root, options);
     assert(newStr == noRootBraces);
   }
 
@@ -907,5 +975,219 @@ arr: [
     auto root2 = Hjson::UnmarshalFromFile(szTmp);
     assert(root2.deep_equal(root1));
     std::remove(szTmp);
+  }
+
+  {
+    const char *szTmp = "tmpTestFile.hjson";
+    Hjson::DecoderOptions decOpt;
+    Hjson::EncoderOptions encOpt;
+
+    decOpt.comments = true;
+    encOpt.comments = true;
+
+    auto root1 = Hjson::UnmarshalFromFile("assets/comments6_test.hjson", decOpt);
+    assert(!root1.empty());
+
+    Hjson::MarshalToFile(root1, szTmp, encOpt);
+    auto root2 = Hjson::UnmarshalFromFile(szTmp, decOpt);
+    assert(root2.deep_equal(root1));
+    assert(root2.get_comment_after() == root1.get_comment_after());
+    std::remove(szTmp);
+  }
+
+  {
+    Hjson::Value val1(1), val2(2);
+
+    assert(val1.get_comment_after() == "");
+
+    val1.set_comment_after("after1");
+    val2.set_comment_after("after2");
+
+    val1 = val2;
+    assert(val1.get_comment_after() == "after1");
+    val1 = 3;
+    assert(val1.get_comment_after() == "after1");
+    assert(val2.get_comment_after() == "after2");
+
+    Hjson::Value val3;
+    val3["one"] = val1;
+    val3["one"].set_comment_after("afterOne");
+    val3["one"] = val2;
+    assert(val3["one"].get_comment_after() == "afterOne");
+    assert(val2.get_comment_after() == "after2");
+    val2 = val3["one"];
+    assert(val2.get_comment_after() == "after2");
+
+    auto fnValOne = [](const Hjson::Value& val) {
+      return val;
+    };
+
+    Hjson::Value val4 = fnValOne(val1);
+    // val4 was created, should get the comments.
+    assert(val4.get_comment_after() == "after1");
+
+    val4 = fnValOne(val2);
+    // val4 already existed, should not get new comments.
+    assert(val4.get_comment_after() == "after1");
+
+    auto fnValTwo = [](Hjson::Value val) {
+      return val;
+    };
+
+    Hjson::Value val5 = fnValTwo(val1);
+    // val5 was created, should get the comments.
+    assert(val5.get_comment_after() == "after1");
+
+    val5 = fnValTwo(val2);
+    // val5 already existed, should not get new comments.
+    assert(val5.get_comment_after() == "after1");
+
+    Hjson::Value val6 = val1;
+    // val6 was created, should get the comments.
+    assert(val6.get_comment_after() == "after1");
+
+    val6 = val2;
+    // val6 already existed, should not get new comments.
+    assert(val6.get_comment_after() == "after1");
+
+    Hjson::Value val7;
+    val7.push_back(val1);
+    assert(val7[0].get_comment_after() == "after1");
+    val7[0] = val2;
+    assert(val7[0].get_comment_after() == "after1");
+
+    val1.clear_comments();
+    assert(val1.get_comment_after() == "");
+    assert(val6.get_comment_after() == "after1");
+    assert(val7[0].get_comment_after() == "after1");
+
+    val5.set_comment_after("after5");
+    assert(val6.get_comment_after() == "after1");
+    assert(val7[0].get_comment_after() == "after1");
+
+    val1.set_comments(val3["one"]);
+    assert(val1.get_comment_after() == "afterOne");
+
+    val3["one"].set_comment_after("after3");
+    assert(val1.get_comment_after() == "afterOne");
+
+    val1.set_comments(val2);
+    val2.set_comment_after("afterTwo");
+    assert(val1.get_comment_after() == "after2");
+
+    Hjson::Value val8;
+    val1.set_comments(val8);
+    assert(val1.get_comment_after() == "");
+
+    Hjson::Value val9;
+    val8.set_comments(val9);
+    assert(val8.get_comment_after() == "");
+  }
+
+  {
+    Hjson::Value rootA;
+    rootA["one"] = "uno";
+    rootA["one"].set_comment_after("afterOne");
+
+    {
+      Hjson::Value val1 = rootA["one"];
+      rootA["one"].set_comment_after("afterTwo");
+      assert(rootA["one"].get_comment_after() == "afterTwo");
+      assert(val1.get_comment_after() == "afterOne");
+
+      Hjson::Value val2(rootA["one"]);
+      rootA["one"].set_comment_after("afterThree");
+      assert(rootA["one"].get_comment_after() == "afterThree");
+      assert(val2.get_comment_after() == "afterTwo");
+
+      // Comments are not changed in this assignment, val2 is not undefined.
+      val2 = rootA["one"];
+      rootA["one"].set_comment_after("afterFour");
+      assert(rootA["one"].get_comment_after() == "afterFour");
+      assert(val2.get_comment_after() == "afterTwo");
+    }
+
+    assert(rootA["one"].get_comment_after() == "afterFour");
+  }
+
+  {
+    Hjson::Value root(Hjson::Value::Type::Map);
+    root.set_comment_inside("\n  // comment inside\n");
+    root["one"] = 1;
+    root["one"].set_comment_after(" # afterOne");
+    root["two"] = 2;
+    root["twoB"] = "2b";
+    root["twoC"] = "2c";
+    root["twoC"].set_comment_key("\n  // key comment for 2c\n  ");
+    root["three"] = 3;
+    root["three"].set_comment_before("\n  # beforeThree\n  ");
+    root["three"] = 3; // Should not remove the comment
+    root["three"].set_comment_after("\n  # final comment\n");
+    Hjson::EncoderOptions opt;
+    opt.separator = true;
+    auto str = Hjson::Marshal(root, opt);
+    assert(str == R"({
+  // comment inside
+  one: 1, # afterOne
+  two: 2,
+  twoB: "2b",
+  twoC:
+  // key comment for 2c
+  "2c",
+  # beforeThree
+  three: 3
+  # final comment
+})");
+  }
+
+  {
+    Hjson::Value root(Hjson::Value::Type::Vector);
+    root.set_comment_inside("\n  // comment inside\n");
+    root.push_back(1);
+    root[0].set_comment_after(" # afterOne");
+    root.push_back(2);
+    root.push_back("2b");
+    root.push_back("2c");
+    root[3].set_comment_key("\n  // key comment for 2c\n  ");
+    root.push_back(3);
+    root[4].set_comment_before("\n  # beforeThree\n  ");
+    root[4] = 3; // Should not remove the comment
+    root[4].set_comment_after("\n  # final comment\n");
+    Hjson::EncoderOptions opt;
+    opt.separator = true;
+    auto str = Hjson::Marshal(root, opt);
+    assert(str == R"([
+  // comment inside
+  1, # afterOne
+  2,
+  "2b",
+  // key comment for 2c
+  "2c",
+  # beforeThree
+  3
+  # final comment
+])");
+  }
+
+  {
+    Hjson::Value val("");
+    val.set_comment_key("// key comment\n");
+    val.set_comment_after("\n# comment after");
+    auto str = Hjson::Marshal(val);
+    assert(str == R"(// key comment
+""
+# comment after)");
+  }
+
+  {
+    Hjson::Value val("");
+    val.set_comment_key("// key comment\n");
+    val.set_comment_before("\n# comment before\n");
+    val.set_comment_inside("/* comment inside */");
+    auto str = Hjson::Marshal(val);
+    assert(str == R"(
+# comment before
+// key comment
+"")");
   }
 }

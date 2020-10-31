@@ -9,11 +9,20 @@
 namespace Hjson {
 
 
-struct Parser {
+class CommentInfo {
+public:
+  bool hasComment;
+  int cmStart, cmEnd;
+};
+
+
+class Parser {
+public:
   const unsigned char *data;
   size_t dataSize;
   int at;
   unsigned char ch;
+  DecoderOptions opt;
 };
 
 
@@ -21,8 +30,30 @@ bool tryParseNumber(Value *pNumber, const char *text, size_t textSize, bool stop
 static Value _readValue(Parser *p);
 
 
+static inline void _setComment(Value& val, void (Value::*fp)(const std::string&),
+  Parser *p, const CommentInfo& ci)
+{
+  if (ci.hasComment) {
+    (val.*fp)(std::string(p->data + ci.cmStart, p->data + ci.cmEnd));
+  }
+}
+
+
+static inline void _setComment(Value& val, void (Value::*fp)(const std::string&),
+  Parser *p, const CommentInfo& ciA, const CommentInfo& ciB)
+{
+  if (ciA.hasComment && ciB.hasComment) {
+    (val.*fp)(std::string(p->data + ciA.cmStart, p->data + ciA.cmEnd) +
+      std::string(p->data + ciB.cmStart, p->data + ciB.cmEnd));
+  } else {
+    _setComment(val, fp, p, ciA);
+    _setComment(val, fp, p, ciB);
+  }
+}
+
+
 // trim from start (in place)
-static inline void _ltrim(std::string &s) {
+static inline void _ltrim(std::string& s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
     return !std::isspace(ch);
   }));
@@ -30,7 +61,7 @@ static inline void _ltrim(std::string &s) {
 
 
 // trim from end (in place)
-static inline void _rtrim(std::string &s) {
+static inline void _rtrim(std::string& s) {
   s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
     return !std::isspace(ch);
   }).base(), s.end());
@@ -45,9 +76,34 @@ static inline std::string _trim(std::string s) {
 }
 
 
+static bool _next(Parser *p) {
+  // get the next character.
+  if (p->at < p->dataSize) {
+    p->ch = p->data[p->at++];
+    return true;
+  }
+
+  p->ch = 0;
+  ++p->at;
+
+  return false;
+}
+
+
+static bool _prev(Parser *p) {
+  // get the previous character.
+  if (p->at > 1) {
+    p->ch = p->data[p->at-- - 2];
+    return true;
+  }
+
+  return false;
+}
+
+
 static void _resetAt(Parser *p) {
   p->at = 0;
-  p->ch = ' ';
+  _next(p);
 }
 
 
@@ -56,7 +112,7 @@ static bool _isPunctuatorChar(char c) {
 }
 
 
-static std::string _errAt(Parser *p, std::string message) {
+static std::string _errAt(Parser *p, const std::string& message) {
   int i, col = 0, line = 1;
 
   for (i = p->at - 1; i > 0 && p->data[i] != '\n'; i--) {
@@ -73,19 +129,6 @@ static std::string _errAt(Parser *p, std::string message) {
 
   return message + " at line " + std::to_string(line) + "," +
     std::to_string(col) + " >>> " + std::string((char*)p->data + p->at - col, samEnd);
-}
-
-
-static bool _next(Parser *p) {
-  // get the next character.
-  if (p->at < p->dataSize) {
-    p->ch = p->data[p->at++];
-    return true;
-  }
-
-  p->ch = 0;
-
-  return false;
 }
 
 
@@ -309,7 +352,13 @@ static std::string _readKeyname(Parser *p) {
 }
 
 
-static void _white(Parser *p) {
+static CommentInfo _white(Parser *p) {
+  CommentInfo ci = {
+    false,
+    p->at - 1,
+    0
+  };
+
   while (p->ch > 0) {
     // Skip whitespace.
     while (p->ch > 0 && p->ch <= ' ') {
@@ -317,10 +366,16 @@ static void _white(Parser *p) {
     }
     // Hjson allows comments
     if (p->ch == '#' || (p->ch == '/' && _peek(p, 0) == '/')) {
+      if (p->opt.comments) {
+        ci.hasComment = true;
+      }
       while (p->ch > 0 && p->ch != '\n') {
         _next(p);
       }
     } else if (p->ch == '/' && _peek(p, 0) == '*') {
+      if (p->opt.comments) {
+        ci.hasComment = true;
+      }
       _next(p);
       _next(p);
       while (p->ch > 0 && !(p->ch == '*' && _peek(p, 0) == '/')) {
@@ -334,6 +389,54 @@ static void _white(Parser *p) {
       break;
     }
   }
+
+  ci.cmEnd = p->at - 1;
+
+  return ci;
+}
+
+
+static CommentInfo _getCommentAfter(Parser *p) {
+  CommentInfo ci = {
+    false,
+    p->at - 1,
+    0
+  };
+
+  while (p->ch > 0) {
+    // Skip whitespace, but only until EOL.
+    while (p->ch > 0 && p->ch <= ' ' && p->ch != '\n') {
+      _next(p);
+    }
+    // Hjson allows comments
+    if (p->ch == '#' || (p->ch == '/' && _peek(p, 0) == '/')) {
+      if (p->opt.comments) {
+        ci.hasComment = true;
+      }
+      while (p->ch > 0 && p->ch != '\n') {
+        _next(p);
+      }
+    } else if (p->ch == '/' && _peek(p, 0) == '*') {
+      if (p->opt.comments) {
+        ci.hasComment = true;
+      }
+      _next(p);
+      _next(p);
+      while (p->ch > 0 && !(p->ch == '*' && _peek(p, 0) == '/')) {
+        _next(p);
+      }
+      if (p->ch > 0) {
+        _next(p);
+        _next(p);
+      }
+    } else {
+      break;
+    }
+  }
+
+  ci.cmEnd = p->at - 1;
+
+  return ci;
 }
 
 
@@ -396,28 +499,43 @@ static Value _readTfnns(Parser *p) {
 static Value _readArray(Parser *p) {
   Value array(Hjson::Value::Type::Vector);
 
+  // Skip '['.
   _next(p);
-  _white(p);
+  auto ciBefore = _white(p);
 
   if (p->ch == ']') {
+    _setComment(array, &Value::set_comment_inside, p, ciBefore);
     _next(p);
     return array; // empty array
   }
 
+  CommentInfo ciExtra = {};
+
   while (p->ch > 0) {
-    Value val = _readValue(p);
-    array.push_back(val);
-    _white(p);
+    auto elem = _readValue(p);
+    _setComment(elem, &Value::set_comment_before, p, ciBefore, ciExtra);
+    auto ciAfter = _white(p);
     // in Hjson the comma is optional and trailing commas are allowed
     if (p->ch == ',') {
       _next(p);
-      _white(p);
+      // It is unlikely that someone writes a comment after the value but
+      // before the comma, so we include any such comment in "comment_after".
+      ciExtra = _white(p);
+    } else {
+      ciExtra = {};
     }
     if (p->ch == ']') {
+      auto existingAfter = elem.get_comment_after();
+      _setComment(elem, &Value::set_comment_after, p, ciAfter, ciExtra);
+      if (!existingAfter.empty()) {
+        elem.set_comment_after(existingAfter + elem.get_comment_after());
+      }
+      array.push_back(elem);
       _next(p);
       return array;
     }
-    _white(p);
+    array.push_back(elem);
+    ciBefore = ciAfter;
   }
 
   throw syntax_error(_errAt(p, "End of input while parsing an array (did you forget a closing ']'?)"));
@@ -433,35 +551,66 @@ static Value _readObject(Parser *p, bool withoutBraces) {
     _next(p);
   }
 
-  _white(p);
+  auto ciBefore = _white(p);
+
   if (p->ch == '}' && !withoutBraces) {
+    _setComment(object, &Value::set_comment_inside, p, ciBefore);
     _next(p);
     return object; // empty object
   }
+
+  CommentInfo ciExtra = {};
+
   while (p->ch > 0) {
     auto key = _readKeyname(p);
-    _white(p);
+    auto ciKey = _white(p);
     if (p->ch != ':') {
       throw syntax_error(_errAt(p, std::string(
         "Expected ':' instead of '") + (char)(p->ch) + "'"));
     }
     _next(p);
     // duplicate keys overwrite the previous value
-    object[key] = _readValue(p);
-    _white(p);
+    auto elem = _readValue(p);
+    _setComment(elem, &Value::set_comment_key, p, ciKey);
+    if (!elem.get_comment_before().empty()) {
+      elem.set_comment_key(elem.get_comment_key() +
+        elem.get_comment_before());
+      elem.set_comment_before("");
+    }
+    _setComment(elem, &Value::set_comment_before, p, ciBefore, ciExtra);
+    auto ciAfter = _white(p);
     // in Hjson the comma is optional and trailing commas are allowed
     if (p->ch == ',') {
       _next(p);
-      _white(p);
+      // It is unlikely that someone writes a comment after the value but
+      // before the comma, so we include any such comment in "comment_after".
+      ciExtra = _white(p);
+    } else {
+      ciExtra = {};
     }
     if (p->ch == '}' && !withoutBraces) {
+      auto existingAfter = elem.get_comment_after();
+      _setComment(elem, &Value::set_comment_after, p, ciAfter, ciExtra);
+      if (!existingAfter.empty()) {
+        elem.set_comment_after(existingAfter + elem.get_comment_after());
+      }
+      object[key].assign_with_comments(std::move(elem));
       _next(p);
       return object;
     }
-    _white(p);
+    object[key].assign_with_comments(std::move(elem));
+    ciBefore = ciAfter;
   }
 
   if (withoutBraces) {
+    if (object.empty()) {
+      _setComment(object, &Value::set_comment_inside, p, ciBefore);
+    } else {
+      auto elem = object[object.size() - 1];
+      _setComment(elem, &Value::set_comment_after, p, ciBefore, ciExtra);
+      object[object.size() - 1].assign_with_comments(elem);
+    }
+
     return object;
   }
   throw syntax_error(_errAt(p, "End of input while parsing an object (did you forget a closing '}'?)"));
@@ -470,65 +619,100 @@ static Value _readObject(Parser *p, bool withoutBraces) {
 
 // Parse a Hjson value. It could be an object, an array, a string, a number or a word.
 static Value _readValue(Parser *p) {
-  _white(p);
+  Hjson::Value ret;
+
+  auto ciBefore = _white(p);
 
   switch (p->ch) {
   case '{':
-    return _readObject(p, false);
+    ret = _readObject(p, false);
+    break;
   case '[':
-    return _readArray(p);
+    ret = _readArray(p);
+    break;
   case '"':
   case '\'':
-    return _readString(p, true);
+    ret = _readString(p, true);
+    break;
   default:
-    return _readTfnns(p);
+    ret = _readTfnns(p);
+    // Make sure that any comment will include preceding whitespace.
+    if (p->ch == '#' || p->ch == '/') {
+      while (_prev(p) && std::isspace(p->ch)) {}
+      _next(p);
+    }
+    break;
   }
+
+  auto ciAfter = _getCommentAfter(p);
+
+  _setComment(ret, &Value::set_comment_before, p, ciBefore);
+  _setComment(ret, &Value::set_comment_after, p, ciAfter);
+
+  return ret;
 }
 
 
-static Value _hasTrailing(Parser *p) {
-  _white(p);
+static Value _hasTrailing(Parser *p, CommentInfo *ci) {
+  *ci = _white(p);
   return p->ch > 0;
 }
 
 
 // Braces for the root object are optional
 static Value _rootValue(Parser *p) {
-  Value res;
+  Value ret;
   std::string errMsg;
+  CommentInfo ciExtra;
 
-  _white(p);
+  auto ciBefore = _white(p);
 
   switch (p->ch) {
   case '{':
-    res = _readObject(p, false);
-    if (_hasTrailing(p)) {
+    ret = _readObject(p, false);
+    if (_hasTrailing(p, &ciExtra)) {
       throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
     }
-    return res;
+    break;
   case '[':
-    res = _readArray(p);
-    if (_hasTrailing(p)) {
+    ret = _readArray(p);
+    if (_hasTrailing(p, &ciExtra)) {
       throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
     }
-    return res;
+    break;
   }
 
-  // assume we have a root object without braces
-  try {
-    res = _readObject(p, true);
-    if (!_hasTrailing(p)) {
-      return res;
+  if (!ret.defined()) {
+    // assume we have a root object without braces
+    try {
+      ret = _readObject(p, true);
+      if (_hasTrailing(p, &ciExtra)) {
+        // Syntax error, or maybe a single JSON value.
+        ret = Value();
+      }
+    } catch(syntax_error e) {
+      errMsg = std::string(e.what());
     }
-  } catch(syntax_error e) {
-    errMsg = std::string(e.what());
   }
 
-  // test if we are dealing with a single JSON value instead (true/false/null/num/"")
-  _resetAt(p);
-  res = _readValue(p);
-  if (!_hasTrailing(p)) {
-    return res;
+  if (!ret.defined()) {
+    // test if we are dealing with a single JSON value instead (true/false/null/num/"")
+    _resetAt(p);
+    ret = _readValue(p);
+    if (_hasTrailing(p, &ciExtra)) {
+      // Syntax error.
+      ret = Value();
+    }
+  }
+
+  if (ret.defined()) {
+    _setComment(ret, &Value::set_comment_before, p, ciBefore);
+    auto existingAfter = ret.get_comment_after();
+    _setComment(ret, &Value::set_comment_after, p, ciExtra);
+    if (!existingAfter.empty()) {
+      ret.set_comment_after(existingAfter + ret.get_comment_after());
+    }
+    return ret;
   }
 
   if (!errMsg.empty()) {
@@ -543,12 +727,13 @@ static Value _rootValue(Parser *p) {
 //
 // Unmarshal uses the inverse of the encodings that Marshal uses.
 //
-Value Unmarshal(const char *data, size_t dataSize) {
+Value Unmarshal(const char *data, size_t dataSize, DecoderOptions options) {
   Parser parser = {
     (const unsigned char*) data,
     dataSize,
     0,
-    ' '
+    ' ',
+    options
   };
 
   _resetAt(&parser);
@@ -556,21 +741,21 @@ Value Unmarshal(const char *data, size_t dataSize) {
 }
 
 
-Value Unmarshal(const char *data) {
+Value Unmarshal(const char *data, DecoderOptions options) {
   if (!data) {
     return Value();
   }
 
-  return Unmarshal(data, std::strlen(data));
+  return Unmarshal(data, std::strlen(data), options);
 }
 
 
-Value Unmarshal(const std::string &data) {
-  return Unmarshal(data.c_str(), data.size());
+Value Unmarshal(const std::string &data, DecoderOptions options) {
+  return Unmarshal(data.c_str(), data.size(), options);
 }
 
 
-Value UnmarshalFromFile(const std::string &path) {
+Value UnmarshalFromFile(const std::string &path, DecoderOptions options) {
   std::ifstream infile(path, std::ifstream::ate | std::ifstream::binary);
   if (!infile.is_open()) {
     throw file_error("Could not open file '" + path + "' for reading");
@@ -581,7 +766,7 @@ Value UnmarshalFromFile(const std::string &path) {
   infile.read(&inStr[0], inStr.size());
   infile.close();
 
-  return Unmarshal(inStr);
+  return Unmarshal(inStr, options);
 }
 
 
