@@ -52,30 +52,6 @@ static inline void _setComment(Value& val, void (Value::*fp)(const std::string&)
 }
 
 
-// trim from start (in place)
-static inline void _ltrim(std::string& s) {
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-    return !std::isspace(ch);
-  }));
-}
-
-
-// trim from end (in place)
-static inline void _rtrim(std::string& s) {
-  s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-    return !std::isspace(ch);
-  }).base(), s.end());
-}
-
-
-// trim from both ends (copy)
-static inline std::string _trim(std::string s) {
-  _rtrim(s);
-  _ltrim(s);
-  return s;
-}
-
-
 static bool _next(Parser *p) {
   // get the next character.
   if (p->at < p->dataSize) {
@@ -264,6 +240,8 @@ static void _toUtf8(std::vector<char> &res, uint32_t uIn) {
 // callers make sure that (ch === '"' || ch === "'")
 // When parsing for string values, we must look for " and \ characters.
 static std::string _readString(Parser *p, bool allowML) {
+  // Store the string in a new vector, because the length of it might be
+  // different than the length in the input data.
   std::vector<char> res;
 
   char exitCh = p->ch;
@@ -447,9 +425,13 @@ static Value _readTfnns(Parser *p) {
     throw syntax_error(_errAt(p, std::string("Found a punctuator character '") +
       (char)p->ch + std::string("' when expecting a quoteless string (check your syntax)")));
   }
-  auto chf = p->ch;
-  std::vector<char> value;
-  value.push_back(p->ch);
+  size_t valStart = p->at - 1, valEnd = 0;
+
+  if (std::isspace(p->ch)) {
+    ++valStart;
+  } else {
+    valEnd = p->at;
+  }
 
   for (;;) {
     _next(p);
@@ -459,37 +441,45 @@ static Value _readTfnns(Parser *p) {
       p->ch == '#' ||
       (p->ch == '/' && (_peek(p, 0) == '/' || _peek(p, 0) == '*')))
     {
-      auto trimmed = _trim(std::string(value.data(), value.size()));
+      const char *pVal = reinterpret_cast<const char*>(p->data) + valStart;
+      size_t valLen = valEnd - valStart;
 
-      switch (chf) {
+      switch (*pVal)
+      {
       case 'f':
-        if (trimmed == "false") {
+        if (valLen == 5 && !std::strncmp(pVal, "false", 5)) {
           return false;
         }
         break;
       case 'n':
-        if (trimmed == "null") {
+        if (valLen == 4 && !std::strncmp(pVal, "null", 4)) {
           return Value(Type::Null);
         }
         break;
       case 't':
-        if (trimmed == "true") {
+        if (valLen == 4 && !std::strncmp(pVal, "true", 4)) {
           return true;
         }
         break;
       default:
-        if (chf == '-' || (chf >= '0' && chf <= '9')) {
+        if (*pVal == '-' || (*pVal >= '0' && *pVal <= '9')) {
           Value number;
-          if (tryParseNumber(&number, trimmed.c_str(), trimmed.size(), false)) {
+          if (tryParseNumber(&number, pVal, valLen, false)) {
             return number;
           }
         }
       }
       if (isEol) {
-        return trimmed;
+        return std::string(pVal, valLen);
       }
     }
-    value.push_back(p->ch);
+    if (std::isspace(p->ch)) {
+      if (valEnd <= valStart) {
+        ++valStart;
+      }
+    } else {
+      valEnd = p->at;
+    }
   }
 }
 
