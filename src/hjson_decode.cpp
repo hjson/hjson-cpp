@@ -145,6 +145,8 @@ static unsigned char _escapee(unsigned char c) {
 
 // Parse a multiline string value.
 static std::string _readMLString(Parser *p) {
+  // Store the string in a new vector, because the length of it might be
+  // different than the length in the input data.
   std::vector<char> res;
   int triple = 0;
 
@@ -299,31 +301,31 @@ static std::string _readKeyname(Parser *p) {
     return _readString(p, false);
   }
 
-  std::vector<char> name;
-  auto start = p->at;
-  int space = -1;
+  size_t keyStart = p->at - 1;
+  size_t keyEnd = keyStart;
+  int firstSpace = -1;
   for (;;) {
     if (p->ch == ':') {
-      if (name.empty()) {
+      if (keyEnd <= keyStart) {
         throw syntax_error(_errAt(p, "Found ':' but no key name (for an empty key name use quotes)"));
-      } else if (space >= 0 && space != name.size()) {
-        p->at = start + space;
+      } else if (firstSpace >= 0 && firstSpace != keyEnd) {
+        p->at = firstSpace;
         throw syntax_error(_errAt(p, "Found whitespace in your key name (use quotes to include)"));
       }
-      return std::string(name.data(), name.size());
+      return std::string(reinterpret_cast<const char*>(p->data) + keyStart, keyEnd - keyStart);
     } else if (p->ch <= ' ') {
       if (p->ch == 0) {
         throw syntax_error(_errAt(p, "Found EOF while looking for a key name (check your syntax)"));
       }
-      if (space < 0) {
-        space = (int)name.size();
+      if (firstSpace < 0) {
+        firstSpace = p->at - 1;
       }
     } else {
       if (_isPunctuatorChar(p->ch)) {
         throw syntax_error(_errAt(p, std::string("Found '") + (char)p->ch + std::string(
           "' where a key name was expected (check your syntax or use quotes if the key name includes {}[],: or whitespace)")));
       }
-      name.push_back(p->ch);
+      keyEnd = p->at;
     }
     _next(p);
   }
