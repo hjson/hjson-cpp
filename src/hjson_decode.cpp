@@ -689,6 +689,11 @@ static Value _rootValue(Parser *p) {
       if (_hasTrailing(p, &ciExtra)) {
         // Syntax error, or maybe a single JSON value.
         ret = Value();
+      } else if (ret.size() > 0) {
+        // if there were no braces, the first comment belongs to the first child
+        // of the root object, not to the root object itself.
+        _setComment(ret[0], &Value::set_comment_before, p, ciBefore);
+        ciBefore = CommentInfo();
       }
     } catch(syntax_error e) {
       errMsg = std::string(e.what());
@@ -727,11 +732,7 @@ static Value _rootValue(Parser *p) {
 //
 // Unmarshal uses the inverse of the encodings that Marshal uses.
 //
-Value Unmarshal(const char *data, size_t dataSize, DecoderOptions options) {
-  if (options.whitespaceAsComments) {
-    options.comments = true;
-  }
-
+Value Unmarshal(const char *data, size_t dataSize, const DecoderOptions& options) {
   Parser parser = {
     (const unsigned char*) data,
     dataSize,
@@ -740,12 +741,16 @@ Value Unmarshal(const char *data, size_t dataSize, DecoderOptions options) {
     options
   };
 
+  if (parser.opt.whitespaceAsComments) {
+    parser.opt.comments = true;
+  }
+
   _resetAt(&parser);
   return _rootValue(&parser);
 }
 
 
-Value Unmarshal(const char *data, DecoderOptions options) {
+Value Unmarshal(const char *data, const DecoderOptions& options) {
   if (!data) {
     return Value();
   }
@@ -754,12 +759,12 @@ Value Unmarshal(const char *data, DecoderOptions options) {
 }
 
 
-Value Unmarshal(const std::string &data, DecoderOptions options) {
+Value Unmarshal(const std::string &data, const DecoderOptions& options) {
   return Unmarshal(data.c_str(), data.size(), options);
 }
 
 
-Value UnmarshalFromFile(const std::string &path, DecoderOptions options) {
+Value UnmarshalFromFile(const std::string &path, const DecoderOptions& options) {
   std::ifstream infile(path, std::ifstream::ate | std::ifstream::binary);
   if (!infile.is_open()) {
     throw file_error("Could not open file '" + path + "' for reading");
@@ -771,6 +776,31 @@ Value UnmarshalFromFile(const std::string &path, DecoderOptions options) {
   infile.close();
 
   return Unmarshal(inStr, options);
+}
+
+
+StreamDecoder::StreamDecoder(Value& _v, const DecoderOptions& _o)
+  : v(_v), o(_o)
+{
+}
+
+
+std::istream &operator >>(std::istream& in, StreamDecoder& sd) {
+  std::string inStr{ std::istreambuf_iterator<char>(in),
+    std::istreambuf_iterator<char>() };
+  sd.v.assign_with_comments(Unmarshal(inStr, sd.o));
+
+  return in;
+}
+
+
+std::istream &operator >>(std::istream& in, StreamDecoder&& sd) {
+  return operator >>(in, sd);
+}
+
+
+std::istream &operator >>(std::istream& in, Value& v) {
+  return in >> StreamDecoder(v, DecoderOptions());
 }
 
 

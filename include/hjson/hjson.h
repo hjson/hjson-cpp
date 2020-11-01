@@ -218,6 +218,11 @@ public:
   operator const char*() const;
   operator const std::string() const;
 
+  // Like `Marshal(Value)` but outputs the result to the stream.
+  friend std::ostream& operator <<(std::ostream&, const Value&);
+  // Like `Unmarshal(std::string)` but from the stream.
+  friend std::istream& operator >>(std::istream&, Value&);
+
   // Returns the type of this Value.
   Type type() const;
   // Returns true if the type of this Value is anything else than Undefined.
@@ -232,7 +237,8 @@ public:
   // Returns true if the type of this Value is Double or Int64.
   bool is_numeric() const;
   // Returns true if the entire tree for which this Value is the root is equal
-  // to the entire tree for which the Value parameter is root.
+  // to the entire tree for which the Value parameter is root. Comments are
+  // ignored in the comparison.
   bool deep_equal(const Value&) const;
   // Returns a full clone of the tree for which this Value is the root.
   Value clone() const;
@@ -365,40 +371,63 @@ public:
 };
 
 
+class StreamEncoder {
+public:
+  const Value& v;
+  const EncoderOptions& o;
+
+  StreamEncoder(const Value&, const EncoderOptions&);
+
+  // Like `Marshal(Value, EncoderOptions)` but outputs the result to the stream.
+  friend std::ostream& operator <<(std::ostream&, const StreamEncoder&);
+};
+
+
+class StreamDecoder {
+public:
+  Value& v;
+  const DecoderOptions& o;
+
+  StreamDecoder(Value&, const DecoderOptions&);
+
+  // Like `Unmarshal(std::string, DecoderOptions)` but from a stream.
+  friend std::istream& operator >>(std::istream&, StreamDecoder&);
+  // Like `Unmarshal(std::string, DecoderOptions)` but from a stream.
+  friend std::istream& operator >>(std::istream&, StreamDecoder&&);
+};
+
+
 // Returns a properly indented text representation of the input value tree.
 // Extra options can be specified in the input parameter "options".
-std::string Marshal(const Value& v, EncoderOptions options = EncoderOptions());
+std::string Marshal(const Value& v, const EncoderOptions& options = EncoderOptions());
 
 // Writes (in binary mode, so using Unix EOL) a properly indented text
 // representation of the input value tree to the file specified by the input
 // parameter "path". Extra options can be specified in the input parameter
 // "options". Throws Hjson::file_error if the file cannot be opened for writing.
 void MarshalToFile(const Value& v, const std::string& path,
-  EncoderOptions options = EncoderOptions());
+  const EncoderOptions& options = EncoderOptions());
 
 // Returns a properly indented JSON text representation of the input value
 // tree.
 std::string MarshalJson(const Value&);
 
-// Calls `Marshal(v)` and outputs the result to the stream.
-std::ostream &operator <<(std::ostream& out, const Value& v);
-
 // Creates a Value tree from input text.
 Value Unmarshal(const char *data, size_t dataSize,
-  DecoderOptions options = DecoderOptions());
+  const DecoderOptions& options = DecoderOptions());
 
 // Creates a Value tree from input text.
 // The input parameter "data" must be null-terminated.
-Value Unmarshal(const char *data, DecoderOptions options = DecoderOptions());
+Value Unmarshal(const char *data, const DecoderOptions& options = DecoderOptions());
 
 // Creates a Value tree from input text.
 Value Unmarshal(const std::string& data,
-  DecoderOptions options = DecoderOptions());
+  const DecoderOptions& options = DecoderOptions());
 
 // Reads the entire file (in binary mode) and unmarshals it. Throws
 // Hjson::file_error if the file cannot be opened for reading.
 Value UnmarshalFromFile(const std::string& path,
-  DecoderOptions options = DecoderOptions());
+  const DecoderOptions& options = DecoderOptions());
 
 // Returns a Value tree that is a combination of the input parameters "base"
 // and "ext".

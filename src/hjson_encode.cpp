@@ -13,7 +13,7 @@ namespace Hjson {
 
 struct Encoder {
   EncoderOptions opt;
-  std::ostringstream oss;
+  std::ostream *os;
   std::locale loc;
   int indent;
   std::regex needsEscape, needsQuotes, needsEscapeML, startsWithKeyword,
@@ -51,10 +51,10 @@ static const char *_meta(char c) {
 
 
 static void _writeIndent(Encoder *e, int indent) {
-  e->oss << e->opt.eol;
+  *e->os << e->opt.eol;
 
   for (int i = 0; i < indent; i++) {
-    e->oss << e->opt.indentBy;
+    *e->os << e->opt.indentBy;
   }
 }
 
@@ -114,24 +114,24 @@ static void _quoteReplace(Encoder *e, const std::string& text) {
 
     if (size_t(match.position()) > uIndexStart) {
       // Append non-matching text.
-      e->oss << text.substr(uIndexStart, match.position() - uIndexStart);
+      *e->os << text.substr(uIndexStart, match.position() - uIndexStart);
     }
 
     if (szReplacement) {
-      e->oss << szReplacement;
+      *e->os << szReplacement;
     } else {
       const char *pC = text.data() + match.position();
       size_t nS = match.length();
 
-      e->oss << std::hex << std::setfill('0');
+      *e->os << std::hex << std::setfill('0');
       while (nS) {
         int nRet = _fromUtf8((const unsigned char**) &pC, &nS);
         if (nRet < 0) {
           // Not UTF8. Just dump it.
-          e->oss << std::string(pC, nS);
+          *e->os << std::string(pC, nS);
           break;
         }
-        e->oss << "\\u" << std::setw(4) << nRet;
+        *e->os << "\\u" << std::setw(4) << nRet;
       }
     }
 
@@ -140,7 +140,7 @@ static void _quoteReplace(Encoder *e, const std::string& text) {
 
   if (uIndexStart < text.length()) {
     // Append remaining text.
-    e->oss << text.substr(uIndexStart, text.length() - uIndexStart);
+    *e->os << text.substr(uIndexStart, text.length() - uIndexStart);
   }
 }
 
@@ -155,11 +155,11 @@ static void _mlString(Encoder *e, const std::string& value, const char *separato
     // The string contains only a single line. We still use the multiline
     // format as it avoids escaping the \ character (e.g. when used in a
     // regex).
-    e->oss << separator << "'''";
-    e->oss << value;
+    *e->os << separator << "'''";
+    *e->os << value;
   } else {
     _writeIndent(e, e->indent + 1);
-    e->oss << "'''";
+    *e->os << "'''";
 
     do {
       std::smatch match = *it;
@@ -169,7 +169,7 @@ static void _mlString(Encoder *e, const std::string& value, const char *separato
       }
       _writeIndent(e, indent);
       if (size_t(match.position()) > uIndexStart) {
-        e->oss << value.substr(uIndexStart, match.position() - uIndexStart);
+        *e->os << value.substr(uIndexStart, match.position() - uIndexStart);
       }
       uIndexStart = match.position() + match.length();
       ++it;
@@ -178,7 +178,7 @@ static void _mlString(Encoder *e, const std::string& value, const char *separato
     if (uIndexStart < value.length()) {
       // Append remaining text.
       _writeIndent(e, e->indent + 1);
-      e->oss << value.substr(uIndexStart, value.length() - uIndexStart);
+      *e->os << value.substr(uIndexStart, value.length() - uIndexStart);
     } else {
       // Trailing line feed.
       _writeIndent(e, 0);
@@ -187,7 +187,7 @@ static void _mlString(Encoder *e, const std::string& value, const char *separato
     _writeIndent(e, e->indent + 1);
   }
 
-  e->oss << "'''";
+  *e->os << "'''";
 }
 
 
@@ -197,7 +197,7 @@ static void _quote(Encoder *e, const std::string& value, const char *separator,
   bool isRootObject, bool hasCommentAfter)
 {
   if (value.size() == 0) {
-    e->oss << separator << "\"\"";
+    *e->os << separator << "\"\"";
   } else if (e->opt.quoteAlways ||
     std::regex_search(value, e->needsQuotes) ||
     startsWithNumber(value.c_str(), value.size()) ||
@@ -212,38 +212,38 @@ static void _quote(Encoder *e, const std::string& value, const char *separator,
     // sequences.
 
     if (!std::regex_search(value, e->needsEscape)) {
-      e->oss << separator << '"' << value << '"';
+      *e->os << separator << '"' << value << '"';
     } else if (!e->opt.quoteAlways && !std::regex_search(value,
       e->needsEscapeML) && !isRootObject)
     {
       _mlString(e, value, separator);
     } else {
-      e->oss << separator << '"';
+      *e->os << separator << '"';
       _quoteReplace(e, value);
-      e->oss << '"';
+      *e->os << '"';
     }
   } else {
     // return without quotes
-    e->oss << separator << value;
+    *e->os << separator << value;
   }
 }
 
 
 static void _quoteName(Encoder *e, const std::string& name) {
   if (name.empty()) {
-    e->oss << "\"\"";
+    *e->os << "\"\"";
   } else if (e->opt.quoteKeys || std::regex_search(name, e->needsEscapeName)) {
-    e->oss << '"';
+    *e->os << '"';
     if (std::regex_search(name, e->needsEscape)) {
       _quoteReplace(e, name);
     } else {
-      e->oss << name;
+      *e->os << name;
     }
 
-    e->oss << '"';
+    *e->os << '"';
   } else {
     // without quotes
-    e->oss << name;
+    *e->os << name;
   }
 }
 
@@ -266,7 +266,7 @@ static void _bracesIndent(Encoder *e, bool isObjElement, const Value& value, con
   ) {
     _writeIndent(e, e->indent);
   } else {
-    e->oss << separator;
+    *e->os << separator;
   }
 }
 
@@ -301,21 +301,21 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
 
   if (e->opt.comments) {
     if (isRootObject) {
-      e->oss << value.get_comment_before();
+      *e->os << value.get_comment_before();
     }
-    e->oss << value.get_comment_key();
+    *e->os << value.get_comment_key();
   }
 
   switch (value.type()) {
   case Type::Double:
-    e->oss << separator;
+    *e->os << separator;
 
     if (std::isnan(static_cast<double>(value)) || std::isinf(static_cast<double>(value))) {
-      e->oss << Value(Type::Null).to_string();
+      *e->os << Value(Type::Null).to_string();
     } else if (!e->opt.allowMinusZero && value == 0 && std::signbit(static_cast<double>(value))) {
-      e->oss << Value(0).to_string();
+      *e->os << Value(0).to_string();
     } else {
-      e->oss << value.to_string();
+      *e->os << value.to_string();
     }
     break;
 
@@ -326,7 +326,7 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
   case Type::Vector:
     {
       _bracesIndent(e, isObjElement, value, separator);
-      e->oss << "[";
+      *e->os << "[";
 
       e->indent++;
 
@@ -341,25 +341,25 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
             isFirst = false;
 
             if (e->opt.comments && !commentAfter.empty()) {
-              e->oss << commentAfter;
+              *e->os << commentAfter;
               // This is the first element, so commentAfterPrevObj is the inner comment
               // of the parent vector. The inner comment probably expects "]" to come
               // after it and therefore needs one more level of indentation.
-              e->oss << e->opt.indentBy;
+              *e->os << e->opt.indentBy;
               shouldIndent = false;
             }
           } else {
             if (e->opt.separator) {
-              e->oss << ",";
+              *e->os << ",";
             }
 
             if (e->opt.comments) {
-              e->oss << commentAfter;
+              *e->os << commentAfter;
             }
           }
 
           if (e->opt.comments && !value[i].get_comment_before().empty()) {
-            e->oss << value[i].get_comment_before();
+            *e->os << value[i].get_comment_before();
           } else if (shouldIndent) {
             _writeIndent(e, e->indent);
           }
@@ -371,12 +371,12 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
       }
 
       if (e->opt.comments && !commentAfter.empty()) {
-        e->oss << commentAfter;
+        *e->os << commentAfter;
       } else if (!value.empty()) {
         _writeIndent(e, e->indent - 1);
       }
 
-      e->oss << "]";
+      *e->os << "]";
       e->indent--;
     }
     break;
@@ -385,7 +385,7 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
     {
       if (!e->opt.omitRootBraces || !isRootObject || value.empty()) {
         _bracesIndent(e, isObjElement, value, separator);
-        e->oss << "{";
+        *e->os << "{";
 
         e->indent++;
       }
@@ -411,24 +411,24 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
       }
 
       if (e->opt.comments && !commentAfter.empty()) {
-        e->oss << commentAfter;
+        *e->os << commentAfter;
       } else if (!value.empty() && (!e->opt.omitRootBraces || !isRootObject)) {
         _writeIndent(e, e->indent - 1);
       }
 
       if (!e->opt.omitRootBraces || !isRootObject || value.empty()) {
         e->indent--;
-        e->oss << "}";
+        *e->os << "}";
       }
     }
     break;
 
   default:
-    e->oss << separator << value.to_string();
+    *e->os << separator << value.to_string();
   }
 
   if (e->opt.comments && isRootObject) {
-    e->oss << value.get_comment_after();
+    *e->os << value.get_comment_after();
   }
 }
 
@@ -443,23 +443,23 @@ static void _objElem(Encoder *e, const std::string& key, const Value& value, boo
     bool shouldIndent = ((!e->opt.omitRootBraces || !isRootObject) && !hasCommentBefore);
 
     if (e->opt.comments && !commentAfterPrevObj.empty()) {
-      e->oss << commentAfterPrevObj;
+      *e->os << commentAfterPrevObj;
       // This is the first element, so commentAfterPrevObj is the inner comment
       // of the parent map. The inner comment probably expects "}" to come
       // after it and therefore needs one more level of indentation, unless
       // this is the root object without braces.
       if (shouldIndent) {
-        e->oss << e->opt.indentBy;
+        *e->os << e->opt.indentBy;
       }
     } else if (shouldIndent) {
       _writeIndent(e, e->indent);
     }
   } else {
     if (e->opt.separator) {
-      e->oss << ",";
+      *e->os << ",";
     }
     if (e->opt.comments) {
-      e->oss << commentAfterPrevObj;
+      *e->os << commentAfterPrevObj;
     }
     if (!hasCommentBefore) {
       _writeIndent(e, e->indent);
@@ -467,17 +467,53 @@ static void _objElem(Encoder *e, const std::string& key, const Value& value, boo
   }
 
   if (hasCommentBefore) {
-    e->oss << value.get_comment_before();
+    *e->os << value.get_comment_before();
   }
 
   _quoteName(e, key);
-  e->oss << ":";
+  *e->os << ":";
   _str(
     e,
     value,
     false,
     true
   );
+}
+
+
+static void _marshalStream(const Value& v, const EncoderOptions& options,
+  std::ostream *pStream)
+{
+  Encoder e;
+  e.os = pStream;
+  e.opt = options;
+  e.indent = 0;
+
+  if (e.opt.separator) {
+    e.opt.quoteAlways = true;
+  }
+
+  // Regex should not be UTF8 aware, just treat the chars as values.
+  e.loc = std::locale::classic();
+
+  std::string commonRange = R"(]|\xc2\xad|\xd8[\x80-\x84]|\xdc\x8f|\xe1\x9e[\xb4\xb5]|\xe2\x80[\x8c\x8f]|\xe2\x80[\xa8-\xaf]|\xe2\x81[\xa0-\xaf]|\xef\xbb\xbf|\xef\xbf[\xb0-\xbf])";
+  // needsEscape tests if the string can be written without escapes
+  e.needsEscape.imbue(e.loc);
+  e.needsEscape.assign(R"([\\\"\x00-\x1f)" + commonRange);
+  // needsQuotes tests if the string can be written as a quoteless string (includes needsEscape but without \\ and \")
+  e.needsQuotes.imbue(e.loc);
+  e.needsQuotes.assign(R"(^\s|^"|^'|^#|^/\*|^//|^\{|^\}|^\[|^\]|^:|^,|\s$|[\x00-\x1f)" + commonRange);
+  // needsEscapeML tests if the string can be written as a multiline string (like needsEscape but without \n, \r, \\, \", \t)
+  e.needsEscapeML.imbue(e.loc);
+  e.needsEscapeML.assign(R"('''|^[\s]+$|[\x00-\x08\x0b\x0c\x0e-\x1f)" + commonRange);
+  // starts with a keyword and optionally is followed by a comment
+  e.startsWithKeyword.imbue(e.loc);
+  e.startsWithKeyword.assign(R"(^(true|false|null)\s*((,|\]|\}|#|//|/\*).*)?$)");
+  e.needsEscapeName.imbue(e.loc);
+  e.needsEscapeName.assign(R"([,\{\[\}\]\s:#"']|//|/\*)");
+  e.lineBreak.assign(R"(\r|\n|\r\n)");
+
+  _str(&e, v, true, false);
 }
 
 
@@ -501,47 +537,21 @@ static void _objElem(Encoder *e, const std::string& key, const Value& value, boo
 // handle them. Passing cyclic structures to Marshal will result in
 // an infinite recursion.
 //
-std::string Marshal(const Value& v, EncoderOptions options) {
-  if (options.separator) {
-    options.quoteAlways = true;
-  }
+std::string Marshal(const Value& v, const EncoderOptions& options) {
+  std::ostringstream oss;
 
-  Encoder e;
-  e.opt = options;
-  e.indent = 0;
+  _marshalStream(v, options, &oss);
 
-  // Regex should not be UTF8 aware, just treat the chars as values.
-  e.loc = std::locale::classic();
-
-  std::string commonRange = R"(]|\xc2\xad|\xd8[\x80-\x84]|\xdc\x8f|\xe1\x9e[\xb4\xb5]|\xe2\x80[\x8c\x8f]|\xe2\x80[\xa8-\xaf]|\xe2\x81[\xa0-\xaf]|\xef\xbb\xbf|\xef\xbf[\xb0-\xbf])";
-  // needsEscape tests if the string can be written without escapes
-  e.needsEscape.imbue(e.loc);
-  e.needsEscape.assign(R"([\\\"\x00-\x1f)" + commonRange);
-  // needsQuotes tests if the string can be written as a quoteless string (includes needsEscape but without \\ and \")
-  e.needsQuotes.imbue(e.loc);
-  e.needsQuotes.assign(R"(^\s|^"|^'|^#|^/\*|^//|^\{|^\}|^\[|^\]|^:|^,|\s$|[\x00-\x1f)" + commonRange);
-  // needsEscapeML tests if the string can be written as a multiline string (like needsEscape but without \n, \r, \\, \", \t)
-  e.needsEscapeML.imbue(e.loc);
-  e.needsEscapeML.assign(R"('''|^[\s]+$|[\x00-\x08\x0b\x0c\x0e-\x1f)" + commonRange);
-  // starts with a keyword and optionally is followed by a comment
-  e.startsWithKeyword.imbue(e.loc);
-  e.startsWithKeyword.assign(R"(^(true|false|null)\s*((,|\]|\}|#|//|/\*).*)?$)");
-  e.needsEscapeName.imbue(e.loc);
-  e.needsEscapeName.assign(R"([,\{\[\}\]\s:#"']|//|/\*)");
-  e.lineBreak.assign(R"(\r|\n|\r\n)");
-
-  _str(&e, v, true, false);
-
-  return e.oss.str();
+  return oss.str();
 }
 
 
-void MarshalToFile(const Value& v, const std::string &path, EncoderOptions options) {
+void MarshalToFile(const Value& v, const std::string &path, const EncoderOptions& options) {
   std::ofstream outputFile(path, std::ofstream::binary);
   if (!outputFile.is_open()) {
     throw file_error("Could not open file '" + path + "' for writing");
   }
-  outputFile << Marshal(v, options);
+  _marshalStream(v, options, &outputFile);
   if (!options.comments || v.get_comment_after().empty()) {
     outputFile << options.eol;
   }
@@ -568,8 +578,20 @@ std::string MarshalJson(const Value& v) {
 }
 
 
-std::ostream &operator <<(std::ostream &out, const Value& v) {
-  out << Marshal(v);
+std::ostream &operator <<(std::ostream& out, const Value& v) {
+  _marshalStream(v, EncoderOptions(), &out);
+  return out;
+}
+
+
+StreamEncoder::StreamEncoder(const Value& _v, const EncoderOptions& _o)
+  : v(_v), o(_o)
+{
+}
+
+
+std::ostream &operator <<(std::ostream& out, const StreamEncoder& se) {
+  _marshalStream(se.v, se.o, &out);
   return out;
 }
 

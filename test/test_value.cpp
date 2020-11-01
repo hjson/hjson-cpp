@@ -1217,4 +1217,48 @@ awfoen
     auto str2 = Hjson::Marshal(root);
     assert(str2 == str);
   }
+
+  {
+    auto str1 = R"(#comment a
+alfa: "a"
+beta: "b")";
+
+    auto strPlain = R"({#comment a
+alfa: a
+  beta: b
+})";
+
+    Hjson::DecoderOptions decOpt;
+    decOpt.comments = true;
+    auto root = Hjson::Unmarshal(str1, decOpt);
+    std::ostringstream oss;
+    Hjson::EncoderOptions encOpt;
+    encOpt.quoteAlways = true;
+    encOpt.omitRootBraces = true;
+    oss << Hjson::StreamEncoder(root, encOpt);
+    auto str2 = oss.str();
+    assert(str2 == str1);
+    oss.str("");
+    oss << root;
+    str2 = oss.str();
+    assert(str2 == strPlain);
+    Hjson::Value root2;
+    std::stringstream ss(str1);
+    ss >> root2;
+    assert(root2.deep_equal(root));
+    ss.str(str1);
+    ss >> Hjson::StreamDecoder(root2, decOpt);
+    assert(root2.deep_equal(root));
+    str2 = Hjson::Marshal(root2, encOpt);
+    assert(str2 == str1);
+    Hjson::StreamEncoder se(root, encOpt);
+    oss.str("");
+    oss << se;
+    str2 = oss.str();
+    assert(str2 == str1);
+    Hjson::StreamDecoder sd(root2, decOpt);
+    ss.str(str1);
+    ss >> sd;
+    assert(root2.deep_equal(root));
+  }
 }
