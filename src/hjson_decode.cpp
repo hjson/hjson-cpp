@@ -598,9 +598,8 @@ static Value _readObject(Parser *p, bool withoutBraces) {
     if (object.empty()) {
       _setComment(object, &Value::set_comment_inside, p, ciBefore);
     } else {
-      auto elem = object[object.size() - 1];
-      _setComment(elem, &Value::set_comment_after, p, ciBefore, ciExtra);
-      object[object.size() - 1].assign_with_comments(elem);
+      _setComment(object[static_cast<int>(object.size() - 1)],
+        &Value::set_comment_after, p, ciBefore, ciExtra);
     }
 
     return object;

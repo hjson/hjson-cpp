@@ -833,7 +833,7 @@ Value& Value::operator+=(const Value& b) {
   if (prv->type == Type::Double && b.prv->type == Type::Int64) {
     prv->d += b.prv->i;
   } else if (prv->type == Type::Int64 && b.prv->type == Type::Double) {
-    prv->i += b.prv->d;
+    prv->i += static_cast<int64_t>(b.prv->d);
   } else {
     if (prv->type != b.prv->type) {
       throw type_mismatch("The values must be of the same type for this operation.");
@@ -870,7 +870,7 @@ Value& Value::operator*=(const Value& b) {
   if (prv->type == Type::Double && b.prv->type == Type::Int64) {
     prv->d *= b.prv->i;
   } else if (prv->type == Type::Int64 && b.prv->type == Type::Double) {
-    prv->i *= b.prv->d;
+    prv->i = static_cast<int64_t>(prv->i * b.prv->d);
   } else {
     if (prv->type != b.prv->type) {
       throw type_mismatch("The values must be of the same type for this operation.");
@@ -897,7 +897,7 @@ Value& Value::operator/=(const Value& b) {
   if (prv->type == Type::Double && b.prv->type == Type::Int64) {
     prv->d /= b.prv->i;
   } else if (prv->type == Type::Int64 && b.prv->type == Type::Double) {
-    prv->i /= b.prv->d;
+    prv->i = static_cast<int64_t>(prv->i / b.prv->d);
   } else {
     if (prv->type != b.prv->type) {
       throw type_mismatch("The values must be of the same type for this operation.");
