@@ -35,7 +35,7 @@ GCC 4.8 has the C++11 headers for regex, but unfortunately not a working impleme
 
 ## Cmake
 
-The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms. Cmake version 3.8 or newer is required.
+The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms. Cmake version 3.10 or newer is required.
 
 ### Cmake subfolder
 
@@ -117,25 +117,29 @@ $ cmake .. -Dhjson_DIR=../hjson-cpp/build
 The most important functions in the Hjson namespace are:
 
 ```cpp
-std::string Marshal(Value v);
-Value Unmarshal(const char *data, size_t dataSize);
-Value Unmarshal(const char *data);
-Value Unmarshal(const std::string&);
-Value Merge(const Value base, const Value ext);
+std::string Marshal(const Value& v, const EncoderOptions& options = EncoderOptions());
+
+void MarshalToFile(const Value& v, const std::string& path,
+  const EncoderOptions& options = EncoderOptions());
+
+Value Unmarshal(const std::string& data,
+  const DecoderOptions& options = DecoderOptions());
+
+Value UnmarshalFromFile(const std::string& path,
+  const DecoderOptions& options = DecoderOptions());
+
+Value Merge(const Value& base, const Value& ext);
 ```
 
 *Marshal* is the output-function, transforming an *Hjson::Value* tree (represented by its root node) to a string that can be written to a file.
 
+*MarshalToFile* writes the output directly to a file instead of returning a string.
+
 *Unmarshal* is the input-function, transforming a string to a *Hjson::Value* tree. The string is expected to be UTF8 encoded. Other encodings might work too, but have not been tested. The function comes in three flavors: char pointer with or without the `dataSize` parameter, or std::string. For a char pointer without `dataSize` parameter the `data` parameter must be null-terminated (like all normal strings).
 
+*UnmarshalFromFile* reads directly from a file instead of taking a string as input.
+
 *Merge* returns an *Hjson::Value* tree that is a cloned combination of the input *Hjson::Value* trees `base` and `ext`, with values from `ext` used whenever both `base` and `ext` has a value for some specific position in the tree. The function is convenient when implementing an application with a default configuration (`base`) that can be overridden by input parameters (`ext`).
-
-Two more functions exist, allowing adjustments to the output formatting when creating an Hjson string:
-
-```cpp
-EncoderOptions DefaultOptions();
-std::string MarshalWithOptions(Value v, EncoderOptions options);
-```
 
 ### Stream operator
 
@@ -146,16 +150,39 @@ Hjson::Value myValue = 3.0;
 std::cout << myValue;
 ```
 
-The stream operator marshals the *Hjson::Value* using standard options, so this code will produce the exact same result:
+The stream operator marshals the *Hjson::Value* using standard options, so this code will produce the exact same result, but uses more RAM since the full output is temporarily stored in a string instead of being written directly to the stream:
 
 ```cpp
 Hjson::Value myValue = 3.0;
 std::cout << Hjson::Marshal(myValue);
 ```
 
+If you want to use custom encoding options they can be communicated like this:
+
+```cpp
+Hjson::Value myValue = 3.0;
+Hjson::EncoderOptions encOpt;
+encOpt.omitRootBraces = true;
+std::cout << Hjson::StreamEncoder(myValue, encOpt);
+```
+
+Likewise for reading from a stream. Hjson will consume the entire stream from its current position, and throws an error if not all of the stream (from its current position) is valid Hjson syntax.
+
+```cpp
+Hjson::Value myValue;
+std::cin >> myValue;
+```
+
+```cpp
+Hjson::Value myValue;
+Hjson::DecoderOptions decOpt;
+decOpt.comments = true;
+std::cin >> Hjson::StreamDecoder(myValue, decOpt);
+```
+
 ### Hjson::Value
 
-Input strings are unmarshalled into a tree representation where each node in the tree is an object of the type *Hjson::Value*. The class *Hjson::Value* mimics the behavior of Javascript in that you can assign any type of primitive value to it without casting. Examples:
+Input strings are unmarshalled into a tree representation where each node in the tree is an object of the type *Hjson::Value*. The class *Hjson::Value* mimics the behavior of Javascript in that you can assign any type of primitive value to it without casting. Existing *Hjson::Value* objects can change type when given a new assignment. Examples:
 
 ```cpp
 Hjson::Value myValue(true);
@@ -175,7 +202,26 @@ arr.push_back("first");
 std::string myString = arr[0];
 ```
 
-If you try to access a map element that doesn't exist, an *Hjson::Value* of type *Hjson::Value::Type::Undefined* is returned. But if you try to access a vector element that doesn't exist, an *Hjson::index_out_of_bounds* exception is thrown.
+If you try to access a map element that doesn't exist, an *Hjson::Value* of type *Hjson::Type::Undefined* is returned. But if you try to access a vector element that doesn't exist, an *Hjson::index_out_of_bounds* exception is thrown.
+
+In order to make it possible to check for the existence of a specific key in a map without creating an empty element in the map with that key, a temporary object of type *Hjson::MapProxy* is returned from the string bracket operators:
+
+```cpp
+MapProxy operator[](const std::string&);
+MapProxy operator[](const char*);
+```
+
+The MapProxy desctructor creates or updates an element in the map if needed. Therefore the MapProxy copy and move constructors are private, so that objects of that class do not stay alive longer than a single line of code. The downside of that is that you cannot store the returned value in an auto declared variable.
+
+```cpp
+Hjson::Value map;
+
+// This statement won't compile.
+auto badValue = map["key"];
+
+// This statement will compile just fine.
+Hjson::Value goodValue = map["key"];
+```
 
 These are the possible types for an *Hjson::Value*:
 
@@ -188,30 +234,30 @@ These are the possible types for an *Hjson::Value*:
     Vector
     Map
 
-The default constructor creates an *Hjson::Value* of the type *Hjson::Value::Type::Undefined*.
+The default constructor creates an *Hjson::Value* of the type *Hjson::Type::Undefined*.
 
 ### Number representations
 
-The C++ implementation of Hjson can both read and write 64-bit integers. But since functions and operators overloaded in C++ cannot differ on the return value alone, *Hjson::Value* is treated as *double* in arithmetic operations. That works fine up to 52 bits of integer precision. For the full 64-bit integer precision the function *Hjson::Value::to_int64()* can be used.
-
-The *Hjson::Value* constructor for 64-bit integers also requires a special solution, in order to avoid *ambiguous overload* errors for some compilers. An empty struct is used as the second parameter so that all ambiguity is avoided.
+The C++ implementation of Hjson can both read and write 64-bit integers. No special care is needed, you can simply assign the value.
 
 Example:
 
 ```cpp
-Hjson::Value myValue(9223372036854775807, Hjson::Int64_tag{});
-assert(myValue.to_int64() == 9223372036854775807);
+Hjson::Value myValue = 9223372036854775807;
+assert(myValue == 9223372036854775807);
 ```
 
-All integers are stored with 64-bit precision. The only other way that a number is stored in an *Hjson::Value* is in the form of a double precision floating point representation.
+All integers are stored with 64-bit precision. An *Hjson::Value* containing an integer will be of the type *Hjson::Type::Int64*. The only other way that a number is stored in an *Hjson::Value* is in the form of a double precision floating point representation, which can handle up to 52 bits of integer precision. An *Hjson::Value* containing a floating point value will be of the type *Hjson::Type::Double*.
 
 An *Hjson::Value* that has been unmarshalled from a string that contains a decimal point (for example the string `"1.0"`), or a string containing a number that is bigger or smaller than what can be represented by an *std::int64_t* variable (bigger than 9223372036854775807 or smaller than -9223372036854775808) will be stored as a double precision floating point number internally in the *Hjson::Value*.
 
-Any number stored internally as a *double* will be represented by a string containing a decimal point when marshalled (for example `"1.0"`), so that the string can be unmarshalled back into an *Hjson::Value* containing a *double*, i.e. no information is lost in the marshall-unmarshall cycle.
+Any *Hjson::Value* of type *Hjson::Type::Double* will be represented by a string containing a decimal point when marshalled (for example `"1.0"`), so that the string can be unmarshalled back into an *Hjson::Type::Double*, i.e. no information is lost in the marshall-unmarshall cycle.
+
+The function *Hjson::Value::is_numeric()* returns true if the *Hjson::Value* is of type *Hjson::Type::Double* or *Hjson::Type::Int64*.
 
 ### Order of map elements
 
-Iterators for an *Hjson::Value* of type *Hjson::Value::Type::Map* are always ordered by the keys in alphabetic order. That is also the default ordering in the output from *Hjson::Marshal()*. But when editing a configuration file you might instead want the output to have the same order of elements as the file you read for input. That can be achieved by setting the option *preserveInsertionOrder* to *true* in the call to *Hjson::MarshalWithOptions()*, like this:
+Iterators for an *Hjson::Value* of type *Hjson::Type::Map* are always ordered by the keys in alphabetic order. That is also the default ordering in the output from *Hjson::Marshal()*. But when editing a configuration file you might instead want the output to have the same order of elements as the file you read for input. That can be achieved by setting the option *preserveInsertionOrder* to *true* in the call to *Hjson::MarshalWithOptions()*, like this:
 
 ```cpp
 auto opt = Hjson::DefaultOptions();
@@ -219,7 +265,7 @@ opt.preserveInsertionOrder = true;
 auto out = Hjson::MarshalWithOptions(root, opt);
 ```
 
-The elements in an *Hjson::Value* of type *Hjson::Value::Type::Map* can be accessed directly using the bracket operator with either the string key or the insertion index as input parameter.
+The elements in an *Hjson::Value* of type *Hjson::Type::Map* can be accessed directly using the bracket operator with either the string key or the insertion index as input parameter.
 
 ```cpp
 Hjson::Value val1;
@@ -303,7 +349,7 @@ int main() {
 }
 ```
 
-Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::Type::Vector*:
+Iterating through the elements of an *Hjson::Value* of type *Hjson::Type::Vector*:
 
 ```cpp
 for (int index = 0; index < int(arr.size()); ++index) {
@@ -311,7 +357,7 @@ for (int index = 0; index < int(arr.size()); ++index) {
 }
 ```
 
-Iterating through the elements of an *Hjson::Value* of type *Hjson::Value::Type::Map*:
+Iterating through the elements of an *Hjson::Value* of type *Hjson::Type::Map*:
 
 ```cpp
 for (auto it = map.begin(); it != map.end(); ++it) {
