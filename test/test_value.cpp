@@ -254,6 +254,18 @@ void test_value() {
   }
 
   {
+    unsigned char i1 = 250;
+    char i2 = 100;
+    Hjson::Value val1(i1);
+    Hjson::Value val2 = i2;
+    assert(val1 + val2 == 350);
+    assert(350 == val2 + val1);
+    assert(i1 + val1 == 500);
+    assert(val1 * val2 == 25000);
+    assert(val1 / val2 == (250 / 100));
+  }
+
+  {
     Hjson::Value val(144115188075855873);
     assert(val.type() == Hjson::Type::Int64);
     assert(val == Hjson::Value(144115188075855873));
@@ -281,8 +293,8 @@ void test_value() {
     // loss.
     //assert((val2 + 1) == static_cast<double>(i + 1));
     //assert((val2 - 1) == static_cast<double>(i - 1));
-    Hjson::Value val6("9223372036854775807");
-    assert(val6.to_int64() == 9223372036854775807);
+    Hjson::Value val6 = 9223372036854775807;
+    assert(val6 == 9223372036854775807);
     Hjson::Value val7("-9223372036854775806");
     assert(val7.to_int64() == -9223372036854775806);
     assert(val7.to_string() == "-9223372036854775806");
