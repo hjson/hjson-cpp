@@ -255,6 +255,37 @@ Any *Hjson::Value* of type *Hjson::Type::Double* will be represented by a string
 
 The function *Hjson::Value::is_numeric()* returns true if the *Hjson::Value* is of type *Hjson::Type::Double* or *Hjson::Type::Int64*.
 
+### Operators
+
+This table shows all operators defined for *Hjson::Value*, and the *Hjson::Type* they require. If an operator is used on an *Hjson::Value* of a type for which that operator is not valid, the exception *Hjson::type_mismatch* is thrown.
+
+| | Undefined | Null | Bool | Double | Int64 | String | Vector | Map |
+| = | X | X | X | X | X | X | X | X |
+| == | X | X | X | X | X | X | X | X |
+| != | X | X | X | X | X | X | X | X |
+| + | | | | X | X | X | | |
+| - | | | | X | X | | | |
+| ++ | | | | X | X | | | |
+| -- | | | | X | X | | | |
+| += | | | | X | X | X | | |
+| -= | | | | X | X | | | |
+| < | | | | X | X | X | | |
+| > | | | | X | X | X | | |
+| <= | | | | X | X | X | | |
+| >= | | | | X | X | X | | |
+| \* | | | | X | X | | | |
+| \/ | | | | X | X | | | |
+| \*= | | | | X | X | | | |
+| \/= | | | | X | X | | | |
+| % | | | | | X | | | |
+| %= | | | | | X | | | |
+| \[int\] | X | | | | | | X | X |
+| \[string\] | X | | | | | | | X |
+
+The equality operator (*==*) returns true if the two *Hjson::Value* objects are both of type *Hjson::Type::Undefined* or *Hjson::Type::Null*.
+
+When comparing *Hjson::Value* objects of type *Hjson::Type::Vector* or *Hjson::Type::Map*, the equality operator (*==*) returns true if both objects reference the same underlying vector or map (i.e. the same behavior as when comparing pointers).
+
 ### Order of map elements
 
 Iterators for an *Hjson::Value* of type *Hjson::Type::Map* are always ordered by the keys in alphabetic order. That is also the default ordering in the output from *Hjson::Marshal()*. But when editing a configuration file you might instead want the output to have the same order of elements as the file you read for input. That can be achieved by setting the option *preserveInsertionOrder* to *true* in the call to *Hjson::MarshalWithOptions()*, like this:
