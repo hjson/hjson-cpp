@@ -1,6 +1,6 @@
 # hjson-cpp
 
-[![Build Status](https://travis-ci.org/hjson/hjson-cpp.svg?branch=master)](https://travis-ci.org/hjson/hjson-cpp)
+[![Build Status](https://github.com/hjson/hjson-cpp/workflows/test/badge.svg)](https://github.com/hjson/hjson-cpp/actions)
 [![C++](https://img.shields.io/github/release/hjson/hjson-cpp.svg?style=flat-square&label=c%2b%2b)](https://github.com/hjson/hjson-cpp/releases)
 ![license](https://img.shields.io/github/license/mashape/apistatus.svg)
 
