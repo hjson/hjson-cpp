@@ -321,6 +321,67 @@ assert(val1[0] == 2);
 
 The insertion order is kept when cloning or merging *Hjson::Value* maps.
 
+### Comments
+
+For performance and memory reasons, comments in Hjson documents are by default ignored by the unmarshal functions. But if you want to create an app that updates existing Hjson documents without losing the comments, then you should set the option *comments* to *true* in *DecoderOptions*. The option *comments* in *EncoderOptions* instead defaults to *true*, so if your *Hjson::Value* tree contains comments they will be included in the output from the marshal functions. In this example, any comments in the Hjson file are kept:
+
+```cpp
+Hjson::DecoderOptions decOpt;
+decOpt.comments = true;
+Hjson::Value root = Hjson::UnmarshalFromFile(szPath, decOpt);
+root["myKey"] = "myValue";
+Hjson::MarshalToFile(root, szPath);
+```
+
+The *Hjson::Value* assignment operator does not assign new comments unless the receiving *Hjson::Value* is of type *Hjson::Type::Undefined*. The reason for that is that comments should not be lost when assigning a new value, as in the example here above. If you actually do want to replace both the value and the existing comments, use the function *Hjson::Value::assign_with_comments()*:
+
+```cpp
+// Changes the value but does not change any comments in root["myKey"], unless
+// root["myKey"] was undefined before this assignment.
+root["myKey"] = otherValue;
+
+// Changes the value and also copies all comments from otherValue into root["myKey"].
+root["myKey"].assign_with_comments(otherValue);
+```
+
+There are four types of comments: *before*, *key*, *inside* and *after*. If a comment is found, all chars (including line feeds and white spaces) between the values and/or separators are included in the string that becomes stored as a comment in an *Hjson::Value*.
+
+```cpp
+# This is a *before* comment to the object that starts on the next line.
+{
+  # This is a *before* comment to value1.
+  // This is still the same *before* comment to value1.
+  key1: /* This is a *key* comment to value1. */ "value1" // This is an *after* comment to value1.
+  /* This is a *before* comment to value2. */
+  key2:
+  // This is a *key* comment to value2.
+  value2 /* This is an *after* comment to value2.
+  key3: {
+    // This is an *inside* comment.
+  }
+  key4: value4
+  // This is an *after* comment to value4. Would have been a *before* comment
+  // to value5 if this map contained a fifth value.
+}
+// This is an *after* comment to the root object.
+```
+
+An *inside* comment is shown right after `{` or `[` in a map or vector. The unmarshal functions will only assign a comment as an *inside* comment if the map or vector is empty. Otherwise such a comment will be assigned to the *before* comment of the first element in the map or vector.
+
+A *key* comment is shown between the key and the value if the value is an element in a map. If the value is not an element in a map, the *key* comment is shown between the *before* comment and the value.
+
+After unmarshalling (with comments) the example here above, some of the comment strings would look like this:
+
+```cpp
+root["key1"].get_comment_before() == "\n  # This is a *before* comment to value1.\n  // This is still the same *before* comment to value1.\n  ";
+
+root.get_comment_after() == "\n// This is an *after* comment to the root object.";
+```
+
+The *Hjson::Value::set_comment_X* functions do not analyze the strings they get as input, so you will change the meaning of the Hjson output if you are not careful when using them. For example, a comment starting with *//* or *#* must end with a line feed or else the marshal functions will place the value on the same line as the comment, thus making the value a part of the comment.
+
+If you want to keep blank lines and other formatting in an Hjson document even if there are no comments, set the option *whitespaceAsComments* to *true* in *DecoderOptions*. Then the output from the marshal functions will look exactly like the input to the unmarshal functions, except possibly changes in root braces, quotation and comma separators. When *whitespaceAsComments* is *true*, the option *comments* is ignored (treated as *true*).
+
 ### Performance
 
 Hjson is not much optimized for speed. But if you require fast(-ish) execution, escpecially in a multithreaded application, you can experiment with different values for the Cmake option `HJSON_NUMBER_PARSER`. The default value `StringStream` uses C++ string streams with the locale `classic` imbued to ensure that dots are used as decimal separators rather than commas.
