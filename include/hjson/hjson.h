@@ -86,6 +86,9 @@ struct DecoderOptions {
   // linefeeds and custom indentation is kept. The "comments" option is
   // ignored if this option is true.
   bool whitespaceAsComments = false;
+  // If true, an Hjson::syntax_error exception is thrown from the unmarshal
+  // functions if a map contains duplicate keys.
+  bool duplicateKeyException = false;
 };
 
 

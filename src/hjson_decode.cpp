@@ -555,6 +555,9 @@ static Value _readObject(Parser *p, bool withoutBraces) {
 
   while (p->ch > 0) {
     auto key = _readKeyname(p);
+    if (p->opt.duplicateKeyException && object[key].defined()) {
+      throw syntax_error(_errAt(p, "Found duplicate of key '" + key + "'"));
+    }
     auto ciKey = _white(p);
     if (p->ch != ':') {
       throw syntax_error(_errAt(p, std::string(

@@ -1273,4 +1273,18 @@ alfa: a
     ss >> sd;
     assert(root2.deep_equal(root));
   }
+
+  {
+    std::string str = R"(
+key: val1
+key: val2
+)";
+    auto root = Hjson::Unmarshal(str);
+    try {
+      Hjson::DecoderOptions decOpt;
+      decOpt.duplicateKeyException = true;
+      root = Hjson::Unmarshal(str, decOpt);
+      assert(!"Did not throw error for duplicate key");
+    } catch(const Hjson::syntax_error& e) {}
+  }
 }
