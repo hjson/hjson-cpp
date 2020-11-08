@@ -380,8 +380,8 @@ void test_value() {
     assert(val == val2);
     assert(val2 == std::string("alpha"));
     assert(val2 != std::string("beta"));
-    assert(std::string("alpha") == val2.operator const std::string());
-    assert(std::string("beta") != val2.operator const std::string());
+    assert(std::string("alpha") == val2.operator std::string());
+    assert(std::string("beta") != val2.operator std::string());
     assert(val.to_double() == 0);
     assert(val.to_int64() == 0);
     assert(val.to_string() == "alpha");

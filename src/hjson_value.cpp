@@ -1123,7 +1123,7 @@ Value::operator const char*() const {
 }
 
 
-Value::operator const std::string() const {
+Value::operator std::string() const {
   if (prv->type != Type::String) {
     throw type_mismatch("Must be of type String for that operation.");
   }

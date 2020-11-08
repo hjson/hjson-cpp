@@ -219,7 +219,7 @@ public:
   operator long long() const;
   operator unsigned long long() const;
   operator const char*() const;
-  operator const std::string() const;
+  operator std::string() const;
 
   // Like `Marshal(Value)` but outputs the result to the stream.
   friend std::ostream& operator <<(std::ostream&, const Value&);
