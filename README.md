@@ -288,13 +288,7 @@ When comparing *Hjson::Value* objects of type *Hjson::Type::Vector* or *Hjson::T
 
 ### Order of map elements
 
-Iterators for an *Hjson::Value* of type *Hjson::Type::Map* are always ordered by the keys in alphabetic order. That is also the default ordering in the output from *Hjson::Marshal()*. But when editing a configuration file you might instead want the output to have the same order of elements as the file you read for input. That can be achieved by setting the option *preserveInsertionOrder* to *true* in the call to *Hjson::MarshalWithOptions()*, like this:
-
-```cpp
-auto opt = Hjson::DefaultOptions();
-opt.preserveInsertionOrder = true;
-auto out = Hjson::MarshalWithOptions(root, opt);
-```
+Iterators for an *Hjson::Value* of type *Hjson::Type::Map* are always ordered by the keys in alphabetic order. But when editing a configuration file you might instead want the output to have the same order of elements as the file you read for input. That is the default ordering in the output from *Hjson::Marshal()*, thanks to *true* being the default value of the option *preserveInsertionOrder* in *Hjson::EncoderOptions*.
 
 The elements in an *Hjson::Value* of type *Hjson::Type::Map* can be accessed directly using the bracket operator with either the string key or the insertion index as input parameter.
 
@@ -373,9 +367,6 @@ int main() {
   sampleMap["apple"] = 5;
   sampleMap["lettuce"] = 7;
   std::string hjson = Hjson::Marshal(sampleMap);
-  // this is short for:
-  // auto options = Hjson::DefaultOptions();
-  // std::string hjson = Hjson::MarshalWithOptions(sampleMap, options);
   printf("%s\n", hjson.c_str());
 }
 ```
@@ -388,7 +379,7 @@ for (int index = 0; index < int(arr.size()); ++index) {
 }
 ```
 
-Iterating through the elements of an *Hjson::Value* of type *Hjson::Type::Map*:
+Iterating through the elements of an *Hjson::Value* of type *Hjson::Type::Map* in alphabetical order:
 
 ```cpp
 for (auto it = map.begin(); it != map.end(); ++it) {
@@ -414,14 +405,14 @@ static const char *_szDefaultConfig = R"(
 )";
 
 
-Hjson::Value GetConfig(const char *szInputConfig) {
+Hjson::Value GetConfig(const char *szConfigPath) {
   Hjson::Value defaultConfig = Hjson::Unmarshal(_szDefaultConfig);
 
-  Hjson::Value inputConfig
+  Hjson::Value inputConfig;
   try {
-    inputConfig = Hjson::Unmarshal(szInputConfig);
-  } catch(std::exception e) {
-    std::fprintf(stderr, "Error: Failed to unmarshal input config\n");
+    inputConfig = Hjson::UnmarshalFromFile(szConfigPath);
+  } catch(const std::exception& e) {
+    std::fprintf(stderr, "Error in config: %s\n\n", e.what());
     std::fprintf(stdout, "Default config:\n");
     std::fprintf(stdout, _szDefaultConfig);
 
