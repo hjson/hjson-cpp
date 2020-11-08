@@ -260,6 +260,7 @@ The function *Hjson::Value::is_numeric()* returns true if the *Hjson::Value* is 
 This table shows all operators defined for *Hjson::Value*, and the *Hjson::Type* they require. If an operator is used on an *Hjson::Value* of a type for which that operator is not valid, the exception *Hjson::type_mismatch* is thrown.
 
 | | Undefined | Null | Bool | Double | Int64 | String | Vector | Map |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
 | = | X | X | X | X | X | X | X | X |
 | == | X | X | X | X | X | X | X | X |
 | != | X | X | X | X | X | X | X | X |
