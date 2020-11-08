@@ -58,7 +58,7 @@ static Hjson::Value _getTestContent(std::string name) {
 
   try {
     root = Hjson::UnmarshalFromFile("assets/" + name + "_test.hjson", opt);
-  } catch (Hjson::file_error e) {
+  } catch (const Hjson::file_error& e) {
     root = Hjson::UnmarshalFromFile("assets/" + name + "_test.json", opt);
   }
 
@@ -136,7 +136,7 @@ static void _examine(std::string filename) {
       std::cout << "Should have failed on " << name << "\n";
       assert(false);
     }
-  } catch (Hjson::syntax_error e) {
+  } catch (const Hjson::syntax_error& e) {
     if (!shouldFail) {
       std::cout << "Should NOT have failed on " << name << "\n";
       assert(false);

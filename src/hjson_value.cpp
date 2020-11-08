@@ -314,7 +314,7 @@ const Value& Value::at(const std::string& name) const {
   case Type::Map:
     try {
       return prv->m->m.at(name);
-    } catch(std::out_of_range e) {}
+    } catch(const std::out_of_range& e) {}
     throw index_out_of_bounds("Key not found.");
   default:
     throw type_mismatch("Must be of type Map for that operation.");
@@ -330,7 +330,7 @@ Value& Value::at(const std::string& name) {
   case Type::Map:
     try {
       return prv->m->m.at(name);
-    } catch(std::out_of_range e) {}
+    } catch(const std::out_of_range& e) {}
     throw index_out_of_bounds("Key not found.");
   default:
     throw type_mismatch("Must be of type Map for that operation.");

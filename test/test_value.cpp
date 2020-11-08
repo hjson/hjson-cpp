@@ -431,23 +431,23 @@ void test_value() {
     try {
       bool a = val > val2;
       assert(!"Did not throw error when using < operator on values of different types.");
-    } catch(Hjson::type_mismatch e) {}
+    } catch(const Hjson::type_mismatch& e) {}
     try {
       bool a = val < val2;
       assert(!"Did not throw error when using < operator on values of different types.");
-    } catch(Hjson::type_mismatch e) {}
+    } catch(const Hjson::type_mismatch& e) {}
     try {
       std::string a = val + val2;
       assert(!"Did not throw error when using + operator on values of different types.");
-    } catch(Hjson::type_mismatch e) {}
+    } catch(const Hjson::type_mismatch& e) {}
     try {
       double a = val2 - val;
       assert(!"Did not throw error when using - operator on values of different types.");
-    } catch(Hjson::type_mismatch e) {}
+    } catch(const Hjson::type_mismatch& e) {}
     try {
       Hjson::Value val3 = val - Hjson::Value("0");
       assert(!"Did not throw error when using - operator on value of type STRING.");
-    } catch(Hjson::type_mismatch e) {}
+    } catch(const Hjson::type_mismatch& e) {}
   }
 
   {
@@ -463,18 +463,18 @@ void test_value() {
     try {
       double fifth = valC.at("fifth");
       assert(!"Did not throw error when calling at() with invalid key.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
     fourth = val["fourth"];
     assert(fourth == val["fourth"]);
     assert(fourth == val.at("fourth"));
     try {
       double fifth = val.at("fifth");
       assert(!"Did not throw error when calling at() with invalid key.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
     try {
       std::string fourthString = val["fourth"];
       assert(!"Did not throw error when assigning double to string.");
-    } catch(Hjson::type_mismatch e) {}
+    } catch(const Hjson::type_mismatch& e) {}
     std::string leaft1 = val["first"];
     assert(leaft1 == "leaf1");
     assert(val[std::string("first")] == "leaf1");
@@ -545,7 +545,7 @@ void test_value() {
     val["first"] = "leaf1";
     Hjson::Value undefined = val["first"]["down1"]["down2"];
     assert(!"Did not throw error when using brackets on string Value.");
-  } catch (Hjson::type_mismatch e) {}
+  } catch (const Hjson::type_mismatch& e) {}
 
   {
     const Hjson::Value val;
@@ -608,18 +608,18 @@ void test_value() {
     try {
       val[0] = 0;
       assert(!"Did not throw error when trying to assign Value to Type::Vector index that is out of bounds.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
     try {
       const Hjson::Value val2;
       const auto val3 = val2[0];
       assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
     try {
       if (val[0].empty()) {
         assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
       }
       assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
     val.push_back("first");
     val.push_back(2);
     std::string f = val[0];
@@ -629,7 +629,7 @@ void test_value() {
     try {
       val2.push_back(0);
       assert(!"Did not throw error when trying to push_back() on Value that is not a Type::Vector.");
-    } catch(Hjson::type_mismatch e) {}
+    } catch(const Hjson::type_mismatch& e) {}
     assert(val[1] == 2);
     assert(val[1].type() == Hjson::Type::Int64);
     val[0] = 3;
@@ -638,13 +638,13 @@ void test_value() {
     try {
       val[2] = 2;
       assert(!"Did not throw error when trying to assign Value to Type::Vector index that is out of bounds.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
     try {
       if (val[2].empty()) {
         assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
       }
       assert(!"Did not throw error when trying to access Type::Vector index that is out of bounds.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
   }
 
   {
@@ -741,7 +741,7 @@ void test_value() {
     try {
       val2.erase("key1");
       assert(!"Did not throw error when trying to do Type::Map erase on a STRING Value.");
-    } catch(Hjson::type_mismatch e) {}
+    } catch(const Hjson::type_mismatch& e) {}
   }
 
   {
@@ -749,7 +749,7 @@ void test_value() {
     try {
       val.erase(1);
       assert(!"Did not throw error when trying to do Type::Vector erase on Type::Undefined Value.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
     val.push_back("first");
     val.push_back("second");
     Hjson::Value val2;
@@ -762,18 +762,18 @@ void test_value() {
     try {
       val.erase(1);
       assert(!"Did not throw error when trying to do Type::Vector erase with an out-of-bounds index.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
     val.erase(0);
     assert(val.empty());
     try {
       val.erase(0);
       assert(!"Did not throw error when trying to do Type::Vector erase on an empty Type::Vector.");
-    } catch(Hjson::index_out_of_bounds e) {}
+    } catch(const Hjson::index_out_of_bounds& e) {}
     Hjson::Value val3(3);
     try {
       val3.erase(0);
       assert(!"Did not throw error when trying to do Type::Vector erase on a Type::Double Value.");
-    } catch(Hjson::type_mismatch e) {}
+    } catch(const Hjson::type_mismatch& e) {}
   }
 
   {
@@ -976,13 +976,13 @@ arr: [
     try {
       root1 = Hjson::UnmarshalFromFile("does_not_exist");
       assert(!"Did not throw error for trying to open non-existing file");
-    } catch(Hjson::file_error e) {}
+    } catch(const Hjson::file_error& e) {}
 
     Hjson::MarshalToFile(root1, szTmp);
     try {
       Hjson::MarshalToFile(root1, "");
       assert(!"Did not throw error for trying to write to invalid filename");
-    } catch(Hjson::file_error e) {}
+    } catch(const Hjson::file_error& e) {}
 
     auto root2 = Hjson::UnmarshalFromFile(szTmp);
     assert(root2.deep_equal(root1));

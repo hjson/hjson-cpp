@@ -686,7 +686,7 @@ static Value _rootValue(Parser *p) {
         _setComment(ret[0], &Value::set_comment_before, p, ciBefore);
         ciBefore = CommentInfo();
       }
-    } catch(syntax_error e) {
+    } catch(const syntax_error& e) {
       errMsg = std::string(e.what());
     }
   }
