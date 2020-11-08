@@ -460,6 +460,7 @@ void test_value() {
     double fourth = valC.operator[]("fourth");
     assert(fourth == valC["fourth"]);
     assert(fourth == valC.at("fourth"));
+    assert(!valC["fifth"].defined());
     try {
       double fifth = valC.at("fifth");
       assert(!"Did not throw error when calling at() with invalid key.");

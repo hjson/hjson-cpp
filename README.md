@@ -166,7 +166,7 @@ encOpt.omitRootBraces = true;
 std::cout << Hjson::StreamEncoder(myValue, encOpt);
 ```
 
-Likewise for reading from a stream. Hjson will consume the entire stream from its current position, and throws an error if not all of the stream (from its current position) is valid Hjson syntax.
+Likewise for reading from a stream. Hjson will consume the entire stream from its current position, and throws an *Hjson::syntax_error* exception if not all of the stream (from its current position) is valid Hjson syntax.
 
 ```cpp
 Hjson::Value myValue;
@@ -190,6 +190,19 @@ Hjson::Value myValue2 = 3.0;
 myValue2 = "A text.";
 ```
 
+These are the possible types for an *Hjson::Value*:
+
+    Undefined
+    Null
+    Bool
+    Double
+    Int64
+    String
+    Vector
+    Map
+
+The default constructor creates an *Hjson::Value* of the type *Hjson::Type::Undefined*.
+
 An *Hjson::Value* can behave both like a vector (array) and like a map (*Object* in Javascript):
 
 ```cpp
@@ -211,7 +224,7 @@ MapProxy operator[](const std::string&);
 MapProxy operator[](const char*);
 ```
 
-The MapProxy desctructor creates or updates an element in the map if needed. Therefore the MapProxy copy and move constructors are private, so that objects of that class do not stay alive longer than a single line of code. The downside of that is that you cannot store the returned value in an auto declared variable.
+The *Hjson::MapProxy* desctructor creates or updates an element in the map if needed. Therefore the *Hjson::MapProxy* copy and move constructors are private, so that objects of that class do not stay alive longer than a single line of code. The downside of that is that you cannot store the returned value in an auto declared variable.
 
 ```cpp
 Hjson::Value map;
@@ -223,18 +236,22 @@ auto badValue = map["key"];
 Hjson::Value goodValue = map["key"];
 ```
 
-These are the possible types for an *Hjson::Value*:
+Because of *Hjson::MapProxy*, you cannot get a reference to a map element from the string bracket operator. You can however get such a reference from the integer bracket operator, or from the function *Hjson::Value::at(const std::string& key)*. Both the integer bracket operator and the *at* function throw an *Hjson::index_out_of_bounds* exception if the element could not be found.
 
-    Undefined
-    Null
-    Bool
-    Double
-    Int64
-    String
-    Vector
-    Map
+```cpp
+Hjson::Value map;
+map["myKey"] = "myValue";
 
-The default constructor creates an *Hjson::Value* of the type *Hjson::Type::Undefined*.
+auto use_reference = [](Hjson::Value& input) {
+};
+
+// This statement won't compile in gcc or clang. Visual Studio will compile
+// and use a reference to the MapProxy temporary object.
+use_reference(map["myKey"]);
+
+// This statement will compile just fine.
+use_reference(map.at("myKey"));
+```
 
 ### Number representations
 
