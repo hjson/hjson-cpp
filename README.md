@@ -135,7 +135,7 @@ Value Merge(const Value& base, const Value& ext);
 
 *MarshalToFile* writes the output directly to a file instead of returning a string.
 
-*Unmarshal* is the input-function, transforming a string to a *Hjson::Value* tree. The string is expected to be UTF8 encoded. Other encodings might work too, but have not been tested. The function comes in three flavors: char pointer with or without the `dataSize` parameter, or std::string. For a char pointer without `dataSize` parameter the `data` parameter must be null-terminated (like all normal strings).
+*Unmarshal* is the input-function, transforming a string to a *Hjson::Value* tree. The string is expected to be UTF8 encoded. Other encodings might work too, but have not been tested. The function comes in three flavors: char pointer with or without the `dataSize` parameter, or std::string. For a char pointer without `dataSize` parameter the `data` parameter must be null-terminated (like all normal strings). All of the unmarshal functions throw an *Hjson::syntax_error* exception if the input string is not fully valid Hjson syntax.
 
 *UnmarshalFromFile* reads directly from a file instead of taking a string as input.
 
@@ -438,7 +438,7 @@ int main() {
 }
 )";
 
-  // Decode. Throws Hjson::syntax_error on failure.
+  // Decode. Throws Hjson::syntax_error if the string is not fully valid Hjson.
   Hjson::Value dat = Hjson::Unmarshal(sampleText.c_str(), sampleText.size());
 
   // Values can be assigned directly without casting.
