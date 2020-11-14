@@ -81,7 +81,7 @@ enum class Type {
 struct DecoderOptions {
   // Keep all comments from the Hjson input, store them in
   // the Hjson::Value objects.
-  bool comments = false;
+  bool comments = true;
   // Store all whitespace and comments in the Hjson::Value objects so that
   // linefeeds and custom indentation is kept. The "comments" option is
   // ignored if this option is true.

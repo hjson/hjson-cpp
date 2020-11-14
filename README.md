@@ -176,7 +176,7 @@ std::cin >> myValue;
 ```cpp
 Hjson::Value myValue;
 Hjson::DecoderOptions decOpt;
-decOpt.comments = true;
+decOpt.comments = false;
 std::cin >> Hjson::StreamDecoder(myValue, decOpt);
 ```
 
@@ -341,13 +341,11 @@ The insertion order is kept when cloning or merging *Hjson::Value* maps.
 
 ### Comments
 
-For performance and memory reasons, comments in Hjson documents are by default ignored by the unmarshal functions. But if you want to create an app that updates existing Hjson documents without losing the comments, then you should set the option *comments* to *true* in *DecoderOptions*. The option *comments* in *EncoderOptions* instead defaults to *true*, so if your *Hjson::Value* tree contains comments they will be included in the output from the marshal functions. In this example, any comments in the Hjson file are kept:
+The Hjson unmarshal functions will by default store any comments in the resulting *Hjson::Value* tree, so that you can easily create an app that updates existing Hjson documents without losing the comments. In this example, any comments in the Hjson file are kept:
 
 ```cpp
-Hjson::DecoderOptions decOpt;
-decOpt.comments = true;
-Hjson::Value root = Hjson::UnmarshalFromFile(szPath, decOpt);
-root["myKey"] = "myValue";
+Hjson::Value root = Hjson::UnmarshalFromFile(szPath);
+root["myKey"] = "aNewValue";
 Hjson::MarshalToFile(root, szPath);
 ```
 
@@ -407,6 +405,17 @@ Hjson is not much optimized for speed. But if you require fast(-ish) execution, 
 The value `StrToD` gives better performance, especially in multi threaded applications, but will use whatever locale the application is using. If the current locale uses commas as decimal separator *Hjson* will umarshal floating point numbers into strings, and will use commas in floating point numbers in the marshal output, which means that other parsers will treat that value as a string.
 
 Setting `HJSON_NUMBER_PARSER` to `CharConv` gives the best performance, and uses dots as comma separator regardless of the application locale. Using `CharConv` will automatically cause the code to be compiled using the C++17 standard (or a newer standard if required by your project). Unfortunately neither GCC 10.1 or Clang 10.0 implement the required features of C++17 (*std::from_chars()* for *double*). It does work in Visual Studio 17 and later.
+
+Another way to increase performance and reduce memory usage is to disable reading and writing of comments. Set the option *comments* to *false* in *DecoderOptions* and *EncoderOptions*. In this example, any comments in the Hjson file are ignored:
+
+```cpp
+Hjson::DecoderOptions decOpt;
+decOpt.comments = false;
+Hjson::Value root = Hjson::UnmarshalFromFile(szPath, decOpt);
+Hjson::EncoderOptions encOpt;
+encOpt.comments = false;
+Hjson::MarshalToFile(root, szPath, encOpt);
+```
 
 ### Example code
 

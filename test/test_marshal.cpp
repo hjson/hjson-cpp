@@ -54,8 +54,6 @@ static Hjson::Value _getTestContent(std::string name) {
   Hjson::Value root;
   Hjson::DecoderOptions opt;
 
-  opt.comments = true;
-
   try {
     root = Hjson::UnmarshalFromFile("assets/" + name + "_test.hjson", opt);
   } catch (const Hjson::file_error& e) {
