@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.10)
 
 if(${CMAKE_VERSION} VERSION_LESS 3.15)
   cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
@@ -6,8 +6,10 @@ else()
   cmake_policy(VERSION 3.15)
 endif()
 
+include_guard(GLOBAL)
+
 project(hjson
-  VERSION 1.6
+  VERSION 2.0
   DESCRIPTION "Human readable JSON"
   LANGUAGES CXX)
 

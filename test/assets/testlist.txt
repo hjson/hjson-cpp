@@ -1,6 +1,11 @@
 charset2_test.hjson
 charset_test.hjson
 comments_test.hjson
+comments2_test.hjson
+comments3_test.hjson
+comments4_test.hjson
+comments5_test.hjson
+comments6_test.hjson
 empty_test.hjson
 failCharset1_test.hjson
 failJSON02_test.json
@@ -75,8 +80,10 @@ pass3_test.json
 pass4_test.json
 pass5_test.json
 passSingle_test.hjson
+root_test.hjson
 stringify1_test.hjson
 strings2_test.hjson
 strings3_test.hjson
 strings_test.hjson
 trail_test.hjson
+windowseol_test.hjson
