@@ -390,6 +390,16 @@ MapProxy Value::operator[](const char *input) {
 }
 
 
+const Value Value::operator[](char *input) const {
+  return operator[](std::string(input));
+}
+
+
+MapProxy Value::operator[](char *input) {
+  return operator[](std::string(input));
+}
+
+
 const Value& Value::operator[](int index) const {
   switch (prv->type)
   {

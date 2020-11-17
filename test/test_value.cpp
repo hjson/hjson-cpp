@@ -511,6 +511,16 @@ void test_value() {
 
   {
     Hjson::Value val;
+    val["first"] = "leaf1";
+    char szKey[20];
+    sprintf(szKey, "first");
+    assert(val[szKey] == "leaf1");
+    char *szKey2 = szKey;
+    assert(val[szKey2] == "leaf1");
+  }
+
+  {
+    Hjson::Value val;
 
     val["one"] = "uno";
     val["two"] = "due";

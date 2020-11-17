@@ -169,6 +169,8 @@ public:
   MapProxy operator[](const std::string&);
   const Value operator[](const char*) const;
   MapProxy operator[](const char*);
+  const Value operator[](char*) const;
+  MapProxy operator[](char*);
   const Value& operator[](int) const;
   Value& operator[](int);
 
