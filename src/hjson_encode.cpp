@@ -553,7 +553,24 @@ void MarshalToFile(const Value& v, const std::string &path, const EncoderOptions
   }
   _marshalStream(v, options, &outputFile);
   if (!options.comments || v.get_comment_after().empty()) {
-    outputFile << options.eol;
+    if (options.comments && options.omitRootBraces && v.type() == Type::Map && !v.empty()) {
+      // The last comment in the file will probably not belong to the root
+      // object but to the last child of the root object. "Last" will depend
+      // on options.preserveInsertionOrder.
+      if (options.preserveInsertionOrder) {
+        if (v[static_cast<int>(v.size()) - 1].get_comment_after().empty()) {
+          outputFile << options.eol;
+        }
+      } else {
+        auto it = v.end();
+        --it;
+        if (it->second.get_comment_after().empty()) {
+          outputFile << options.eol;
+        }
+      }
+    } else {
+      outputFile << options.eol;
+    }
   }
   outputFile.close();
 }
