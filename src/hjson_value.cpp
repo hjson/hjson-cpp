@@ -1241,6 +1241,7 @@ Value Value::clone() const {
       for (int index = 0; index < int(size()); ++index) {
         ret.push_back(operator[](index).clone());
       }
+      ret.set_comments(*this);
       return ret;
     }
 
@@ -1250,6 +1251,7 @@ Value Value::clone() const {
       for (int index = 0; index < size(); ++index) {
         ret[key(index)] = operator[](index).clone();
       }
+      ret.set_comments(*this);
       return ret;
     }
 
