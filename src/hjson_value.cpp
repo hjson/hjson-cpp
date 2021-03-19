@@ -1888,17 +1888,17 @@ Value Merge(const Value& base, const Value& ext) {
   if (!ext.defined()) {
     merged = base.clone();
   } else if (base.type() == Type::Map && ext.type() == Type::Map) {
-    for (int index = 0; index < base.size(); ++index) {
-      if (ext[base.key(index)].defined()) {
-        merged[base.key(index)] = Merge(base[index], ext[base.key(index)]);
+    for (int index = 0; index < ext.size(); ++index) {
+      if (base[ext.key(index)].defined()) {
+        merged[ext.key(index)] = Merge(base[ext.key(index)], ext[index]);
       } else {
-        merged[base.key(index)] = base[index].clone();
+        merged[ext.key(index)] = ext[index].clone();
       }
     }
 
-    for (int index = 0; index < ext.size(); ++index) {
-      if (!merged[ext.key(index)].defined()) {
-        merged[ext.key(index)] = ext[index].clone();
+    for (int index = 0; index < base.size(); ++index) {
+      if (!merged[base.key(index)].defined()) {
+        merged[base.key(index)] = base[index].clone();
       }
     }
   } else {
