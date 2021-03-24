@@ -1013,10 +1013,6 @@ window: {
 
 )";
 
-    Hjson::DecoderOptions decOpt;
-    decOpt.whitespaceAsComments = true;
-    Hjson::Value base = Hjson::Unmarshal(baseStr, decOpt);
-
     std::string extStr = R"(
 
 /* ext 1*/
@@ -1042,8 +1038,55 @@ otherWindow: {
 }
 )";
 
-    Hjson::Value ext = Hjson::Unmarshal(extStr, decOpt);
+    std::string mergedStr = R"(
 
+/* ext 1*/
+
+debug: true
+    /* ext 2 */
+rect: {
+// ext 3
+  x: 0
+  y: 0
+  height: 480
+    # ext 4
+
+# base 6
+  width: 800
+} // ext 5
+path: /tmp
+// ext 6
+seq: [
+  8
+  9
+]
+// ext 8
+otherWindow: {
+  x: 17
+}
+
+# Still base 2
+extraKey: yes
+// base 15
+scale: 3
+// base 16
+window: {
+    # base 17
+  x: 13
+  y: 37
+  width: 200
+  height: 200
+}
+
+// base 18
+
+
+)";
+
+    Hjson::DecoderOptions decOpt;
+    decOpt.whitespaceAsComments = true;
+    Hjson::Value base = Hjson::Unmarshal(baseStr, decOpt);
+    Hjson::Value ext = Hjson::Unmarshal(extStr, decOpt);
     Hjson::Value merged = Hjson::Merge(base, ext);
     assert(merged["debug"] == true);
     assert(merged["rect"]["width"] == 800);
@@ -1056,6 +1099,8 @@ otherWindow: {
     assert(merged["otherWindow"]["x"] == 17);
     // The insertion order of "ext" must have been kept in the merge.
     assert(merged.key(1) == "rect");
+    // The comments from "ext" must have been kept in the merge.
+    assert(merged["rect"].get_comment_after() == " // ext 5");
     // The insertion order and comments must have been kept in the clone.
     auto baseClone = base.clone();
     Hjson::EncoderOptions encOpt;
@@ -1067,6 +1112,8 @@ otherWindow: {
     auto extClone = ext.clone();
     auto extCloneStr = Hjson::Marshal(extClone, encOpt);
     assert(extCloneStr == extStr);
+    auto mergedStrResult = Hjson::Marshal(merged, encOpt);
+    assert(mergedStrResult == mergedStr);
   }
 
   {

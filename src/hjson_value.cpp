@@ -1901,6 +1901,8 @@ Value Merge(const Value& base, const Value& ext) {
         merged[base.key(index)] = base[index].clone();
       }
     }
+
+    merged.set_comments(ext);
   } else {
     merged = ext.clone();
   }
