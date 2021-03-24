@@ -20,6 +20,10 @@ static std::string _readStream(std::ifstream *pInfile) {
   pInfile->read(&ret[0], ret.size());
   pInfile->close();
 
+  while (len > 0 && ret.at(len - 1) == '\0') {
+    --len;
+  }
+
   if (len > 0 && ret.at(len - 1) == '\n') {
     --len;
   }

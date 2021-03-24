@@ -770,6 +770,10 @@ Value UnmarshalFromFile(const std::string &path, const DecoderOptions& options) 
   infile.read(&inStr[0], inStr.size());
   infile.close();
 
+  while (len > 0 && inStr.at(len - 1) == '\0') {
+    --len;
+  }
+
   if (len > 0 && inStr.at(len - 1) == '\n') {
     --len;
   }
