@@ -14,10 +14,20 @@ static std::string _readStream(std::ifstream *pInfile) {
   assert(pInfile->is_open());
 
   std::string ret;
-  ret.resize(pInfile->tellg());
+  size_t len = pInfile->tellg();
+  ret.resize(len);
   pInfile->seekg(0, std::ios::beg);
   pInfile->read(&ret[0], ret.size());
   pInfile->close();
+
+  if (len > 0 && ret.at(len - 1) == '\n') {
+    --len;
+  }
+  if (len > 0 && ret.at(len - 1) == '\r') {
+    --len;
+  }
+
+  ret.resize(len);
 
   return ret;
 }
@@ -156,7 +166,7 @@ static void _examine(std::string filename) {
 
 #if WRITE_FACIT
   std::ofstream outputFile = std::ofstream("assets/comments2/" + name + "_result.hjson", std::ofstream::binary);
-  outputFile << actualHjson;
+  outputFile << actualHjson << '\n';
   outputFile.close();
 #endif
 
@@ -169,7 +179,7 @@ static void _examine(std::string filename) {
 
 #if WRITE_FACIT
   outputFile = std::ofstream("assets/comments/" + name + "_result.hjson", std::ofstream::binary);
-  outputFile << actualHjson;
+  outputFile << actualHjson << '\n';
   outputFile.close();
 #endif
 
@@ -182,7 +192,7 @@ static void _examine(std::string filename) {
 
 #if WRITE_FACIT
   outputFile = std::ofstream("assets/" + name + "_result.hjson", std::ofstream::binary);
-  outputFile << actualHjson;
+  outputFile << actualHjson << '\n';
   outputFile.close();
 #endif
 
@@ -193,7 +203,7 @@ static void _examine(std::string filename) {
 
 #if WRITE_FACIT
   outputFile = std::ofstream("assets/" + name + "_result.json", std::ofstream::binary);
-  outputFile << actualJson;
+  outputFile << actualJson << '\n';
   outputFile.close();
 #endif
 
@@ -206,7 +216,7 @@ static void _examine(std::string filename) {
 
 #if WRITE_FACIT
   outputFile = std::ofstream("assets/sorted/" + name + "_result.hjson", std::ofstream::binary);
-  outputFile << actualHjson;
+  outputFile << actualHjson << '\n';
   outputFile.close();
 #endif
 
@@ -223,7 +233,7 @@ static void _examine(std::string filename) {
 
 #if WRITE_FACIT
   outputFile = std::ofstream("assets/sorted/" + name + "_result.json", std::ofstream::binary);
-  outputFile << actualJson;
+  outputFile << actualJson << '\n';
   outputFile.close();
 #endif
 

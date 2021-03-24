@@ -764,12 +764,20 @@ Value UnmarshalFromFile(const std::string &path, const DecoderOptions& options) 
     throw file_error("Could not open file '" + path + "' for reading");
   }
   std::string inStr;
-  inStr.resize(infile.tellg());
+  size_t len = infile.tellg();
+  inStr.resize(len);
   infile.seekg(0, std::ios::beg);
   infile.read(&inStr[0], inStr.size());
   infile.close();
 
-  return Unmarshal(inStr, options);
+  if (len > 0 && inStr.at(len - 1) == '\n') {
+    --len;
+  }
+  if (len > 0 && inStr.at(len - 1) == '\r') {
+    --len;
+  }
+
+  return Unmarshal(inStr.c_str(), len, options);
 }
 
 
