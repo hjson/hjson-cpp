@@ -404,7 +404,7 @@ Hjson is not much optimized for speed. But if you require fast(-ish) execution, 
 
 The value `StrToD` gives better performance, especially in multi threaded applications, but will use whatever locale the application is using. If the current locale uses commas as decimal separator *Hjson* will umarshal floating point numbers into strings, and will use commas in floating point numbers in the marshal output, which means that other parsers will treat that value as a string.
 
-Setting `HJSON_NUMBER_PARSER` to `CharConv` gives the best performance, and uses dots as comma separator regardless of the application locale. Using `CharConv` will automatically cause the code to be compiled using the C++17 standard (or a newer standard if required by your project). Unfortunately neither GCC 10.1 or Clang 10.0 implement the required features of C++17 (*std::from_chars()* for *double*). It does work in Visual Studio 17 and later.
+Setting `HJSON_NUMBER_PARSER` to `CharConv` gives the best performance, and uses dots as comma separator regardless of the application locale. Using `CharConv` will automatically cause the code to be compiled using the C++17 standard (or a newer standard if required by your project). Unfortunately neither GCC 10.1 or Clang 10.0 implement the required feature of C++17 (*std::from_chars()* for *double*), but GCC 11 will have it. It does work in Visual Studio 17 and later.
 
 Another way to increase performance and reduce memory usage is to disable reading and writing of comments. Set the option *comments* to *false* in *DecoderOptions* and *EncoderOptions*. In this example, any comments in the Hjson file are ignored:
 

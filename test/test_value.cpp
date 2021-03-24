@@ -958,6 +958,118 @@ void test_value() {
   }
 
   {
+    Hjson::Value val1;
+    val1.push_back(1);
+    Hjson::Value val2 = val1.clone();
+    val1.push_back(2);
+    assert(val2.size() == 1);
+    val1.push_back(val2);
+    val2 = val1.clone();
+    val2[2].push_back(3);
+    assert(val1[2].size() == 1);
+  }
+
+  {
+    std::string baseStr = R"(// base 1
+debug: false # base 2
+# Still base 2
+extraKey: yes
+// base 2.1
+rect: {
+// base 3
+  x: 0 // base 4
+  // base 5
+  y: 0
+# base 6
+  width: 800
+  /* base 7 */
+  height: 600
+  // base 8
+}
+// base 9
+path: C:/temp
+// base 10
+seq: [
+  // base 11
+  0
+  # base 12
+  1   /* base 13 */
+  2
+/* base 14 */
+]
+// base 15
+scale: 3
+// base 16
+window: {
+    # base 17
+  x: 13
+  y: 37
+  width: 200
+  height: 200
+}
+
+// base 18
+
+
+)";
+
+    Hjson::DecoderOptions decOpt;
+    decOpt.whitespaceAsComments = true;
+    Hjson::Value base = Hjson::Unmarshal(baseStr, decOpt);
+
+    std::string extStr = R"(
+
+/* ext 1*/
+
+debug: true
+    /* ext 2 */
+rect: {
+// ext 3
+  x: 0
+  y: 0
+  height: 480
+    # ext 4
+} // ext 5
+path: /tmp
+// ext 6
+seq: [
+  8
+  9
+]
+// ext 8
+otherWindow: {
+  x: 17
+}
+)";
+
+    Hjson::Value ext = Hjson::Unmarshal(extStr, decOpt);
+
+    Hjson::Value merged = Hjson::Merge(base, ext);
+    assert(merged["debug"] == true);
+    assert(merged["rect"]["width"] == 800);
+    assert(merged["rect"]["height"] == 480);
+    assert(merged["path"] == "/tmp");
+    assert(merged["seq"].size() == 2);
+    assert(merged["seq"][1] == 9);
+    assert(merged["scale"] == 3);
+    assert(merged["window"]["y"] == 37);
+    assert(merged["otherWindow"]["x"] == 17);
+    // The insertion order of "ext" must have been kept in the merge.
+    assert(merged.key(1) == "rect");
+    // The insertion order and comments must have been kept in the clone.
+    auto baseClone = base.clone();
+    Hjson::EncoderOptions encOpt;
+    encOpt.bracesSameLine = true;
+    encOpt.preserveInsertionOrder = true;
+    encOpt.omitRootBraces = true;
+    auto baseCloneStr = Hjson::Marshal(baseClone, encOpt);
+    assert(baseCloneStr == baseStr);
+    auto extClone = ext.clone();
+    auto extCloneStr = Hjson::Marshal(extClone, encOpt);
+    assert(extCloneStr == extStr);
+  }
+
+  {
     auto noRootBraces = R"(alfa: a
 beta: b
 obj: {
