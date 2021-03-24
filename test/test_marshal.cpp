@@ -34,7 +34,7 @@ static std::string _readStream(std::ifstream *pInfile) {
 
 
 static std::string _readFile(std::string pathBeginning, std::string extra,
-  std::string pathEnd)
+  std::string pathEnd, bool *pUsedExtra)
 {
   // The output from Hjson::Marshal() always uses Unix EOL, but git might have
   // converted files to Windows EOL on Windows, therefore we open the file in
@@ -42,6 +42,9 @@ static std::string _readFile(std::string pathBeginning, std::string extra,
   std::ifstream infile(pathBeginning + extra + pathEnd, std::ifstream::ate);
   if (!infile.is_open()) {
     infile.open(pathBeginning + pathEnd, std::ifstream::ate);
+    *pUsedExtra = false;
+  } else {
+    *pUsedExtra = true;
   }
   if (!infile.is_open()) {
     return "";
@@ -161,11 +164,13 @@ static void _examine(std::string filename) {
   Hjson::EncoderOptions opt;
   opt.bracesSameLine = true;
 
-  auto rhjson = _readFile("assets/comments2/", extra, name + "_result.hjson");
+  bool bUsedExtra = false;
+  auto rhjson = _readFile("assets/comments2/", extra, name + "_result.hjson", &bUsedExtra);
   auto actualHjson = Hjson::Marshal(root, opt);
 
 #if WRITE_FACIT
-  std::ofstream outputFile = std::ofstream("assets/comments2/" + name + "_result.hjson", std::ofstream::binary);
+  std::ofstream outputFile = std::ofstream("assets/comments2/" +
+    (bUsedExtra ? extra + '/' : "") + name + "_result.hjson", std::ofstream::binary);
   outputFile << actualHjson << '\n';
   outputFile.close();
 #endif
@@ -174,11 +179,12 @@ static void _examine(std::string filename) {
 
   opt.bracesSameLine = false;
 
-  rhjson = _readFile("assets/comments/", extra, name + "_result.hjson");
+  rhjson = _readFile("assets/comments/", extra, name + "_result.hjson", &bUsedExtra);
   actualHjson = Hjson::Marshal(root, opt);
 
 #if WRITE_FACIT
-  outputFile = std::ofstream("assets/comments/" + name + "_result.hjson", std::ofstream::binary);
+  outputFile = std::ofstream("assets/comments/" + (bUsedExtra ? extra + '/' : "") +
+    name + "_result.hjson", std::ofstream::binary);
   outputFile << actualHjson << '\n';
   outputFile.close();
 #endif
@@ -187,22 +193,24 @@ static void _examine(std::string filename) {
 
   opt.comments = false;
 
-  rhjson = _readFile("assets/", extra, name + "_result.hjson");
+  rhjson = _readFile("assets/", extra, name + "_result.hjson", &bUsedExtra);
   actualHjson = Hjson::Marshal(root, opt);
 
 #if WRITE_FACIT
-  outputFile = std::ofstream("assets/" + name + "_result.hjson", std::ofstream::binary);
+  outputFile = std::ofstream("assets/" + (bUsedExtra ? extra + '/' : "") +
+    name + "_result.hjson", std::ofstream::binary);
   outputFile << actualHjson << '\n';
   outputFile.close();
 #endif
 
   _evaluate(rhjson, actualHjson);
 
-  auto rjson = _readFile("assets/", extra, name + "_result.json");
+  auto rjson = _readFile("assets/", extra, name + "_result.json", &bUsedExtra);
   auto actualJson = Hjson::MarshalJson(root);
 
 #if WRITE_FACIT
-  outputFile = std::ofstream("assets/" + name + "_result.json", std::ofstream::binary);
+  outputFile = std::ofstream("assets/" + (bUsedExtra ? extra + '/' : "") +
+    name + "_result.json", std::ofstream::binary);
   outputFile << actualJson << '\n';
   outputFile.close();
 #endif
@@ -211,11 +219,12 @@ static void _examine(std::string filename) {
 
   opt.preserveInsertionOrder = false;
 
-  rhjson = _readFile("assets/sorted/", extra, name + "_result.hjson");
+  rhjson = _readFile("assets/sorted/", extra, name + "_result.hjson", &bUsedExtra);
   actualHjson = Hjson::Marshal(root, opt);
 
 #if WRITE_FACIT
-  outputFile = std::ofstream("assets/sorted/" + name + "_result.hjson", std::ofstream::binary);
+  outputFile = std::ofstream("assets/sorted/" + (bUsedExtra ? extra + '/' : "") +
+    name + "_result.hjson", std::ofstream::binary);
   outputFile << actualHjson << '\n';
   outputFile.close();
 #endif
@@ -228,11 +237,12 @@ static void _examine(std::string filename) {
   opt.separator = true;
   opt.comments = false;
 
-  rjson = _readFile("assets/sorted/", extra, name + "_result.json");
+  rjson = _readFile("assets/sorted/", extra, name + "_result.json", &bUsedExtra);
   actualJson = Hjson::Marshal(root, opt);
 
 #if WRITE_FACIT
-  outputFile = std::ofstream("assets/sorted/" + name + "_result.json", std::ofstream::binary);
+  outputFile = std::ofstream("assets/sorted/" + (bUsedExtra ? extra + '/' : "") +
+    name + "_result.json", std::ofstream::binary);
   outputFile << actualJson << '\n';
   outputFile.close();
 #endif
