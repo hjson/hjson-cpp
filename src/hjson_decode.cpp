@@ -89,22 +89,28 @@ static bool _isPunctuatorChar(char c) {
 
 
 static std::string _errAt(Parser *p, const std::string& message) {
-  int i, col = 0, line = 1;
+  if (p->dataSize) {
+    size_t decoderIndex = std::max(static_cast<size_t>(1), std::min(p->dataSize,
+      static_cast<size_t>(p->at))) - 1;
+    int i = decoderIndex, col = 0, line = 1;
 
-  for (i = p->at - 1; i > 0 && p->data[i] != '\n'; i--) {
-    col++;
-  }
-
-  for (; i > 0; i--) {
-    if (p->data[i] == '\n') {
-      line++;
+    for (; i > 0 && p->data[i] != '\n'; i--) {
+      col++;
     }
+
+    for (; i > 0; i--) {
+      if (p->data[i] == '\n') {
+        line++;
+      }
+    }
+
+    size_t samEnd = std::min((size_t)20, p->dataSize - (decoderIndex - col));
+
+    return message + " at line " + std::to_string(line) + "," +
+      std::to_string(col) + " >>> " + std::string((char*)p->data + decoderIndex - col, samEnd);
+  } else {
+    return message;
   }
-
-  size_t samEnd = std::min((size_t)20, p->dataSize - (p->at - col));
-
-  return message + " at line " + std::to_string(line) + "," +
-    std::to_string(col) + " >>> " + std::string((char*)p->data + p->at - col, samEnd);
 }
 
 
