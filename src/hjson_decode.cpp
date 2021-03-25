@@ -93,7 +93,7 @@ static std::string _errAt(Parser *p, const std::string& message) {
   if (p->dataSize && p->indexNext <= p->dataSize) {
     size_t decoderIndex = std::max(static_cast<size_t>(1), std::min(p->dataSize,
       static_cast<size_t>(p->indexNext))) - 1;
-    int i = decoderIndex, col = 0, line = 1;
+    size_t i = decoderIndex, col = 0, line = 1;
 
     for (; i > 0 && p->data[i] != '\n'; i--) {
       col++;
