@@ -16,7 +16,7 @@ namespace Hjson {
 struct Parser {
   const unsigned char *data;
   size_t dataSize;
-  int at;
+  int indexNext;
   unsigned char ch;
 };
 
@@ -74,15 +74,16 @@ static bool _parseInt(std::int64_t *pNumber, const char *pCh, size_t nCh) {
 
 static bool _next(Parser *p) {
   // get the next character.
-  if (p->at < p->dataSize) {
-    p->ch = p->data[p->at++];
+  if (p->indexNext < p->dataSize) {
+    p->ch = p->data[p->indexNext++];
     return true;
   }
 
-  if (p->at == p->dataSize) {
-    p->at++;
-    p->ch = 0;
+  if (p->indexNext == p->dataSize) {
+    p->indexNext++;
   }
+
+  p->ch = 0;
 
   return false;
 }
@@ -135,7 +136,7 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
     }
   }
 
-  auto end = p.at;
+  auto end = p.indexNext;
 
   // skip white/to (newline)
   while (p.ch > 0 && p.ch <= ' ') {
@@ -145,7 +146,8 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
   if (stopAtNext) {
     // end scan if we find a punctuator character like ,}] or a comment
     if (p.ch == ',' || p.ch == '}' || p.ch == ']' ||
-      p.ch == '#' || (p.ch == '/' && (p.data[p.at] == '/' || p.data[p.at] == '*')))
+      p.ch == '#' || (p.indexNext < textSize && p.ch == '/' &&
+      (p.data[p.indexNext] == '/' || p.data[p.indexNext] == '*')))
     {
       p.ch = 0;
     }

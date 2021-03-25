@@ -12,6 +12,7 @@ namespace Hjson {
 class CommentInfo {
 public:
   bool hasComment;
+  // cmStart is the first char of the key, cmEnd is the first char after the key.
   int cmStart, cmEnd;
 };
 
@@ -20,7 +21,7 @@ class Parser {
 public:
   const unsigned char *data;
   size_t dataSize;
-  int at;
+  int indexNext;
   unsigned char ch;
   DecoderOptions opt;
 };
@@ -54,13 +55,13 @@ static inline void _setComment(Value& val, void (Value::*fp)(const std::string&)
 
 static bool _next(Parser *p) {
   // get the next character.
-  if (p->at < p->dataSize) {
-    p->ch = p->data[p->at++];
+  if (p->indexNext < p->dataSize) {
+    p->ch = p->data[p->indexNext++];
     return true;
   }
 
+  ++p->indexNext;
   p->ch = 0;
-  ++p->at;
 
   return false;
 }
@@ -68,8 +69,8 @@ static bool _next(Parser *p) {
 
 static bool _prev(Parser *p) {
   // get the previous character.
-  if (p->at > 1) {
-    p->ch = p->data[p->at-- - 2];
+  if (p->indexNext > 1) {
+    p->ch = p->data[p->indexNext-- - 2];
     return true;
   }
 
@@ -78,7 +79,7 @@ static bool _prev(Parser *p) {
 
 
 static void _resetAt(Parser *p) {
-  p->at = 0;
+  p->indexNext = 0;
   _next(p);
 }
 
@@ -89,9 +90,9 @@ static bool _isPunctuatorChar(char c) {
 
 
 static std::string _errAt(Parser *p, const std::string& message) {
-  if (p->dataSize) {
+  if (p->dataSize && p->indexNext <= p->dataSize) {
     size_t decoderIndex = std::max(static_cast<size_t>(1), std::min(p->dataSize,
-      static_cast<size_t>(p->at))) - 1;
+      static_cast<size_t>(p->indexNext))) - 1;
     int i = decoderIndex, col = 0, line = 1;
 
     for (; i > 0 && p->data[i] != '\n'; i--) {
@@ -115,10 +116,10 @@ static std::string _errAt(Parser *p, const std::string& message) {
 
 
 static unsigned char _peek(Parser *p, int offs) {
-  int pos = p->at + offs;
+  int pos = p->indexNext + offs;
 
   if (pos >= 0 && pos < p->dataSize) {
-    return p->data[p->at + offs];
+    return p->data[pos];
   }
 
   return 0;
@@ -307,7 +308,9 @@ static std::string _readKeyname(Parser *p) {
     return _readString(p, false);
   }
 
-  size_t keyStart = p->at - 1;
+  // keyStart is the index for the first char of the key.
+  size_t keyStart = p->indexNext - 1;
+  // keyEnd is the index for the first char after the key (i.e. not included in the key).
   size_t keyEnd = keyStart;
   int firstSpace = -1;
   for (;;) {
@@ -315,7 +318,7 @@ static std::string _readKeyname(Parser *p) {
       if (keyEnd <= keyStart) {
         throw syntax_error(_errAt(p, "Found ':' but no key name (for an empty key name use quotes)"));
       } else if (firstSpace >= 0 && firstSpace != keyEnd) {
-        p->at = firstSpace;
+        p->indexNext = firstSpace + 1;
         throw syntax_error(_errAt(p, "Found whitespace in your key name (use quotes to include)"));
       }
       return std::string(reinterpret_cast<const char*>(p->data) + keyStart, keyEnd - keyStart);
@@ -324,14 +327,14 @@ static std::string _readKeyname(Parser *p) {
         throw syntax_error(_errAt(p, "Found EOF while looking for a key name (check your syntax)"));
       }
       if (firstSpace < 0) {
-        firstSpace = p->at - 1;
+        firstSpace = p->indexNext - 1;
       }
     } else {
       if (_isPunctuatorChar(p->ch)) {
         throw syntax_error(_errAt(p, std::string("Found '") + (char)p->ch + std::string(
           "' where a key name was expected (check your syntax or use quotes if the key name includes {}[],: or whitespace)")));
       }
-      keyEnd = p->at;
+      keyEnd = p->indexNext;
     }
     _next(p);
   }
@@ -341,7 +344,7 @@ static std::string _readKeyname(Parser *p) {
 static CommentInfo _white(Parser *p) {
   CommentInfo ci = {
     p->opt.whitespaceAsComments,
-    p->at - 1,
+    p->indexNext - 1,
     0
   };
 
@@ -376,7 +379,8 @@ static CommentInfo _white(Parser *p) {
     }
   }
 
-  ci.cmEnd = p->at - 1;
+  // cmEnd is the first char after the comment (i.e. not included in the comment).
+  ci.cmEnd = p->indexNext - 1;
 
   return ci;
 }
@@ -385,7 +389,7 @@ static CommentInfo _white(Parser *p) {
 static CommentInfo _getCommentAfter(Parser *p) {
   CommentInfo ci = {
     p->opt.whitespaceAsComments,
-    p->at - 1,
+    p->indexNext - 1,
     0
   };
 
@@ -420,7 +424,8 @@ static CommentInfo _getCommentAfter(Parser *p) {
     }
   }
 
-  ci.cmEnd = p->at - 1;
+  // cmEnd is the first char after the comment (i.e. not included in the comment).
+  ci.cmEnd = p->indexNext - 1;
 
   return ci;
 }
@@ -433,12 +438,13 @@ static Value _readTfnns(Parser *p) {
     throw syntax_error(_errAt(p, std::string("Found a punctuator character '") +
       (char)p->ch + std::string("' when expecting a quoteless string (check your syntax)")));
   }
-  size_t valStart = p->at - 1, valEnd = 0;
+  size_t valStart = p->indexNext - 1, valEnd = 0;
 
   if (std::isspace(p->ch)) {
     ++valStart;
   } else {
-    valEnd = p->at;
+    // valEnd is the first char after the value.
+    valEnd = p->indexNext;
   }
 
   for (;;) {
@@ -486,7 +492,8 @@ static Value _readTfnns(Parser *p) {
         ++valStart;
       }
     } else {
-      valEnd = p->at;
+      // valEnd is the first char after the value.
+      valEnd = p->indexNext;
     }
   }
 }
