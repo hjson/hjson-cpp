@@ -9,7 +9,7 @@ endif()
 include_guard(GLOBAL)
 
 project(hjson
-  VERSION 2.1
+  VERSION 2.2
   DESCRIPTION "Human readable JSON"
   LANGUAGES CXX)
 
