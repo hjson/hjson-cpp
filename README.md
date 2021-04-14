@@ -272,6 +272,22 @@ Any *Hjson::Value* of type *Hjson::Type::Double* will be represented by a string
 
 The function *Hjson::Value::is_numeric()* returns true if the *Hjson::Value* is of type *Hjson::Type::Double* or *Hjson::Type::Int64*.
 
+### Avoiding type mismatch errors
+
+When *static_cast<>()* is used on an *Hjson::Value*, an *Hjson::type_mismatch* error is thrown if the *Hjson::Value* is not of a compatible type. For example, if you do `static_cast<const char*>(myVal)` then `myVal` must be of the type *Hjson::Type::String*, otherwise an *Hjson::type_mismatch* error is thrown.
+
+So if you use static or implicit casting, errors can be thrown depending on the content of the input *Hjson* file. Maybe the *Hjson* file contains a collection of first and last names in quoteless lowercase strings and [Christopher Null](https://en.wikipedia.org/wiki/Christopher_Null) is one of the persons in the collection... The unquoted string `null` is stored in an *Hjson::Value* of type *Hjson::Type::Null* instead of *Hjson::Type::String* as the other names.
+
+To avoid errors being thrown when casting, instead use these *Hjson::Value* member functions that will return the best possible representation of the value regardless of *Hjson::Type*:
+
+```cpp
+double Value::to_double() const;
+std::int64_t Value::to_int64() const;
+std::string Value::to_string() const;
+```
+
+For example, if `myVal` is of type *Hjson::Type::Null* then `myVal.to_string()` returns the string `"null"`.
+
 ### Operators
 
 This table shows all operators defined for *Hjson::Value*, and the *Hjson::Type* they require. If an operator is used on an *Hjson::Value* of a type for which that operator is not valid, the exception *Hjson::type_mismatch* is thrown.
