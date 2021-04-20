@@ -25,7 +25,9 @@
 }
 ```
 
-The C++ implementation of Hjson is based on [hjson-go](https://github.com/hjson/hjson-go). For other platforms see [hjson.github.io](https://hjson.github.io).
+To quickly get up and running with a new C++ application project using Hjson configuration files, use the [hjson-cpp-example](https://github.com/hjson/hjson-cpp-example) template repository.
+
+For other platforms see [hjson.github.io](https://hjson.github.io).
 
 # Compiling
 
@@ -35,11 +37,11 @@ GCC 4.8 has the C++11 headers for regex, but unfortunately not a working impleme
 
 ## Cmake
 
-The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms. Cmake version 3.10 or newer is required.
+The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the Hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms. Cmake version 3.10 or newer is required.
 
 ### Cmake subfolder
 
-Instead of building a lib, you can choose to include hjson as a subfolder in your own Cmake project. That way, hjson will be built together with your own project, with the same settings. In Visual Studio that also means the hjson source code will be visible in a project in your own solution. Example `CMakeLists.txt` for your own project, if your executable is called `myapp`:
+Instead of building a lib, you can choose to include Hjson as a subfolder in your own Cmake project. That way, Hjson will be built together with your own project, with the same settings. In Visual Studio that also means the Hjson source code will be visible in a project in your own solution. Example `CMakeLists.txt` for your own project, if your executable is called `myapp`:
 ```cmake
 add_executable(myapp main.cpp)
 
@@ -87,11 +89,11 @@ $ make
 
 ### Windows lib
 
-The Cmake GUI is the most convenient way to generate a Visual Studio solution. Make sure that you tick the boxes for `HJSON_ENABLE_TEST` and `HJSON_ENABLE_INSTALL` if you want to run tests or make the hjson lib accessible system wide.
+The Cmake GUI is the most convenient way to generate a Visual Studio solution. Make sure that you tick the boxes for `HJSON_ENABLE_TEST` and `HJSON_ENABLE_INSTALL` if you want to run tests or make the Hjson lib accessible system wide.
 
 After generating the solution and opening it in Visual Studio you can run the tests by right-clicking the project `runtest` and selecting `Build`. The test results are shown in the `Output` window (the same window that shows the build result).
 
-In order to make the hjson lib accessible system wide you must run Visual Studio as an administrator. In Windows 7 you can do that by right-clicking on the Visual Studio icon in the start menu and selecting `Run as an administrator`. Then open the hjson solution, right-click the `INSTALL` project and select `Build`. Make sure to do that for both the `Debug` and `Release` targets.
+In order to make the Hjson lib accessible system wide you must run Visual Studio as an administrator. In Windows 7 you can do that by right-clicking on the Visual Studio icon in the start menu and selecting `Run as an administrator`. Then open the Hjson solution, right-click the `INSTALL` project and select `Build`. Make sure to do that for both the `Debug` and `Release` targets.
 
 ## Linking
 
@@ -103,9 +105,9 @@ find_package(hjson REQUIRED)
 target_link_libraries(myapp hjson)
 ```
 
-On Windows it's important that you compiled or installed both `Debug` and `Release` hjson libraries before Cmake-generating your own project. Otherwise the target type you didn't compile/install will not be available in your own project.
+On Windows it's important that you compiled or installed both `Debug` and `Release` Hjson libraries before Cmake-generating your own project. Otherwise the target type you didn't compile/install will not be available in your own project.
 
-If you did not install hjson system wide, you can still use it like in the example above if you specify the location of the hjson build when running Cmake for your own project. Example:
+If you did not install Hjson system wide, you can still use it like in the example above if you specify the location of the Hjson build when running Cmake for your own project. Example:
 ```bash
 $ cmake .. -Dhjson_DIR=../hjson-cpp/build
 ```
@@ -526,6 +528,8 @@ Hjson::Value GetConfig(const char *szConfigPath) {
   return Hjson::Merge(defaultConfig, inputConfig);
 }
 ```
+
+For a full multi-platform example application using Hjson configuration files, see the [hjson-cpp-example](https://github.com/hjson/hjson-cpp-example) template repository.
 
 # History
 
