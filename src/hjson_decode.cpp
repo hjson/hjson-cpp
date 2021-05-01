@@ -285,6 +285,11 @@ static std::string _readString(Parser *p, bool allowML) {
           uffff = uffff * 16 + hex;
         }
         _toUtf8(res, uffff);
+      } else if (p->ch == '\n') {
+        // Escaped line feed is ignored (line continuation is allowed).
+      } else if (p->ch == '\r' && _peek(p, 0) == '\n') {
+        // Escaped line feed is ignored (line continuation is allowed).
+        _next(p);
       } else if ((ech = _escapee(p->ch))) {
         res.push_back(ech);
       } else {
