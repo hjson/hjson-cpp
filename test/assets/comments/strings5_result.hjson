@@ -1,4 +1,4 @@
 {
-  # escaped \n
+  # escaped \r\n
   key: Look, Mom! No \n's!
 }
