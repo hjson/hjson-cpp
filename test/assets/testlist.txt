@@ -69,6 +69,7 @@ failStr6d_test.hjson
 failStr7a_test.hjson
 failStr8a_test.hjson
 failStr9a_test.hjson
+failStr10a_test.hjson
 int64_test.hjson
 JSON28_test.json
 kan_test.hjson
@@ -87,6 +88,7 @@ strings2_test.hjson
 strings3_test.hjson
 strings4_test.hjson
 strings5_test.hjson
+strings6_test.hjson
 strings_test.hjson
 trail_test.hjson
 windowseol_test.hjson
