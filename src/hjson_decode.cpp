@@ -40,7 +40,7 @@ static inline void _setComment(Value& val, void (Value::*fp)(const std::string&)
 }
 
 
-static inline void _setComment(Value& val, void (Value::*fp)(const std::string&),
+static inline bool _setComment(Value& val, void (Value::*fp)(const std::string&),
   Parser *p, const CommentInfo& ciA, const CommentInfo& ciB)
 {
   if (ciA.hasComment && ciB.hasComment) {
@@ -598,6 +598,14 @@ static Value _readObject(Parser *p, bool withoutBraces) {
     }
     if (p->ch == '}' && !withoutBraces) {
       auto existingAfter = elem.get_comment_after();
+      elem.set_comment_after("");
+      if (!existingAfter.empty()) {
+        // If whitespaceAsComments == false and we have existingAfter, then
+        // we want to add any trailing whitespace to the comment after the
+        // last element, otherwise } will end up in the comment when encoding.
+        ciAfter.hasComment = (ciAfter.cmEnd > ciAfter.cmStart);
+        ciExtra.hasComment = (ciExtra.cmEnd > ciExtra.cmStart);
+      }
       _setComment(elem, &Value::set_comment_after, p, ciAfter, ciExtra);
       if (!existingAfter.empty()) {
         elem.set_comment_after(existingAfter + elem.get_comment_after());
