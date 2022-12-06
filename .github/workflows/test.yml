@@ -48,6 +48,6 @@ jobs:
               HJSON_NUMBER_PARSER: CharConv
     env: ${{ matrix.env }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DHJSON_NUMBER_PARSER=${HJSON_NUMBER_PARSER} -DCMAKE_CXX_FLAGS="${HJSON_CXX_FLAGS}" .. && cmake --build . --target runtest
         shell: bash
