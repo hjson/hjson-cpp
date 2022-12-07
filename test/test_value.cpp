@@ -1139,6 +1139,32 @@ arr: [
   }
 
   {
+    auto noLineFeedAtEnd = R"(alfa: a  // cm 1
+beta: a// cm 2)";
+
+    Hjson::DecoderOptions decOpt;
+    decOpt.whitespaceAsComments = true;
+    auto root = Hjson::Unmarshal(noLineFeedAtEnd, decOpt);
+
+    auto newStr = Hjson::Marshal(root);
+
+    auto expectedStr = R"({
+  alfa: a  // cm 1
+beta: a// cm 2
+})";
+
+    assert(newStr == expectedStr);
+
+    auto lineFeedAtEnd = R"(alfa: a  // cm 1
+beta: a// cm 2
+)";
+
+    root = Hjson::Unmarshal(lineFeedAtEnd, decOpt);
+    newStr = Hjson::Marshal(root);
+    assert(newStr == expectedStr);
+  }
+
+  {
     const char *szTmp = "tmpTestFile.hjson";
 
     auto root1 = Hjson::UnmarshalFromFile("assets/charset_test.hjson");
