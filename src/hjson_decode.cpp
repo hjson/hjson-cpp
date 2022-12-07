@@ -40,7 +40,7 @@ static inline void _setComment(Value& val, void (Value::*fp)(const std::string&)
 }
 
 
-static inline bool _setComment(Value& val, void (Value::*fp)(const std::string&),
+static inline void _setComment(Value& val, void (Value::*fp)(const std::string&),
   Parser *p, const CommentInfo& ciA, const CommentInfo& ciB)
 {
   if (ciA.hasComment && ciB.hasComment) {
@@ -343,7 +343,7 @@ static std::string _readKeyname(Parser *p) {
 
 static CommentInfo _white(Parser *p) {
   CommentInfo ci = {
-    p->opt.whitespaceAsComments,
+    false,
     p->indexNext - 1,
     0
   };
@@ -381,6 +381,9 @@ static CommentInfo _white(Parser *p) {
 
   // cmEnd is the first char after the comment (i.e. not included in the comment).
   ci.cmEnd = p->indexNext - 1;
+
+  ci.hasComment = (ci.hasComment || (p->opt.whitespaceAsComments &&
+    (ci.cmEnd > ci.cmStart)));
 
   return ci;
 }
