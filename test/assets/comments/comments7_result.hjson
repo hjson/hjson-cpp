@@ -5,4 +5,5 @@ b: /* key comment */ {
 } # cm after obj
 // Comment B4
 a: 2
-/* Last comment */}
+/* Last comment */
+}

@@ -418,6 +418,9 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
 
       if (!e->opt.omitRootBraces || !isRootObject || value.empty()) {
         e->indent--;
+        if (isRootObject && e->opt.comments && !commentAfter.empty() && commentAfter.back() != '\n') {
+          _writeIndent(e, e->indent);
+        }
         *e->os << "}";
       }
     }
