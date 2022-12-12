@@ -67,9 +67,8 @@ static inline void _filterComment(Hjson::Value *val, std::string (Hjson::Value::
 }
 
 
-static Hjson::Value _getTestContent(std::string name) {
+static Hjson::Value _getTestContent(std::string name, Hjson::DecoderOptions opt=Hjson::DecoderOptions()) {
   Hjson::Value root;
-  Hjson::DecoderOptions opt;
 
   try {
     root = Hjson::UnmarshalFromFile("assets/" + name + "_test.hjson", opt);
@@ -115,7 +114,7 @@ static Hjson::Value _getTestContent(std::string name) {
 }
 
 
-static void _evaluate(std::string expected, std::string got) {
+static bool _evaluate(std::string name, std::string expected, Hjson::Value root, std::string got) {
   // Visual studio will have trailing null chars in rhjson if there was any
   // CRLF conversion when reading it from the file. If so, `==` would return
   // `false`, therefore we need to use `strcmp`.
@@ -128,8 +127,19 @@ static void _evaluate(std::string expected, std::string got) {
     }
     std::cout << "\nExpected: (size " << expected.size() << ")\n" <<
       expected << "\n\nGot: (size " << got.size() << ")\n" << got << "\n\n";
-    assert(std::strcmp(expected.c_str(), got.c_str()) == 0);
+    return false;
   }
+
+  // pass5 contains values bigger than int64, just skip that test.
+  if (name != "pass5") {
+    auto newRoot = Hjson::Unmarshal(got);
+    if (!newRoot.deep_equal(root)) {
+      std::cout << "\nUnmarshalling this resulting Hjson did not produce a tree equal to the original test Hjson:\n" << got << "\n\n";
+      return false;
+    }
+  }
+
+  return true;
 }
 
 
@@ -179,7 +189,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  _evaluate(rhjson, actualHjson);
+  assert(_evaluate(name, rhjson, root, actualHjson));
 
   opt.bracesSameLine = false;
 
@@ -193,7 +203,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  _evaluate(rhjson, actualHjson);
+  assert(_evaluate(name, rhjson, root, actualHjson));
 
   opt.comments = false;
 
@@ -207,7 +217,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  _evaluate(rhjson, actualHjson);
+  assert(_evaluate(name, rhjson, root, actualHjson));
 
   auto rjson = _readFile("assets/", extra, name + "_result.json", &bUsedExtra);
   auto actualJson = Hjson::MarshalJson(root);
@@ -219,7 +229,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  _evaluate(rjson, actualJson);
+  assert(_evaluate(name, rjson, root, actualJson));
 
   opt.preserveInsertionOrder = false;
 
@@ -233,7 +243,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  _evaluate(rhjson, actualHjson);
+  assert(_evaluate(name, rhjson, root, actualHjson));
 
   opt.bracesSameLine = true;
   opt.quoteAlways = true;
@@ -251,7 +261,29 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  _evaluate(rjson, actualJson);
+  assert(_evaluate(name, rjson, root, actualJson));
+
+  Hjson::DecoderOptions decOpt;
+  decOpt.whitespaceAsComments = true;
+  try {
+    root = _getTestContent(name, decOpt);
+  } catch (const Hjson::syntax_error& e) {
+    std::cout << "Failed to read with whitespace as comments: " << name << "\n";
+    assert(false);
+  }
+
+  opt = Hjson::EncoderOptions();
+  rhjson = _readFile("assets/comments3/", extra, name + "_result.hjson", &bUsedExtra);
+  actualHjson = Hjson::Marshal(root, opt);
+
+#if WRITE_FACIT
+  outputFile = std::ofstream("assets/comments3/" + (bUsedExtra ? extra + '/' : "") +
+    name + "_result.hjson", std::ofstream::binary);
+  outputFile << actualHjson << '\n';
+  outputFile.close();
+#endif
+
+  assert(_evaluate(name, rhjson, root, actualHjson));
 }
 
 

@@ -519,17 +519,30 @@ static Value _readArray(Parser *p) {
 
   CommentInfo ciExtra = {};
 
+  bool foundComma = false;
   while (p->ch > 0) {
     auto elem = _readValue(p);
     _setComment(elem, &Value::set_comment_before, p, ciBefore, ciExtra);
+    if (foundComma) {
+      // The comma allows an additional value on the same line, but we cannot
+      // know if Marshal() will be called with the option to output commas.
+      // Therefore we might need to add a line feed after the comment, or skip
+      // it if it's only whitespace.
+      auto cm = elem.get_comment_before();
+      if (!cm.empty() && cm.find("\n") == std::string::npos) {
+        elem.set_comment_before(cm + "\n");
+      }
+    }
     auto ciAfter = _white(p);
     // in Hjson the comma is optional and trailing commas are allowed
     if (p->ch == ',') {
+      foundComma = true;
       _next(p);
       // It is unlikely that someone writes a comment after the value but
       // before the comma, so we include any such comment in "comment_after".
       ciExtra = _white(p);
     } else {
+      foundComma = false;
       ciExtra = {};
     }
     if (p->ch == ']') {
@@ -569,6 +582,7 @@ static Value _readObject(Parser *p, bool withoutBraces) {
 
   CommentInfo ciExtra = {};
 
+  bool foundComma = false;
   while (p->ch > 0) {
     auto key = _readKeyname(p);
     if (p->opt.duplicateKeyException && object[key].defined()) {
@@ -589,14 +603,26 @@ static Value _readObject(Parser *p, bool withoutBraces) {
       elem.set_comment_before("");
     }
     _setComment(elem, &Value::set_comment_before, p, ciBefore, ciExtra);
+    if (foundComma) {
+      // The comma allows an additional value on the same line, but we cannot
+      // know if Marshal() will be called with the option to output commas.
+      // Therefore we might need to add a line feed after the comment, or skip
+      // it if it's only whitespace.
+      auto cm = elem.get_comment_before();
+      if (!cm.empty() && cm.find("\n") == std::string::npos) {
+        elem.set_comment_before(cm + "\n");
+      }
+    }
     auto ciAfter = _white(p);
     // in Hjson the comma is optional and trailing commas are allowed
     if (p->ch == ',') {
+      foundComma = true;
       _next(p);
       // It is unlikely that someone writes a comment after the value but
       // before the comma, so we include any such comment in "comment_after".
       ciExtra = _white(p);
     } else {
+      foundComma = false;
       ciExtra = {};
     }
     if (p->ch == '}' && !withoutBraces) {
