@@ -46,6 +46,8 @@ static inline void _setComment(Value& val, void (Value::*fp)(const std::string&)
   if (ciA.hasComment && ciB.hasComment) {
     (val.*fp)(std::string(p->data + ciA.cmStart, p->data + ciA.cmEnd) +
       std::string(p->data + ciB.cmStart, p->data + ciB.cmEnd));
+  } else if (!ciA.hasComment && !ciB.hasComment) {
+    (val.*fp)("");
   } else {
     _setComment(val, fp, p, ciA);
     _setComment(val, fp, p, ciB);
@@ -343,7 +345,7 @@ static std::string _readKeyname(Parser *p) {
 
 static CommentInfo _white(Parser *p) {
   CommentInfo ci = {
-    p->opt.whitespaceAsComments,
+    false,
     p->indexNext - 1,
     0
   };
@@ -381,6 +383,9 @@ static CommentInfo _white(Parser *p) {
 
   // cmEnd is the first char after the comment (i.e. not included in the comment).
   ci.cmEnd = p->indexNext - 1;
+
+  ci.hasComment = (ci.hasComment || (p->opt.whitespaceAsComments &&
+    (ci.cmEnd > ci.cmStart)));
 
   return ci;
 }
@@ -433,12 +438,12 @@ static CommentInfo _getCommentAfter(Parser *p) {
 
 // Hjson strings can be quoteless
 // returns string, true, false, or null.
-static Value _readTfnns(Parser *p) {
+static Value _readTfnns2(Parser *p, size_t &valEnd) {
   if (_isPunctuatorChar(p->ch)) {
     throw syntax_error(_errAt(p, std::string("Found a punctuator character '") +
       (char)p->ch + std::string("' when expecting a quoteless string (check your syntax)")));
   }
-  size_t valStart = p->indexNext - 1, valEnd = 0;
+  size_t valStart = p->indexNext - 1;
 
   if (std::isspace(p->ch)) {
     ++valStart;
@@ -496,6 +501,16 @@ static Value _readTfnns(Parser *p) {
       valEnd = p->indexNext;
     }
   }
+}
+
+
+static Value _readTfnns(Parser *p) {
+  size_t valEnd = 0;
+  auto ret = _readTfnns2(p, valEnd);
+  // Make sure that we include whitespace after the value in the after-comment.
+  p->indexNext = valEnd;
+  _next(p);
+  return ret;
 }
 
 
@@ -643,11 +658,6 @@ static Value _readValue(Parser *p) {
     break;
   default:
     ret = _readTfnns(p);
-    // Make sure that any comment will include preceding whitespace.
-    if (p->ch == '#' || p->ch == '/') {
-      while (_prev(p) && std::isspace(p->ch)) {}
-      _next(p);
-    }
     break;
   }
 
