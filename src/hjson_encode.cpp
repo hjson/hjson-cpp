@@ -294,6 +294,35 @@ static bool _quoteForComment(Encoder *e, const std::string& comment) {
 }
 
 
+// Returns true if we are inside a comment after outputting the string
+// (i.e. the string contains an unterminated line comment).
+// Also returns true for '/* # */' and similar, but that should be uncommon and
+// will only cause an unnecessary line feed after the comment.
+static bool _isInComment(const std::string& comment) {
+  bool endsInsideComment = false;
+  char prev = ' ';
+
+  for (char ch : comment) {
+    switch (ch) {
+    case '\n':
+      endsInsideComment = false;
+      break;
+    case '#':
+      endsInsideComment = true;
+      break;
+    case '/':
+      if (prev == '/') {
+        endsInsideComment = true;
+      }
+      break;
+    }
+    prev = ch;
+  }
+
+  return endsInsideComment;
+}
+
+
 // Produce a string from value.
 static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjElement) {
   const char *separator = ((isObjElement && (!e->opt.comments ||
@@ -359,6 +388,11 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
           }
 
           if (e->opt.comments && !value[i].get_comment_before().empty()) {
+            if (!e->opt.separator &&
+              value[i].get_comment_before().find("\n") == std::string::npos)
+            {
+              _writeIndent(e, e->indent);
+            }
             *e->os << value[i].get_comment_before();
           } else if (shouldIndent) {
             _writeIndent(e, e->indent);
@@ -369,10 +403,12 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
           commentAfter = value[i].get_comment_after();
         }
       }
-
       if (e->opt.comments && !commentAfter.empty()) {
         *e->os << commentAfter;
-      } else if (!value.empty()) {
+      }
+      if (!value.empty() && (!e->opt.comments || commentAfter.empty() ||
+        !e->opt.separator && commentAfter.find("\n") == std::string::npos))
+      {
         _writeIndent(e, e->indent - 1);
       }
 
@@ -412,13 +448,19 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
 
       if (e->opt.comments && !commentAfter.empty()) {
         *e->os << commentAfter;
-      } else if (!value.empty() && (!e->opt.omitRootBraces || !isRootObject)) {
+      }
+      if (!value.empty() && (!e->opt.omitRootBraces || !isRootObject) &&
+        (!e->opt.comments || commentAfter.empty() ||
+        !e->opt.separator && commentAfter.find("\n") == std::string::npos))
+      {
         _writeIndent(e, e->indent - 1);
       }
 
       if (!e->opt.omitRootBraces || !isRootObject || value.empty()) {
         e->indent--;
-        if (isRootObject && e->opt.comments && !commentAfter.empty() && commentAfter.back() != '\n') {
+        if (isRootObject && e->opt.comments && !commentAfter.empty() &&
+          _isInComment(commentAfter))
+        {
           _writeIndent(e, e->indent);
         }
         *e->os << "}";
@@ -464,7 +506,9 @@ static void _objElem(Encoder *e, const std::string& key, const Value& value, boo
     if (e->opt.comments) {
       *e->os << commentAfterPrevObj;
     }
-    if (!hasCommentBefore) {
+    if (!hasCommentBefore || !e->opt.separator &&
+      value.get_comment_before().find("\n") == std::string::npos)
+    {
       _writeIndent(e, e->indent);
     }
   }

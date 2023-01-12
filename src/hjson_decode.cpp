@@ -46,6 +46,8 @@ static inline void _setComment(Value& val, void (Value::*fp)(const std::string&)
   if (ciA.hasComment && ciB.hasComment) {
     (val.*fp)(std::string(p->data + ciA.cmStart, p->data + ciA.cmEnd) +
       std::string(p->data + ciB.cmStart, p->data + ciB.cmEnd));
+  } else if (!ciA.hasComment && !ciB.hasComment) {
+    (val.*fp)("");
   } else {
     _setComment(val, fp, p, ciA);
     _setComment(val, fp, p, ciB);
@@ -436,12 +438,12 @@ static CommentInfo _getCommentAfter(Parser *p) {
 
 // Hjson strings can be quoteless
 // returns string, true, false, or null.
-static Value _readTfnns(Parser *p) {
+static Value _readTfnns2(Parser *p, size_t &valEnd) {
   if (_isPunctuatorChar(p->ch)) {
     throw syntax_error(_errAt(p, std::string("Found a punctuator character '") +
       (char)p->ch + std::string("' when expecting a quoteless string (check your syntax)")));
   }
-  size_t valStart = p->indexNext - 1, valEnd = 0;
+  size_t valStart = p->indexNext - 1;
 
   if (std::isspace(p->ch)) {
     ++valStart;
@@ -502,6 +504,16 @@ static Value _readTfnns(Parser *p) {
 }
 
 
+static Value _readTfnns(Parser *p) {
+  size_t valEnd = 0;
+  auto ret = _readTfnns2(p, valEnd);
+  // Make sure that we include whitespace after the value in the after-comment.
+  p->indexNext = valEnd;
+  _next(p);
+  return ret;
+}
+
+
 // Parse an array value.
 // assuming ch == '['
 static Value _readArray(Parser *p) {
@@ -519,30 +531,17 @@ static Value _readArray(Parser *p) {
 
   CommentInfo ciExtra = {};
 
-  bool foundComma = false;
   while (p->ch > 0) {
     auto elem = _readValue(p);
     _setComment(elem, &Value::set_comment_before, p, ciBefore, ciExtra);
-    if (foundComma) {
-      // The comma allows an additional value on the same line, but we cannot
-      // know if Marshal() will be called with the option to output commas.
-      // Therefore we might need to add a line feed after the comment, or skip
-      // it if it's only whitespace.
-      auto cm = elem.get_comment_before();
-      if (!cm.empty() && cm.find("\n") == std::string::npos) {
-        elem.set_comment_before(cm + "\n");
-      }
-    }
     auto ciAfter = _white(p);
     // in Hjson the comma is optional and trailing commas are allowed
     if (p->ch == ',') {
-      foundComma = true;
       _next(p);
       // It is unlikely that someone writes a comment after the value but
       // before the comma, so we include any such comment in "comment_after".
       ciExtra = _white(p);
     } else {
-      foundComma = false;
       ciExtra = {};
     }
     if (p->ch == ']') {
@@ -582,7 +581,6 @@ static Value _readObject(Parser *p, bool withoutBraces) {
 
   CommentInfo ciExtra = {};
 
-  bool foundComma = false;
   while (p->ch > 0) {
     auto key = _readKeyname(p);
     if (p->opt.duplicateKeyException && object[key].defined()) {
@@ -603,26 +601,14 @@ static Value _readObject(Parser *p, bool withoutBraces) {
       elem.set_comment_before("");
     }
     _setComment(elem, &Value::set_comment_before, p, ciBefore, ciExtra);
-    if (foundComma) {
-      // The comma allows an additional value on the same line, but we cannot
-      // know if Marshal() will be called with the option to output commas.
-      // Therefore we might need to add a line feed after the comment, or skip
-      // it if it's only whitespace.
-      auto cm = elem.get_comment_before();
-      if (!cm.empty() && cm.find("\n") == std::string::npos) {
-        elem.set_comment_before(cm + "\n");
-      }
-    }
     auto ciAfter = _white(p);
     // in Hjson the comma is optional and trailing commas are allowed
     if (p->ch == ',') {
-      foundComma = true;
       _next(p);
       // It is unlikely that someone writes a comment after the value but
       // before the comma, so we include any such comment in "comment_after".
       ciExtra = _white(p);
     } else {
-      foundComma = false;
       ciExtra = {};
     }
     if (p->ch == '}' && !withoutBraces) {
@@ -680,11 +666,6 @@ static Value _readValue(Parser *p) {
     break;
   default:
     ret = _readTfnns(p);
-    // Make sure that any comment will include preceding whitespace.
-    if (p->ch == '#' || p->ch == '/') {
-      while (_prev(p) && std::isspace(p->ch)) {}
-      _next(p);
-    }
     break;
   }
 

@@ -3,24 +3,24 @@
   numbers:
   [
     0
+    0   
     0
-    0
-    42
-    42.1
+    42  
+    42.1  
     -5
     -5.1
     1701.0
     -1701.0
-    12.345
-    -12.345
+    12.345  
+    -12.345  
   ]
   native:
   [
+    true   
     true
-    true
+    false  
     false
-    false
-    null
+    null   
     null
   ]
   strings:

@@ -1378,6 +1378,123 @@ beta: a// cm 2
   }
 
   {
+    auto txt = R"([ 0, 1, 'c', 3, /*4, 5,*/ 6, 'h', /*'i', */'j', 'k' ])";
+
+    Hjson::DecoderOptions decOpt;
+    decOpt.whitespaceAsComments = true;
+    auto root = Hjson::Unmarshal(txt, decOpt);
+
+    Hjson::EncoderOptions encOpt;
+    encOpt.separator = true;
+    auto newStr = Hjson::Marshal(root, encOpt);
+
+    auto expectedStr = R"([ 0, 1, "c", 3, /*4, 5,*/ 6, "h", /*'i', */"j", "k" ])";
+    assert(newStr == expectedStr);
+
+    encOpt.separator = false;
+    newStr = Hjson::Marshal(root, encOpt);
+
+    expectedStr = R"([
+   0
+   1
+   c
+   3
+   /*4, 5,*/ 6
+   h
+   /*'i', */j
+   k 
+])";
+    assert(newStr == expectedStr);
+
+    decOpt.whitespaceAsComments = false;
+    root = Hjson::Unmarshal(txt, decOpt);
+    newStr = Hjson::Marshal(root, encOpt);
+
+    expectedStr = R"([
+  0
+  1
+  c
+  3
+   /*4, 5,*/ 6
+  h
+   /*'i', */j
+  k
+])";
+    assert(newStr == expectedStr);
+
+    encOpt.separator = true;
+    newStr = Hjson::Marshal(root, encOpt);
+
+    expectedStr = R"([
+  0,
+  1,
+  "c",
+  3, /*4, 5,*/ 6,
+  "h", /*'i', */"j",
+  "k"
+])";
+    assert(newStr == expectedStr);
+  }
+
+  {
+    auto txt = R"({ k1: 0, k2:1, k3: 'c', k4: 3, /*k5:4, k6 : 5,*/ k7 : 6, k8:'h', /*k9:'i', */k10:'j', k11 : 'k' })";
+
+    Hjson::DecoderOptions decOpt;
+    decOpt.whitespaceAsComments = true;
+    auto root = Hjson::Unmarshal(txt, decOpt);
+
+    Hjson::EncoderOptions encOpt;
+    encOpt.separator = true;
+    auto newStr = Hjson::Marshal(root, encOpt);
+
+    auto expectedStr = R"({ k1: 0, k2: 1, k3: "c", k4: 3, /*k5:4, k6 : 5,*/ k7: 6, k8: "h", /*k9:'i', */k10: "j", k11: "k" })";
+    assert(newStr == expectedStr);
+
+    encOpt.separator = false;
+    newStr = Hjson::Marshal(root, encOpt);
+
+    expectedStr = R"({ k1: 0
+   k2: 1
+   k3: c
+   k4: 3
+   /*k5:4, k6 : 5,*/ k7: 6
+   k8: h
+   /*k9:'i', */k10: j
+   k11: k 
+})";
+    assert(newStr == expectedStr);
+
+    decOpt.whitespaceAsComments = false;
+    root = Hjson::Unmarshal(txt, decOpt);
+    newStr = Hjson::Marshal(root, encOpt);
+
+    expectedStr = R"({
+  k1: 0
+  k2: 1
+  k3: c
+  k4: 3
+   /*k5:4, k6 : 5,*/ k7: 6
+  k8: h
+   /*k9:'i', */k10: j
+  k11: k
+})";
+    assert(newStr == expectedStr);
+
+    encOpt.separator = true;
+    newStr = Hjson::Marshal(root, encOpt);
+
+    expectedStr = R"({
+  k1: 0,
+  k2: 1,
+  k3: "c",
+  k4: 3, /*k5:4, k6 : 5,*/ k7: 6,
+  k8: "h", /*k9:'i', */k10: "j",
+  k11: "k"
+})";
+    assert(newStr == expectedStr);
+  }
+
+  {
     Hjson::Value val("");
     val.set_comment_key("// key comment\n");
     val.set_comment_after("\n# comment after");
