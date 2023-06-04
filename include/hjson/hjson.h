@@ -1,6 +1,7 @@
 #ifndef HJSON_AFOWENFOWANEFWOAFNLL
 #define HJSON_AFOWENFOWANEFWOAFNLL
 
+#include <cstdint>
 #include <string>
 #include <memory>
 #include <map>
