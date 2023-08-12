@@ -380,7 +380,7 @@ root["myKey"].assign_with_comments(otherValue);
 
 There are four types of comments: *before*, *key*, *inside* and *after*. If a comment is found, all chars (including line feeds and white spaces) between the values and/or separators are included in the string that becomes stored as a comment in an *Hjson::Value*.
 
-```yaml
+```cpp
 # This is a *before* comment to the object that starts on the next line.
 {
   # This is a *before* comment to value1.
