@@ -389,7 +389,7 @@ There are four types of comments: *before*, *key*, *inside* and *after*. If a co
   /* This is a *before* comment to value2. */
   key2:
   // This is a *key* comment to value2.
-  value2 /* This is an *after* comment to value2.
+  value2 /* This is an *after* comment to value2. */
   key3: {
     // This is an *inside* comment.
   }
