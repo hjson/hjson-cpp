@@ -232,14 +232,11 @@ static void _quote(Encoder *e, const std::string& value, const char *separator,
 static void _quoteName(Encoder *e, const std::string& name) {
   if (name.empty()) {
     *e->os << "\"\"";
-  } else if (e->opt.quoteKeys || std::regex_search(name, e->needsEscapeName)) {
+  } else if (e->opt.quoteKeys || std::regex_search(name, e->needsEscapeName) ||
+    std::regex_search(name, e->needsEscape))
+  {
     *e->os << '"';
-    if (std::regex_search(name, e->needsEscape)) {
-      _quoteReplace(e, name);
-    } else {
-      *e->os << name;
-    }
-
+    _quoteReplace(e, name);
     *e->os << '"';
   } else {
     // without quotes
