@@ -347,6 +347,7 @@ Value& Value::at(const char *name) {
   return at(std::string(name));
 }
 
+#if __cplusplus >= 201703L
 void Value::insert(const std::string&key, Value&& other)
 {
   switch (prv->type)
@@ -361,6 +362,7 @@ void Value::insert(const std::string&key, Value&& other)
     throw type_mismatch("Must be of type Map for that operation.");
   }
 }
+#endif // __cplusplus >= 201703L
   
 
 const Value Value::operator[](const std::string& name) const {
@@ -1341,6 +1343,7 @@ void Value::push_back(const Value& other) {
   prv->v->push_back(other);
 }
 
+#if __cplusplus >= 201703L
 void Value::push_back(Value&& other) {
   if (prv->type == Type::Undefined) {
     prv->~ValueImpl();
@@ -1352,6 +1355,7 @@ void Value::push_back(Value&& other) {
 
   prv->v->push_back(std::move(other));
 }
+#endif // __cplusplus >= 201703L
 
 
 void Value::move(int from, int to) {
