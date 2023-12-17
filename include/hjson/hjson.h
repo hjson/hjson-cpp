@@ -278,6 +278,7 @@ public:
   // Hjson::type_mismatch if this Value is of any other type than Vector or
   // Undefined.
   void push_back(const Value&);
+  void push_back(Value&&);
 
   // -- Map specific functions
   // Get key by its zero-based insertion index. Throws
@@ -293,6 +294,10 @@ public:
   Value& at(const std::string& key);
   const Value& at(const char *key) const;
   Value& at(const char *key);
+
+  // This function can insert a value into the map without an allocation
+  void insert(const std::string&key, Value&&);
+  
   // Iterations are always done in alphabetical key order. Returns a default
   // constructed iterator if this Value is of any other type than Map.
   std::map<std::string, Value>::iterator begin();

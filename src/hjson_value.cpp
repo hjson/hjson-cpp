@@ -347,6 +347,21 @@ Value& Value::at(const char *name) {
   return at(std::string(name));
 }
 
+void Value::insert(const std::string&key, Value&& other)
+{
+  switch (prv->type)
+  {
+  case Type::Undefined:
+    throw index_out_of_bounds("Key not found.");
+  case Type::Map:
+    try {
+      prv->m->m.insert_or_assign(key, std::move(other));
+    } catch(const std::out_of_range&) {}    
+  default:
+    throw type_mismatch("Must be of type Map for that operation.");
+  }
+}
+  
 
 const Value Value::operator[](const std::string& name) const {
   if (prv->type == Type::Undefined) {
@@ -1324,6 +1339,18 @@ void Value::push_back(const Value& other) {
   }
 
   prv->v->push_back(other);
+}
+
+void Value::push_back(Value&& other) {
+  if (prv->type == Type::Undefined) {
+    prv->~ValueImpl();
+    // Recreate the private object using the same memory block.
+    new(&(*prv)) ValueImpl(Type::Vector);
+  } else if (prv->type != Type::Vector) {
+    throw type_mismatch("Must be of type Undefined or Vector for that operation.");
+  }
+
+  prv->v->push_back(std::move(other));
 }
 
 
