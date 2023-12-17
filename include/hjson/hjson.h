@@ -367,7 +367,7 @@ private:
   MapProxy(Value&&);
 
 public:
-  ~MapProxy();
+  ~MapProxy() override;
   MapProxy& operator =(const MapProxy&);
   MapProxy& operator =(const Value&);
   MapProxy& operator =(Value&&);
