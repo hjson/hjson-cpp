@@ -353,11 +353,15 @@ void Value::insert(const std::string&key, Value&& other)
   switch (prv->type)
   {
   case Type::Undefined:
-    throw index_out_of_bounds("Key not found.");
+    prv->~ValueImpl();
+    // Recreate the private object using the same memory block.
+    new(&(*prv)) ValueImpl(Type::Map);
+    // Fall through
   case Type::Map:
     try {
       prv->m->m.insert_or_assign(key, std::move(other));
     } catch(const std::out_of_range&) {}    
+    return;
   default:
     throw type_mismatch("Must be of type Map for that operation.");
   }
