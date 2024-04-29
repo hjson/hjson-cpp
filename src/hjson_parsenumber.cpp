@@ -13,7 +13,7 @@
 namespace Hjson {
 
 
-struct Parser {
+struct NumberParser {
   const unsigned char *data;
   size_t dataSize;
   int indexNext;
@@ -72,7 +72,7 @@ static bool _parseInt(std::int64_t *pNumber, const char *pCh, size_t nCh) {
 }
 
 
-static bool _next(Parser *p) {
+static bool _next(NumberParser *p) {
   // get the next character.
   if (p->indexNext < p->dataSize) {
     p->ch = p->data[p->indexNext++];
@@ -91,7 +91,7 @@ static bool _next(Parser *p) {
 
 // Parse a number value. The parameter "text" must be zero terminated.
 bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopAtNext) {
-  Parser p = {
+  NumberParser p = {
     (const unsigned char*) text,
     textSize,
     0,
