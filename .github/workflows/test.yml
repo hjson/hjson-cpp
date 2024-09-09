@@ -1,0 +1,53 @@
+name: test
+on: [push, pull_request]
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-prev-release
+            os: ubuntu-20.04
+            env:
+              BUILD_TYPE: Release
+          - name: linux-latest-debug
+            os: ubuntu-latest
+            env:
+              BUILD_TYPE: Debug
+              HJSON_CXX_FLAGS: "-g -fsanitize=address -fsanitize=leak -fno-omit-frame-pointer -fstack-protector-all -fsanitize=undefined -fno-sanitize-recover"
+          - name: linux-latest-release
+            os: ubuntu-latest
+            env:
+              BUILD_TYPE: Release
+          - name: linux-strtod
+            os: ubuntu-latest
+            env:
+              BUILD_TYPE: Release
+              HJSON_NUMBER_PARSER: StrToD
+          - name: mac-release
+            os: macos-latest
+            env:
+              BUILD_TYPE: Release
+          - name: mac-strtod
+            os: macos-latest
+            env:
+              BUILD_TYPE: Release
+              HJSON_NUMBER_PARSER: StrToD
+          - name: windows-debug
+            os: windows-latest
+            env: {}
+          - name: windows-strtod
+            os: windows-latest
+            env:
+              HJSON_NUMBER_PARSER: StrToD
+          - name: windows-charconv
+            os: windows-latest
+            env:
+              HJSON_NUMBER_PARSER: CharConv
+    env: ${{ matrix.env }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DHJSON_ENABLE_TEST=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DHJSON_NUMBER_PARSER=${HJSON_NUMBER_PARSER} -DCMAKE_CXX_FLAGS="${HJSON_CXX_FLAGS}" .. && cmake --build . --target runtest
+        shell: bash
