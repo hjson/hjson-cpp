@@ -9,11 +9,32 @@
 namespace Hjson {
 
 
+enum class ParseState {
+  ValueBegin,
+  ValueEnd,
+  VectorBegin,
+  VectorElemEnd,
+  MapBegin,
+  MapElemBegin,
+  MapElemEnd,
+};
+
+
 class CommentInfo {
 public:
+  CommentInfo() : hasComment(false), cmStart(0), cmEnd(0) {}
+
   bool hasComment;
   // cmStart is the first char of the key, cmEnd is the first char after the key.
   int cmStart, cmEnd;
+};
+
+
+class Parent {
+public:
+  Value val;
+  CommentInfo ciBefore, ciKey, ciElemBefore, ciElemExtra;
+  std::string key;
 };
 
 
@@ -23,12 +44,15 @@ public:
   size_t dataSize;
   int indexNext;
   unsigned char ch;
+  bool withoutBraces;
   DecoderOptions opt;
+  CommentInfo ciBefore;
+  std::vector<ParseState> vState;
+  std::vector<Parent> vParent;
 };
 
 
 bool tryParseNumber(Value *pNumber, const char *text, size_t textSize, bool stopAtNext);
-static Value _readValue(Parser *p);
 
 
 static inline void _setComment(Value& val, void (Value::*fp)(const std::string&),
@@ -344,11 +368,8 @@ static std::string _readKeyname(Parser *p) {
 
 
 static CommentInfo _white(Parser *p) {
-  CommentInfo ci = {
-    false,
-    p->indexNext - 1,
-    0
-  };
+  CommentInfo ci;
+  ci.cmStart = p->indexNext - 1;
 
   while (p->ch > 0) {
     // Skip whitespace.
@@ -392,11 +413,9 @@ static CommentInfo _white(Parser *p) {
 
 
 static CommentInfo _getCommentAfter(Parser *p) {
-  CommentInfo ci = {
-    p->opt.whitespaceAsComments,
-    p->indexNext - 1,
-    0
-  };
+  CommentInfo ci;
+  ci.hasComment = p->opt.whitespaceAsComments;
+  ci.cmStart = p->indexNext - 1;
 
   while (p->ch > 0) {
     // Skip whitespace, but only until EOL.
@@ -516,157 +535,181 @@ static Value _readTfnns(Parser *p) {
 
 // Parse an array value.
 // assuming ch == '['
-static Value _readArray(Parser *p) {
-  Value array(Hjson::Type::Vector);
-
+static void _readArrayBegin(Parser* p) {
   // Skip '['.
   _next(p);
-  auto ciBefore = _white(p);
+
+  p->vParent.back().val = Value(Type::Vector);
+  p->vParent.back().ciElemBefore = _white(p);
+  p->vParent.back().ciElemExtra = CommentInfo();
 
   if (p->ch == ']') {
-    _setComment(array, &Value::set_comment_inside, p, ciBefore);
+    _setComment(p->vParent.back().val, &Value::set_comment_inside, p, p->vParent.back().ciElemBefore);
     _next(p);
-    return array; // empty array
+    p->vState.back() = ParseState::ValueEnd;
+  } else {
+    p->vState.back() = ParseState::VectorElemEnd;
+    p->vState.push_back(ParseState::ValueBegin);
   }
-
-  CommentInfo ciExtra = {};
-
-  while (p->ch > 0) {
-    auto elem = _readValue(p);
-    _setComment(elem, &Value::set_comment_before, p, ciBefore, ciExtra);
-    auto ciAfter = _white(p);
-    // in Hjson the comma is optional and trailing commas are allowed
-    if (p->ch == ',') {
-      _next(p);
-      // It is unlikely that someone writes a comment after the value but
-      // before the comma, so we include any such comment in "comment_after".
-      ciExtra = _white(p);
-    } else {
-      ciExtra = {};
-    }
-    if (p->ch == ']') {
-      auto existingAfter = elem.get_comment_after();
-      _setComment(elem, &Value::set_comment_after, p, ciAfter, ciExtra);
-      if (!existingAfter.empty()) {
-        elem.set_comment_after(existingAfter + elem.get_comment_after());
-      }
-      array.push_back(elem);
-      _next(p);
-      return array;
-    }
-    array.push_back(elem);
-    ciBefore = ciAfter;
-  }
-
-  throw syntax_error(_errAt(p, "End of input while parsing an array (did you forget a closing ']'?)"));
 }
 
 
-// Parse an object value.
-static Value _readObject(Parser *p, bool withoutBraces) {
-  Value object(Hjson::Type::Map);
+static void _readArrayElemEnd(Parser* p) {
+  Value elem = p->vParent.back().val;
+  p->vParent.pop_back();
 
-  if (!withoutBraces) {
-    // assuming ch == '{'
+  _setComment(elem, &Value::set_comment_before, p, p->vParent.back().ciElemBefore, p->vParent.back().ciElemExtra);
+  auto ciAfter = _white(p);
+  // in Hjson the comma is optional and trailing commas are allowed
+  if (p->ch == ',') {
+    _next(p);
+    // It is unlikely that someone writes a comment after the value but
+    // before the comma, so we include any such comment in "comment_after".
+    p->vParent.back().ciElemExtra = _white(p);
+  } else {
+    p->vParent.back().ciElemExtra = CommentInfo();
+  }
+  if (p->ch == ']') {
+    auto existingAfter = elem.get_comment_after();
+    _setComment(elem, &Value::set_comment_after, p, ciAfter, p->vParent.back().ciElemExtra);
+    if (!existingAfter.empty()) {
+      elem.set_comment_after(existingAfter + elem.get_comment_after());
+    }
+    _next(p);
+    p->vState.back() = ParseState::ValueEnd;
+  } else {
+    if (p->ch == 0) {
+      throw syntax_error(_errAt(p, "End of input while parsing an array (did you forget a closing ']'?)"));
+    }
+    p->vParent.back().ciElemBefore = ciAfter;
+    p->vState.push_back(ParseState::ValueBegin);
+  }
+  p->vParent.back().val.push_back(elem);
+}
+
+
+static void _readObjectBegin(Parser *p) {
+  if (p->ch == '{') {
     _next(p);
   }
 
-  auto ciBefore = _white(p);
+  p->vParent.back().val = Value(Type::Map);
+  p->vParent.back().ciElemBefore = _white(p);
 
-  if (p->ch == '}' && !withoutBraces) {
-    _setComment(object, &Value::set_comment_inside, p, ciBefore);
+  if (p->ch == '}' && !(p->vParent.empty() && p->withoutBraces)) {
+    _setComment(p->vParent.back().val, &Value::set_comment_inside, p, p->vParent.back().ciElemBefore);
     _next(p);
-    return object; // empty object
+    p->vState.back() = ParseState::ValueEnd;
+  } else {
+    p->vState.back() = ParseState::MapElemBegin;
   }
+}
 
-  CommentInfo ciExtra = {};
 
-  while (p->ch > 0) {
-    auto key = _readKeyname(p);
-    if (p->opt.duplicateKeyException && object[key].defined()) {
-      throw syntax_error(_errAt(p, "Found duplicate of key '" + key + "'"));
-    }
-    auto ciKey = _white(p);
-    if (p->ch != ':') {
-      throw syntax_error(_errAt(p, std::string(
-        "Expected ':' instead of '") + (char)(p->ch) + "'"));
-    }
-    _next(p);
-    // duplicate keys overwrite the previous value
-    auto elem = _readValue(p);
-    _setComment(elem, &Value::set_comment_key, p, ciKey);
-    if (!elem.get_comment_before().empty()) {
-      elem.set_comment_key(elem.get_comment_key() +
-        elem.get_comment_before());
-      elem.set_comment_before("");
-    }
-    _setComment(elem, &Value::set_comment_before, p, ciBefore, ciExtra);
-    auto ciAfter = _white(p);
-    // in Hjson the comma is optional and trailing commas are allowed
-    if (p->ch == ',') {
-      _next(p);
-      // It is unlikely that someone writes a comment after the value but
-      // before the comma, so we include any such comment in "comment_after".
-      ciExtra = _white(p);
-    } else {
-      ciExtra = {};
-    }
-    if (p->ch == '}' && !withoutBraces) {
-      auto existingAfter = elem.get_comment_after();
-      _setComment(elem, &Value::set_comment_after, p, ciAfter, ciExtra);
-      if (!existingAfter.empty()) {
-        elem.set_comment_after(existingAfter + elem.get_comment_after());
+static void _readObjectElemBegin(Parser* p) {
+  Value &object = p->vParent.back().val;
+
+  if (p->ch == 0) {
+    if (p->vParent.size() == 1 && p->withoutBraces) {
+      if (object.empty()) {
+        _setComment(object, &Value::set_comment_inside, p, p->vParent.back().ciElemBefore);
+      } else {
+        _setComment(object[static_cast<int>(object.size() - 1)],
+          &Value::set_comment_after, p, p->vParent.back().ciElemBefore, p->vParent.back().ciElemExtra);
       }
-      object[key].assign_with_comments(std::move(elem));
-      _next(p);
-      return object;
-    }
-    object[key].assign_with_comments(std::move(elem));
-    ciBefore = ciAfter;
-  }
-
-  if (withoutBraces) {
-    if (object.empty()) {
-      _setComment(object, &Value::set_comment_inside, p, ciBefore);
+      p->vState.back() = ParseState::ValueEnd;
+      return;
     } else {
-      _setComment(object[static_cast<int>(object.size() - 1)],
-        &Value::set_comment_after, p, ciBefore, ciExtra);
+      throw syntax_error(_errAt(p, "End of input while parsing an object (did you forget a closing '}'?)"));
     }
-
-    return object;
   }
-  throw syntax_error(_errAt(p, "End of input while parsing an object (did you forget a closing '}'?)"));
+
+  p->vParent.back().key = _readKeyname(p);
+  if (p->opt.duplicateKeyException && object[p->vParent.back().key].defined()) {
+    throw syntax_error(_errAt(p, "Found duplicate of key '" + p->vParent.back().key + "'"));
+  }
+  p->vParent.back().ciKey = _white(p);
+  if (p->ch != ':') {
+    throw syntax_error(_errAt(p, std::string(
+      "Expected ':' instead of '") + (char)(p->ch) + "'"));
+  }
+  _next(p);
+  p->vState.back() = ParseState::MapElemEnd;
+  p->vState.push_back(ParseState::ValueBegin);
+}
+
+
+static void _readObjectElemEnd(Parser *p) {
+  Value elem = p->vParent.back().val;
+  p->vParent.pop_back();
+  _setComment(elem, &Value::set_comment_key, p, p->vParent.back().ciKey);
+  if (!elem.get_comment_before().empty()) {
+    elem.set_comment_key(elem.get_comment_key() +
+      elem.get_comment_before());
+    elem.set_comment_before("");
+  }
+  _setComment(elem, &Value::set_comment_before, p, p->vParent.back().ciElemBefore, p->vParent.back().ciElemExtra);
+  auto ciAfter = _white(p);
+
+  // in Hjson the comma is optional and trailing commas are allowed
+  if (p->ch == ',') {
+    _next(p);
+    // It is unlikely that someone writes a comment after the value but
+    // before the comma, so we include any such comment in "comment_after".
+    p->vParent.back().ciElemExtra = _white(p);
+  } else {
+    p->vParent.back().ciElemExtra = {};
+  }
+
+  if (p->ch == '}' && !(p->vParent.size() == 1 && p->withoutBraces)) {
+    auto existingAfter = elem.get_comment_after();
+    _setComment(elem, &Value::set_comment_after, p, ciAfter, p->vParent.back().ciElemExtra);
+    if (!existingAfter.empty()) {
+      elem.set_comment_after(existingAfter + elem.get_comment_after());
+    }
+    p->vParent.back().val[p->vParent.back().key].assign_with_comments(std::move(elem));
+    _next(p);
+    p->vState.back() = ParseState::ValueEnd;
+  } else {
+    p->vParent.back().val[p->vParent.back().key].assign_with_comments(std::move(elem));
+    p->vParent.back().ciElemBefore = ciAfter;
+    p->vState.back() = ParseState::MapElemBegin;
+  }
 }
 
 
 // Parse a Hjson value. It could be an object, an array, a string, a number or a word.
-static Value _readValue(Parser *p) {
-  Hjson::Value ret;
-
-  auto ciBefore = _white(p);
+static void _readValueBegin(Parser *p) {
+  p->vParent.push_back(Parent());
+  p->vParent.back().ciBefore = _white(p);
 
   switch (p->ch) {
   case '{':
-    ret = _readObject(p, false);
+    p->vState.back() = ParseState::MapBegin;
     break;
   case '[':
-    ret = _readArray(p);
+    p->vState.back() =  ParseState::VectorBegin;
     break;
   case '"':
   case '\'':
-    ret = _readString(p, true);
+    p->vParent.back().val.assign_with_comments(_readString(p, true));
+    p->vState.back() = ParseState::ValueEnd;
     break;
   default:
-    ret = _readTfnns(p);
+    p->vParent.back().val.assign_with_comments(_readTfnns(p));
+    p->vState.back() = ParseState::ValueEnd;
     break;
   }
+}
 
+
+static void _readValueEnd(Parser *p) {
   auto ciAfter = _getCommentAfter(p);
 
-  _setComment(ret, &Value::set_comment_before, p, ciBefore);
-  _setComment(ret, &Value::set_comment_after, p, ciAfter);
+  _setComment(p->vParent.back().val, &Value::set_comment_before, p, p->vParent.back().ciBefore);
+  _setComment(p->vParent.back().val, &Value::set_comment_after, p, ciAfter);
 
-  return ret;
+  p->vState.pop_back();
 }
 
 
@@ -676,72 +719,125 @@ static Value _hasTrailing(Parser *p, CommentInfo *ci) {
 }
 
 
+static void _parseLoop(Parser* p) {
+  while (!p->vState.empty()) {
+    switch (p->vState.back()) {
+    case ParseState::ValueBegin:
+      _readValueBegin(p);
+      break;
+    case ParseState::ValueEnd:
+      _readValueEnd(p);
+      break;
+    case ParseState::MapBegin:
+      _readObjectBegin(p);
+      break;
+    case ParseState::MapElemBegin:
+      _readObjectElemBegin(p);
+      break;
+    case ParseState::MapElemEnd:
+      _readObjectElemEnd(p);
+      break;
+    case ParseState::VectorBegin:
+      _readArrayBegin(p);
+      break;
+    case ParseState::VectorElemEnd:
+      _readArrayElemEnd(p);
+      break;
+    }
+  }
+}
+
+
 // Braces for the root object are optional
 static Value _rootValue(Parser *p) {
-  Value ret;
-  std::string errMsg;
   CommentInfo ciExtra;
 
-  auto ciBefore = _white(p);
+  p->vParent.push_back(Parent());
+  p->vParent.back().ciBefore = _white(p);
 
-  switch (p->ch) {
-  case '{':
-    ret = _readObject(p, false);
-    if (_hasTrailing(p, &ciExtra)) {
-      throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
+  if (p->ch == '[') {
+    p->vState.push_back(ParseState::VectorBegin);
+  } else {
+    if (p->ch != '{') {
+      // Assume root object without braces
+      p->withoutBraces = true;
     }
-    break;
-  case '[':
-    ret = _readArray(p);
-    if (_hasTrailing(p, &ciExtra)) {
-      throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
-    }
-    break;
+    p->vState.push_back(ParseState::MapBegin);
   }
 
-  if (!ret.defined()) {
-    // assume we have a root object without braces
-    try {
-      ret = _readObject(p, true);
-      if (_hasTrailing(p, &ciExtra)) {
-        // Syntax error, or maybe a single JSON value.
-        ret = Value();
-      } else if (ret.size() > 0) {
-        // if there were no braces, the first comment belongs to the first child
-        // of the root object, not to the root object itself.
-        _setComment(ret[0], &Value::set_comment_before, p, ciBefore);
-        ciBefore = CommentInfo();
+  try {
+    _parseLoop(p);
+    if (_hasTrailing(p, &ciExtra)) {
+      throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
+    }
+  } catch (const syntax_error& e1) {
+    if (p->withoutBraces) {
+      // test if we are dealing with a single JSON value instead (true/false/null/num/"")
+      _resetAt(p);
+      p->vParent.clear();
+      p->vState.clear();
+      p->vState.push_back(ParseState::ValueBegin);
+      try {
+        _parseLoop(p);
+        if (_hasTrailing(p, &ciExtra)) {
+          throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
+        }
+      } catch (const syntax_error& e2) {
+        throw e1;
       }
-    } catch(const syntax_error& e) {
-      errMsg = std::string(e.what());
     }
   }
 
-  if (!ret.defined()) {
-    // test if we are dealing with a single JSON value instead (true/false/null/num/"")
-    _resetAt(p);
-    ret = _readValue(p);
-    if (_hasTrailing(p, &ciExtra)) {
-      // Syntax error.
-      ret = Value();
-    }
-  }
-
-  if (ret.defined()) {
-    _setComment(ret, &Value::set_comment_before, p, ciBefore);
+  Value ret = p->vParent.back().val;
+  if (ciExtra.hasComment) {
     auto existingAfter = ret.get_comment_after();
     _setComment(ret, &Value::set_comment_after, p, ciExtra);
     if (!existingAfter.empty()) {
       ret.set_comment_after(existingAfter + ret.get_comment_after());
     }
-    return ret;
   }
+  //  ret = _readObject(p, false);
+  //  if (_hasTrailing(p, &ciExtra)) {
+  //    throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
+  //  }
+  //  break;
+  //case '[':
+  //  ret = _readArray(p);
+  //  if (_hasTrailing(p, &ciExtra)) {
+  //    throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
+  //  }
+  //  break;
+  //}
 
-  if (!errMsg.empty()) {
-    throw syntax_error(errMsg);
-  }
+  //if (!ret.defined()) {
+  //  // assume we have a root object without braces
+  //  try {
+  //    ret = _readObject(p, true);
+  //    if (_hasTrailing(p, &ciExtra)) {
+  //      // Syntax error, or maybe a single JSON value.
+  //      ret = Value();
+  //    } else if (ret.size() > 0) {
+  //      // if there were no braces, the first comment belongs to the first child
+  //      // of the root object, not to the root object itself.
+  //      _setComment(ret[0], &Value::set_comment_before, p, ciBefore);
+  //      ciBefore = CommentInfo();
+  //    }
+  //  } catch(const syntax_error& e) {
+  //    errMsg = std::string(e.what());
+  //  }
+  //}
 
-  throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
+  //if (!ret.defined()) {
+  //  // test if we are dealing with a single JSON value instead (true/false/null/num/"")
+  //  _resetAt(p);
+  //  ret = _readValue(p);
+  //  if (_hasTrailing(p, &ciExtra)) {
+  //    // Syntax error.
+  //    ret = Value();
+  //  }
+  //}
+
+  return ret;
 }
 
 
@@ -755,6 +851,7 @@ Value Unmarshal(const char *data, size_t dataSize, const DecoderOptions& options
     dataSize,
     0,
     ' ',
+    false,
     options
   };
 
