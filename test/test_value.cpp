@@ -27,6 +27,16 @@ void test_value() {
   }
 
   {
+    Hjson::Value node;
+    node["a"] = 1;
+    {
+      Hjson::Value root;
+      root["n"] = node;
+    }
+    assert(node.size() == 1);
+  }
+
+  {
     Hjson::Value valVec(Hjson::Type::Vector);
     assert(valVec.type() == Hjson::Type::Vector);
     Hjson::Value valMap(Hjson::Type::Map);
