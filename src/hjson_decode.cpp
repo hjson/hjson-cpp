@@ -802,46 +802,6 @@ static Value _rootValue(Parser *p) {
       ret.set_comment_after(existingAfter + ret.get_comment_after());
     }
   }
-  //  ret = _readObject(p, false);
-  //  if (_hasTrailing(p, &ciExtra)) {
-  //    throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
-  //  }
-  //  break;
-  //case '[':
-  //  ret = _readArray(p);
-  //  if (_hasTrailing(p, &ciExtra)) {
-  //    throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
-  //  }
-  //  break;
-  //}
-
-  //if (!ret.defined()) {
-  //  // assume we have a root object without braces
-  //  try {
-  //    ret = _readObject(p, true);
-  //    if (_hasTrailing(p, &ciExtra)) {
-  //      // Syntax error, or maybe a single JSON value.
-  //      ret = Value();
-  //    } else if (ret.size() > 0) {
-  //      // if there were no braces, the first comment belongs to the first child
-  //      // of the root object, not to the root object itself.
-  //      _setComment(ret[0], &Value::set_comment_before, p, ciBefore);
-  //      ciBefore = CommentInfo();
-  //    }
-  //  } catch(const syntax_error& e) {
-  //    errMsg = std::string(e.what());
-  //  }
-  //}
-
-  //if (!ret.defined()) {
-  //  // test if we are dealing with a single JSON value instead (true/false/null/num/"")
-  //  _resetAt(p);
-  //  ret = _readValue(p);
-  //  if (_hasTrailing(p, &ciExtra)) {
-  //    // Syntax error.
-  //    ret = Value();
-  //  }
-  //}
 
   return ret;
 }
