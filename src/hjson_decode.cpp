@@ -789,6 +789,8 @@ static Value _rootValue(Parser *p) {
       } catch (const syntax_error& e2) {
         throw e1;
       }
+    } else {
+      throw e1;
     }
   }
 
