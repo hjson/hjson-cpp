@@ -1,5 +1,14 @@
 name: test
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   test:
     name: ${{ matrix.name }}
@@ -9,7 +18,7 @@ jobs:
       matrix:
         include:
           - name: linux-prev-release
-            os: ubuntu-20.04
+            os: ubuntu-22.04
             env:
               BUILD_TYPE: Release
           - name: linux-latest-debug
