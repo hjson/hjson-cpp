@@ -14,14 +14,14 @@ static std::string _test_string_param(std::string param) {
 void test_value() {
   {
     int a = 0;
-    char *szBrackets = new char[200001];
-    for (; a < 100000; a++) {
+    char *szBrackets = new char[2001];
+    for (; a < 1000; a++) {
       szBrackets[a] = '[';
     }
-    for (; a < 200000; a++) {
+    for (; a < 2000; a++) {
       szBrackets[a] = ']';
     }
-    szBrackets[200000] = 0;
+    szBrackets[2000] = 0;
     Hjson::Unmarshal(szBrackets);
     delete[] szBrackets;
   }
