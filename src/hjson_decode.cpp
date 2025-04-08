@@ -589,12 +589,16 @@ static void _readArrayElemEnd(Parser* p) {
 
 
 static void _readObjectBegin(Parser *p) {
+  p->vParent.back().val = Value(Type::Map);
+
   if (p->ch == '{') {
     _next(p);
+    p->vParent.back().ciElemBefore = _white(p);
+  } else {
+    p->vParent.back().ciElemBefore = p->vParent.back().ciBefore;
+    p->vParent.back().ciBefore = CommentInfo();
   }
 
-  p->vParent.back().val = Value(Type::Map);
-  p->vParent.back().ciElemBefore = _white(p);
 
   if (p->ch == '}' && !(p->vParent.empty() && p->withoutBraces)) {
     _setComment(p->vParent.back().val, &Value::set_comment_inside, p, p->vParent.back().ciElemBefore);
