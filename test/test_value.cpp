@@ -615,6 +615,48 @@ void test_value() {
   }
 
   {
+    int a = 0;
+    char *szBrackets = new char[2001];
+    for (; a < 1000; a++) {
+      szBrackets[a] = '[';
+    }
+    for (; a < 2000; a++) {
+      szBrackets[a] = ']';
+    }
+    szBrackets[2000] = 0;
+    Hjson::Unmarshal(szBrackets);
+    delete[] szBrackets;
+  }
+
+  {
+    Hjson::Value node;
+    node["a"] = 1;
+    {
+      Hjson::Value root;
+      root["n"] = node;
+    }
+    assert(node.size() == 1);
+  }
+
+  {
+    Hjson::Value node;
+    node["a"] = 1;
+    node["a2"] = 2;
+    {
+      Hjson::Value node2;
+      node2["b"] = node;
+      node2["c"] = "alfa";
+      node2["d"] = Hjson::Value(Hjson::Type::Undefined);
+      {
+        Hjson::Value root;
+        root["n"] = node2;
+      }
+      assert(node2.size() == 3);
+    }
+    assert(node.size() == 2);
+  }
+
+  {
     Hjson::Value val;
     try {
       val[0] = 0;
