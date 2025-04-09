@@ -527,7 +527,7 @@ static Value _readTfnns(Parser *p) {
   size_t valEnd = 0;
   auto ret = _readTfnns2(p, valEnd);
   // Make sure that we include whitespace after the value in the after-comment.
-  p->indexNext = valEnd;
+  p->indexNext = static_cast<int>(valEnd);
   _next(p);
   return ret;
 }
@@ -786,7 +786,7 @@ static Value _rootValue(Parser *p) {
         if (_hasTrailing(p, &ciExtra)) {
           throw syntax_error(_errAt(p, "Syntax error, found trailing characters"));
         }
-      } catch (const syntax_error& e2) {
+      } catch (const syntax_error&) {
         throw e1;
       }
     } else {
