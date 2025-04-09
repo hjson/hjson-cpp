@@ -46,7 +46,6 @@ public:
   unsigned char ch;
   bool withoutBraces;
   DecoderOptions opt;
-  CommentInfo ciBefore;
   std::vector<ParseState> vState;
   std::vector<Parent> vParent;
 };
