@@ -13,48 +13,6 @@ static std::string _test_string_param(std::string param) {
 
 void test_value() {
   {
-    int a = 0;
-    char *szBrackets = new char[2001];
-    for (; a < 1000; a++) {
-      szBrackets[a] = '[';
-    }
-    for (; a < 2000; a++) {
-      szBrackets[a] = ']';
-    }
-    szBrackets[2000] = 0;
-    Hjson::Unmarshal(szBrackets);
-    delete[] szBrackets;
-  }
-
-  {
-    Hjson::Value node;
-    node["a"] = 1;
-    {
-      Hjson::Value root;
-      root["n"] = node;
-    }
-    assert(node.size() == 1);
-  }
-
-  {
-    Hjson::Value node;
-    node["a"] = 1;
-    node["a2"] = 2;
-    {
-      Hjson::Value node2;
-      node2["b"] = node;
-      node2["c"] = "alfa";
-      node2["d"] = Hjson::Value(Hjson::Type::Undefined);
-      {
-        Hjson::Value root;
-        root["n"] = node2;
-      }
-      assert(node2.size() == 3);
-    }
-    assert(node.size() == 2);
-  }
-
-  {
     Hjson::Value valVec(Hjson::Type::Vector);
     assert(valVec.type() == Hjson::Type::Vector);
     Hjson::Value valMap(Hjson::Type::Map);
@@ -654,6 +612,48 @@ void test_value() {
     Hjson::Value val2 = root["key1"]["key2"]["key3"];
     val2["B"] = 5;
     assert(root["key1"]["key2"]["key3"]["B"] == 5);
+  }
+
+  {
+    int a = 0;
+    char *szBrackets = new char[2001];
+    for (; a < 1000; a++) {
+      szBrackets[a] = '[';
+    }
+    for (; a < 2000; a++) {
+      szBrackets[a] = ']';
+    }
+    szBrackets[2000] = 0;
+    Hjson::Unmarshal(szBrackets);
+    delete[] szBrackets;
+  }
+
+  {
+    Hjson::Value node;
+    node["a"] = 1;
+    {
+      Hjson::Value root;
+      root["n"] = node;
+    }
+    assert(node.size() == 1);
+  }
+
+  {
+    Hjson::Value node;
+    node["a"] = 1;
+    node["a2"] = 2;
+    {
+      Hjson::Value node2;
+      node2["b"] = node;
+      node2["c"] = "alfa";
+      node2["d"] = Hjson::Value(Hjson::Type::Undefined);
+      {
+        Hjson::Value root;
+        root["n"] = node2;
+      }
+      assert(node2.size() == 3);
+    }
+    assert(node.size() == 2);
   }
 
   {
