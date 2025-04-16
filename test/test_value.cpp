@@ -639,6 +639,30 @@ void test_value() {
   }
 
   {
+    std::ostringstream oss;
+    for (int a = 0; a < 10; ++a) {
+      oss << "a: {\n";
+    }
+    oss << "a: {}\n";
+    for (int a = 0; a < 10; ++a) {
+      oss << "}\n";
+    }
+    const std::string in = oss.str();
+    Hjson::DecoderOptions decOpt;
+    decOpt.comments = true;
+    decOpt.whitespaceAsComments = true;
+    Hjson::Value root = Hjson::Unmarshal(in);
+
+    Hjson::EncoderOptions opt;
+    opt.comments = true;
+    opt.omitRootBraces = true;
+    opt.indentBy = "";
+    const std::string out = Hjson::Marshal(root, opt) + "\n";
+
+    assert(out == in);
+  }
+
+  {
     Hjson::Value node;
     node["a"] = 1;
     {
