@@ -49,6 +49,7 @@ public:
   ValueImpl(const std::string&);
   ValueImpl(Type);
   ~ValueImpl();
+  static void DeepClear(Value &val);
 };
 
 
@@ -112,6 +113,31 @@ Value::ValueImpl::ValueImpl(Type _type)
 }
 
 
+// Bottom-up destruction in order to avoid stack overflow due to recursive destructor calls.
+void Value::ValueImpl::DeepClear(Value &val) {
+  // The map/vector will only be destroyed if use_count == 1
+  if (val.size() && val.prv.use_count() == 1) {
+    std::vector<std::pair<Value, int> > v;
+
+    v.emplace_back(val, 0);
+
+    while (!v.empty()) {
+      if (v.back().second >= v.back().first.size()) {
+        v.back().first.clear();
+        v.pop_back();
+      } else {
+        Value &n = v.back().first[v.back().second];
+        v.back().second++;
+        // The map/vector will only be destroyed if use_count == 1
+        if (n.size() && n.prv.use_count() == 1) {
+          v.emplace_back(v.back().first[v.back().second - 1], 0);
+        }
+      }
+    }
+  }
+}
+
+
 Value::ValueImpl::~ValueImpl() {
   switch (type)
   {
@@ -119,9 +145,15 @@ Value::ValueImpl::~ValueImpl() {
     delete s;
     break;
   case Type::Vector:
+    for (auto e = v->begin(); e != v->end(); ++e) {
+      DeepClear(*e);
+    }
     delete v;
     break;
   case Type::Map:
+    for (auto e = m->m.begin(); e != m->m.end(); ++e) {
+      DeepClear(e->second);
+    }
     delete m;
     break;
   default:
