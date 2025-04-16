@@ -616,15 +616,25 @@ void test_value() {
 
   {
     int a = 0;
-    char *szBrackets = new char[2001];
-    for (; a < 1000; a++) {
+    char *szBrackets = new char[19];
+    for (; a < 10; a++) {
       szBrackets[a] = '[';
+      szBrackets[++a] = '\n';
     }
-    for (; a < 2000; a++) {
+    --a;
+    for (; a < 18; a++) {
       szBrackets[a] = ']';
+      szBrackets[++a] = '\n';
     }
-    szBrackets[2000] = 0;
-    Hjson::Unmarshal(szBrackets);
+    szBrackets[18] = 0;
+    auto root = Hjson::Unmarshal(szBrackets);
+
+    Hjson::EncoderOptions opt;
+    opt.indentBy = "";
+    auto res = Hjson::Marshal(root, opt);
+
+    assert(!std::strcmp(res.c_str(), szBrackets));
+
     delete[] szBrackets;
   }
 
@@ -725,11 +735,11 @@ void test_value() {
     // Assert that explicit assignment creates an element.
     assert(val.size() == 2);
     std::string generatedHjson = Hjson::Marshal(val);
-    assert(generatedHjson == "{\n}");
+    assert(generatedHjson == "{}");
     Hjson::EncoderOptions options;
     options.preserveInsertionOrder = false;
     generatedHjson = Hjson::Marshal(val, options);
-    assert(generatedHjson == "{\n}");
+    assert(generatedHjson == "{}");
     sub1["sub1"] = "abc";
     sub2["sub2"] = "åäö";
     generatedHjson = Hjson::Marshal(val);

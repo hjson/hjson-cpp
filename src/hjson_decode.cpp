@@ -30,7 +30,7 @@ public:
 };
 
 
-class Parent {
+class DecodeParent {
 public:
   Value val;
   CommentInfo ciBefore, ciKey, ciElemBefore, ciElemExtra;
@@ -47,7 +47,7 @@ public:
   bool withoutBraces;
   DecoderOptions opt;
   std::vector<ParseState> vState;
-  std::vector<Parent> vParent;
+  std::vector<DecodeParent> vParent;
 };
 
 
@@ -683,7 +683,7 @@ static void _readObjectElemEnd(Parser *p) {
 
 // Parse a Hjson value. It could be an object, an array, a string, a number or a word.
 static void _readValueBegin(Parser *p) {
-  p->vParent.push_back(Parent());
+  p->vParent.push_back(DecodeParent());
   p->vParent.back().ciBefore = _white(p);
 
   switch (p->ch) {
@@ -755,7 +755,7 @@ static void _parseLoop(Parser* p) {
 static Value _rootValue(Parser *p) {
   CommentInfo ciExtra;
 
-  p->vParent.push_back(Parent());
+  p->vParent.push_back(DecodeParent());
   p->vParent.back().ciBefore = _white(p);
 
   if (p->ch == '[') {
