@@ -615,6 +615,82 @@ void test_value() {
   }
 
   {
+    int a = 0;
+    char *szBrackets = new char[19];
+    for (; a < 10; a++) {
+      szBrackets[a] = '[';
+      szBrackets[++a] = '\n';
+    }
+    --a;
+    for (; a < 18; a++) {
+      szBrackets[a] = ']';
+      szBrackets[++a] = '\n';
+    }
+    szBrackets[18] = 0;
+    auto root = Hjson::Unmarshal(szBrackets);
+
+    Hjson::EncoderOptions opt;
+    opt.indentBy = "";
+    auto res = Hjson::Marshal(root, opt);
+
+    assert(!std::strcmp(res.c_str(), szBrackets));
+
+    delete[] szBrackets;
+  }
+
+  {
+    std::ostringstream oss;
+    for (int a = 0; a < 10; ++a) {
+      oss << "a: {\n";
+    }
+    oss << "a: {}\n";
+    for (int a = 0; a < 10; ++a) {
+      oss << "}\n";
+    }
+    const std::string in = oss.str();
+    Hjson::DecoderOptions decOpt;
+    decOpt.comments = true;
+    decOpt.whitespaceAsComments = true;
+    Hjson::Value root = Hjson::Unmarshal(in);
+
+    Hjson::EncoderOptions opt;
+    opt.comments = true;
+    opt.omitRootBraces = true;
+    opt.indentBy = "";
+    const std::string out = Hjson::Marshal(root, opt) + "\n";
+
+    assert(out == in);
+  }
+
+  {
+    Hjson::Value node;
+    node["a"] = 1;
+    {
+      Hjson::Value root;
+      root["n"] = node;
+    }
+    assert(node.size() == 1);
+  }
+
+  {
+    Hjson::Value node;
+    node["a"] = 1;
+    node["a2"] = 2;
+    {
+      Hjson::Value node2;
+      node2["b"] = node;
+      node2["c"] = "alfa";
+      node2["d"] = Hjson::Value(Hjson::Type::Undefined);
+      {
+        Hjson::Value root;
+        root["n"] = node2;
+      }
+      assert(node2.size() == 3);
+    }
+    assert(node.size() == 2);
+  }
+
+  {
     Hjson::Value val;
     try {
       val[0] = 0;
@@ -683,11 +759,11 @@ void test_value() {
     // Assert that explicit assignment creates an element.
     assert(val.size() == 2);
     std::string generatedHjson = Hjson::Marshal(val);
-    assert(generatedHjson == "{\n}");
+    assert(generatedHjson == "{}");
     Hjson::EncoderOptions options;
     options.preserveInsertionOrder = false;
     generatedHjson = Hjson::Marshal(val, options);
-    assert(generatedHjson == "{\n}");
+    assert(generatedHjson == "{}");
     sub1["sub1"] = "abc";
     sub2["sub2"] = "åäö";
     generatedHjson = Hjson::Marshal(val);

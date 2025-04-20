@@ -11,6 +11,25 @@
 namespace Hjson {
 
 
+enum class EncodeState {
+  ValueBegin,
+  ValueEnd,
+  VectorElemBegin,
+  MapElemBegin,
+};
+
+
+class EncodeParent {
+public:
+  EncodeParent(const Value *_pVal) : pVal(_pVal), index(0), isEmpty(true) {}
+  const Value *pVal;
+  int index;
+  bool isEmpty;
+  std::string commentAfter;
+  std::map<std::string, Value>::const_iterator it;
+};
+
+
 struct Encoder {
   EncoderOptions opt;
   std::ostream *os;
@@ -18,12 +37,12 @@ struct Encoder {
   int indent;
   std::regex needsEscape, needsQuotes, needsEscapeML, startsWithKeyword,
     needsEscapeName, lineBreak;
+  std::vector<EncodeState> vState;
+  std::vector<EncodeParent> vParent;
 };
 
 
 bool startsWithNumber(const char *text, size_t textSize);
-static void _objElem(Encoder *e, const std::string& key, const Value& value, bool *pIsFirst,
-  bool isRootObject, const std::string& commentAfterPrevObj);
 
 
 // table of character substitutions
@@ -53,8 +72,10 @@ static const char *_meta(char c) {
 static void _writeIndent(Encoder *e, int indent) {
   *e->os << e->opt.eol;
 
-  for (int i = 0; i < indent; i++) {
-    *e->os << e->opt.indentBy;
+  if (!e->opt.indentBy.empty()) {
+    for (int i = 0; i < indent; i++) {
+      *e->os << e->opt.indentBy;
+    }
   }
 }
 
@@ -146,16 +167,21 @@ static void _quoteReplace(Encoder *e, const std::string& text) {
 
 
 // wrap the string into the ''' (multiline) format
-static void _mlString(Encoder *e, const std::string& value, const char *separator) {
+static void _mlString(Encoder *e, const std::string& value) {
   size_t uIndexStart = 0;
   std::sregex_iterator it = std::sregex_iterator(value.begin(), value.end(),
     e->lineBreak);
 
   if (it == std::sregex_iterator()) {
+    if (e->vState.size() > 1 && e->vState[e->vState.size() - 2] == EncodeState::MapElemBegin && (
+      !e->opt.comments || e->vParent.back().pVal->get_comment_key().empty()))
+    {
+      *e->os << " ";
+    }
     // The string contains only a single line. We still use the multiline
     // format as it avoids escaping the \ character (e.g. when used in a
     // regex).
-    *e->os << separator << "'''";
+    *e->os << "'''";
     *e->os << value;
   } else {
     _writeIndent(e, e->indent + 1);
@@ -193,11 +219,21 @@ static void _mlString(Encoder *e, const std::string& value, const char *separato
 
 // Check if we can insert this string without quotes
 // see hjson syntax (must not parse as true, false, null or number)
-static void _quote(Encoder *e, const std::string& value, const char *separator,
-  bool isRootObject, bool hasCommentAfter)
+static void _quote(Encoder *e, const std::string& value,
+  bool hasCommentAfter)
 {
+  bool bSep = false;
+  if (e->vState.size() > 1 && e->vState[e->vState.size() - 2] == EncodeState::MapElemBegin && (
+    !e->opt.comments || e->vParent.back().pVal->get_comment_key().empty()))
+  {
+    bSep = true;
+  }
+
   if (value.size() == 0) {
-    *e->os << separator << "\"\"";
+    if (bSep) {
+      *e->os << " ";
+    }
+    *e->os << "\"\"";
   } else if (e->opt.quoteAlways ||
     std::regex_search(value, e->needsQuotes) ||
     startsWithNumber(value.c_str(), value.size()) ||
@@ -212,19 +248,28 @@ static void _quote(Encoder *e, const std::string& value, const char *separator,
     // sequences.
 
     if (!std::regex_search(value, e->needsEscape)) {
-      *e->os << separator << '"' << value << '"';
+      if (bSep) {
+        *e->os << " ";
+      }
+      *e->os << '"' << value << '"';
     } else if (!e->opt.quoteAlways && !std::regex_search(value,
-      e->needsEscapeML) && !isRootObject)
+      e->needsEscapeML) && e->vParent.size() > 1)
     {
-      _mlString(e, value, separator);
+      _mlString(e, value);
     } else {
-      *e->os << separator << '"';
+      if (bSep) {
+        *e->os << " ";
+      }
+      *e->os << '"';
       _quoteReplace(e, value);
       *e->os << '"';
     }
   } else {
+    if (bSep) {
+      *e->os << " ";
+    }
     // return without quotes
-    *e->os << separator << value;
+    *e->os << value;
   }
 }
 
@@ -241,29 +286,6 @@ static void _quoteName(Encoder *e, const std::string& name) {
   } else {
     // without quotes
     *e->os << name;
-  }
-}
-
-
-static void _bracesIndent(Encoder *e, bool isObjElement, const Value& value, const char *separator) {
-  if (
-    isObjElement
-    && !e->opt.bracesSameLine
-    && (
-      !value.empty()
-      || (
-        e->opt.comments
-        && !value.get_comment_inside().empty()
-      )
-    )
-    && (
-      !e->opt.comments
-      || value.get_comment_key().empty()
-    )
-  ) {
-    _writeIndent(e, e->indent);
-  } else {
-    *e->os << separator;
   }
 }
 
@@ -321,21 +343,15 @@ static bool _isInComment(const std::string& comment) {
 
 
 // Produce a string from value.
-static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjElement) {
-  const char *separator = ((isObjElement && (!e->opt.comments ||
-    value.get_comment_key().empty())) ? " " : "");
+static void _writeValueBegin(Encoder *e) {
+  const Value &value = *e->vParent.back().pVal;
 
   if (e->opt.comments) {
-    if (isRootObject) {
-      *e->os << value.get_comment_before();
-    }
     *e->os << value.get_comment_key();
   }
 
   switch (value.type()) {
   case Type::Double:
-    *e->os << separator;
-
     if (std::isnan(static_cast<double>(value)) || std::isinf(static_cast<double>(value))) {
       *e->os << Value(Type::Null).to_string();
     } else if (!e->opt.allowMinusZero && value == 0 && std::signbit(static_cast<double>(value))) {
@@ -346,143 +362,112 @@ static void _str(Encoder *e, const Value& value, bool isRootObject, bool isObjEl
     break;
 
   case Type::String:
-    _quote(e, value, separator, isRootObject, _quoteForComment(e, value.get_comment_after()));
+    _quote(e, value, _quoteForComment(e, value.get_comment_after()));
     break;
 
   case Type::Vector:
-    {
-      _bracesIndent(e, isObjElement, value, separator);
-      *e->os << "[";
-
-      e->indent++;
-
-      // Join all of the element texts together, separated with newlines
-      bool isFirst = true;
-      std::string commentAfter = value.get_comment_inside();
-      for (int i = 0; size_t(i) < value.size(); ++i) {
-        if (value[i].defined()) {
-          bool shouldIndent = (!e->opt.comments || value[i].get_comment_key().empty());
-
-          if (isFirst) {
-            isFirst = false;
-
-            if (e->opt.comments && !commentAfter.empty()) {
-              *e->os << commentAfter;
-              // This is the first element, so commentAfterPrevObj is the inner comment
-              // of the parent vector. The inner comment probably expects "]" to come
-              // after it and therefore needs one more level of indentation.
-              *e->os << e->opt.indentBy;
-              shouldIndent = false;
-            }
-          } else {
-            if (e->opt.separator) {
-              *e->os << ",";
-            }
-
-            if (e->opt.comments) {
-              *e->os << commentAfter;
-            }
-          }
-
-          if (e->opt.comments && !value[i].get_comment_before().empty()) {
-            if (!e->opt.separator &&
-              value[i].get_comment_before().find("\n") == std::string::npos)
-            {
-              _writeIndent(e, e->indent);
-            }
-            *e->os << value[i].get_comment_before();
-          } else if (shouldIndent) {
-            _writeIndent(e, e->indent);
-          }
-
-          _str(e, value[i], false, false);
-
-          commentAfter = value[i].get_comment_after();
-        }
-      }
-      if (e->opt.comments && !commentAfter.empty()) {
-        *e->os << commentAfter;
-      }
-      if (!value.empty() && (!e->opt.comments || commentAfter.empty() ||
-        !e->opt.separator && commentAfter.find("\n") == std::string::npos))
-      {
-        _writeIndent(e, e->indent - 1);
-      }
-
-      *e->os << "]";
-      e->indent--;
-    }
-    break;
+    *e->os << "[";
+    e->indent++;
+    e->vParent.back().commentAfter = value.get_comment_inside();
+    e->vState.back() = EncodeState::VectorElemBegin;
+    return;
 
   case Type::Map:
-    {
-      if (!e->opt.omitRootBraces || !isRootObject || value.empty()) {
-        _bracesIndent(e, isObjElement, value, separator);
-        *e->os << "{";
+    if (!e->opt.omitRootBraces || e->vParent.size() > 1 || value.empty()) {
+      *e->os << "{";
+      e->indent++;
+    }
+    e->vParent.back().commentAfter = value.get_comment_inside();
+    e->vParent.back().it = value.begin();
+    e->vState.back() = EncodeState::MapElemBegin;
+    return;
 
-        e->indent++;
-      }
+  default:
+    *e->os << value.to_string();
+  }
 
-      // Join all of the member texts together, separated with newlines
-      bool isFirst = true;
-      std::string commentAfter = value.get_comment_inside();
-      if (e->opt.preserveInsertionOrder) {
-        size_t limit = value.size();
-        for (int index = 0; index < limit; index++) {
-          if (value[index].defined()) {
-            _objElem(e, value.key(index), value[index], &isFirst, isRootObject, commentAfter);
-            commentAfter = value[index].get_comment_after();
-          }
+  e->vState.back() = EncodeState::ValueEnd;
+}
+
+
+static void _writeValueEnd(Encoder *e) {
+  e->vState.pop_back();
+  e->vParent.pop_back();
+}
+
+
+static void _writeVectorElemBegin(Encoder *e) {
+  EncodeParent &ep = e->vParent.back();
+  const Value &value = *ep.pVal;
+
+  for (; ep.index < value.size(); ep.index++) {
+    const Value &elem= value[ep.index];
+    if (elem.defined()) {
+      bool shouldIndent = (!e->opt.comments || elem.get_comment_key().empty());
+
+      if (ep.isEmpty) {
+        ep.isEmpty = false;
+
+        if (e->opt.comments && !ep.commentAfter.empty()) {
+          *e->os << ep.commentAfter;
+          // This is the first element, so commentAfterPrevObj is the inner comment
+          // of the parent vector. The inner comment probably expects "]" to come
+          // after it and therefore needs one more level of indentation.
+          *e->os << e->opt.indentBy;
+          shouldIndent = false;
         }
       } else {
-        for (auto it : value) {
-          if (it.second.defined()) {
-            _objElem(e, it.first, it.second, &isFirst, isRootObject, commentAfter);
-            commentAfter = it.second.get_comment_after();
-          }
+        if (e->opt.separator) {
+          *e->os << ",";
+        }
+
+        if (e->opt.comments) {
+          *e->os << ep.commentAfter;
         }
       }
 
-      if (e->opt.comments && !commentAfter.empty()) {
-        *e->os << commentAfter;
-      }
-      if (!value.empty() && (!e->opt.omitRootBraces || !isRootObject) &&
-        (!e->opt.comments || commentAfter.empty() ||
-        !e->opt.separator && commentAfter.find("\n") == std::string::npos))
-      {
-        _writeIndent(e, e->indent - 1);
-      }
-
-      if (!e->opt.omitRootBraces || !isRootObject || value.empty()) {
-        e->indent--;
-        if (isRootObject && e->opt.comments && !commentAfter.empty() &&
-          _isInComment(commentAfter))
+      if (e->opt.comments && !elem.get_comment_before().empty()) {
+        if (!e->opt.separator &&
+          elem.get_comment_before().find("\n") == std::string::npos)
         {
           _writeIndent(e, e->indent);
         }
-        *e->os << "}";
+        *e->os << elem.get_comment_before();
+      } else if (shouldIndent) {
+        _writeIndent(e, e->indent);
       }
+
+      ep.commentAfter = elem.get_comment_after();
+      ep.index++;
+      // Invalidates ep
+      e->vParent.push_back(EncodeParent(&elem));
+      e->vState.push_back(EncodeState::ValueBegin);
+      return;
     }
-    break;
-
-  default:
-    *e->os << separator << value.to_string();
+  }
+  if (e->opt.comments && !ep.commentAfter.empty()) {
+    *e->os << ep.commentAfter;
+  }
+  if (!ep.isEmpty && (!e->opt.comments || ep.commentAfter.empty() ||
+    !e->opt.separator && ep.commentAfter.find("\n") == std::string::npos))
+  {
+    _writeIndent(e, e->indent - 1);
   }
 
-  if (e->opt.comments && isRootObject) {
-    *e->os << value.get_comment_after();
-  }
+  *e->os << "]";
+  e->indent--;
+  e->vState.back() = EncodeState::ValueEnd;
 }
 
 
 static void _objElem(Encoder *e, const std::string& key, const Value& value, bool *pIsFirst,
-  bool isRootObject, const std::string& commentAfterPrevObj)
+  const std::string& commentAfterPrevObj)
 {
   bool hasCommentBefore = (e->opt.comments && !value.get_comment_before().empty());
 
   if (*pIsFirst) {
     *pIsFirst = false;
-    bool shouldIndent = ((!e->opt.omitRootBraces || !isRootObject) && !hasCommentBefore);
+    bool shouldIndent = ((!e->opt.omitRootBraces || e->vParent.size() > 1) && !hasCommentBefore);
 
     if (e->opt.comments && !commentAfterPrevObj.empty()) {
       *e->os << commentAfterPrevObj;
@@ -516,12 +501,106 @@ static void _objElem(Encoder *e, const std::string& key, const Value& value, boo
 
   _quoteName(e, key);
   *e->os << ":";
-  _str(
-    e,
-    value,
-    false,
-    true
-  );
+  if (
+    !e->opt.bracesSameLine
+    && value.is_container()
+    && (
+      !value.empty()
+      || (
+        e->opt.comments
+        && !value.get_comment_inside().empty()
+        )
+      )
+    && (
+      !e->opt.comments
+      || value.get_comment_key().empty()
+      )
+    )
+  {
+    _writeIndent(e, e->indent);
+  } else if (value.type() != Type::String && (!e->opt.comments || value.get_comment_key().empty())) {
+    *e->os << " ";
+  }
+  e->vParent.push_back(EncodeParent(&value));
+  e->vState.push_back(EncodeState::ValueBegin);
+}
+
+
+static void _writeMapElemBegin(Encoder *e) {
+  EncodeParent &ep = e->vParent.back();
+  const Value &value = *ep.pVal;
+
+  if (e->opt.preserveInsertionOrder) {
+    for (; ep.index < value.size(); ++ep.index) {
+      const Value &elem = value[ep.index];
+      if (elem.defined()) {
+        int oldParentIndex = e->vParent.size() - 1;
+
+        // Invalidates ep
+        _objElem(e, value.key(ep.index), elem, &ep.isEmpty, ep.commentAfter);
+
+        e->vParent[oldParentIndex].commentAfter = elem.get_comment_after();
+        ++e->vParent[oldParentIndex].index;
+        return;
+      }
+    }
+  } else {
+    for (; ep.it != value.end(); ++ep.it) {
+      if (ep.it->second.defined()) {
+        int oldParentIndex = e->vParent.size() - 1;
+        auto oldIt = ep.it;
+
+        // Invalidates ep
+        _objElem(e, oldIt->first, oldIt->second, &ep.isEmpty, ep.commentAfter);
+
+        e->vParent[oldParentIndex].commentAfter = oldIt->second.get_comment_after();
+        ++e->vParent[oldParentIndex].it;
+        return;
+      }
+    }
+  }
+
+  if (e->opt.comments && !ep.commentAfter.empty()) {
+    *e->os << ep.commentAfter;
+  }
+  if (!ep.isEmpty && (!e->opt.omitRootBraces || e->vParent.size() > 1) &&
+    (!e->opt.comments || ep.commentAfter.empty() ||
+    !e->opt.separator && ep.commentAfter.find("\n") == std::string::npos))
+  {
+    _writeIndent(e, e->indent - 1);
+  }
+
+  if (!e->opt.omitRootBraces || e->vParent.size() > 1 || value.empty()) {
+    e->indent--;
+    if (e->vParent.size() == 1 && e->opt.comments && !ep.commentAfter.empty() &&
+      _isInComment(ep.commentAfter))
+    {
+      _writeIndent(e, e->indent);
+    }
+    *e->os << "}";
+  }
+
+  e->vState.back() = EncodeState::ValueEnd;
+}
+
+
+static void _marshalLoop(Encoder *e, const Value &v) {
+  while (!e->vState.empty()) {
+    switch (e->vState.back()) {
+    case EncodeState::ValueBegin:
+      _writeValueBegin(e);
+      break;
+    case EncodeState::ValueEnd:
+      _writeValueEnd(e);
+      break;
+    case EncodeState::VectorElemBegin:
+      _writeVectorElemBegin(e);
+      break;
+    case EncodeState::MapElemBegin:
+      _writeMapElemBegin(e);
+      break;
+    }
+  }
 }
 
 
@@ -557,7 +636,15 @@ static void _marshalStream(const Value& v, const EncoderOptions& options,
   e.needsEscapeName.assign(R"([,\{\[\}\]\s:#"']|//|/\*)");
   e.lineBreak.assign(R"(\r|\n|\r\n)");
 
-  _str(&e, v, true, false);
+  e.vParent.push_back(EncodeParent(&v));
+  e.vState.push_back(EncodeState::ValueBegin);
+  if (e.opt.comments) {
+    *e.os << v.get_comment_before();
+  }
+  _marshalLoop(&e, v);
+  if (e.opt.comments) {
+    *e.os << v.get_comment_after();
+  }
 }
 
 
