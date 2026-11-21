@@ -1676,4 +1676,22 @@ key: val2
       assert(!"Did not throw error for duplicate key");
     } catch(const Hjson::syntax_error& e) {}
   }
+  {
+    // \u escapes of UTF-16 surrogate pairs are one code point, lone
+    // surrogates become U+FFFD (they cannot be encoded in UTF-8).
+    auto root = Hjson::Unmarshal(R"(
+a: "😀"
+b: '😀'
+c: "\ud83d"
+d: "x\ude00"
+e: "\ud83dA"
+f: "\ud83d\\u0041"
+)");
+    assert(root["a"] == "\xf0\x9f\x98\x80");
+    assert(root["b"] == "\xf0\x9f\x98\x80");
+    assert(root["c"] == "\xef\xbf\xbd");
+    assert(root["d"] == "x\xef\xbf\xbd");
+    assert(root["e"] == "\xef\xbf\xbd" "A");
+    assert(root["f"] == "\xef\xbf\xbd\\u0041");
+  }
 }

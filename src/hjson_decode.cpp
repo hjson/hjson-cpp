@@ -270,6 +270,27 @@ static void _toUtf8(std::vector<char> &res, uint32_t uIn) {
 }
 
 
+// Read the 4 hex digits of a \u escape, p->ch is 'u'.
+static uint32_t _readHex4(Parser *p) {
+  uint32_t uffff = 0;
+  for (int i = 0; i < 4; i++) {
+    _next(p);
+    unsigned char hex;
+    if (p->ch >= '0' && p->ch <= '9') {
+      hex = p->ch - '0';
+    } else if (p->ch >= 'a' && p->ch <= 'f') {
+      hex = p->ch - 'a' + 0xa;
+    } else if (p->ch >= 'A' && p->ch <= 'F') {
+      hex = p->ch - 'A' + 0xa;
+    } else {
+      throw syntax_error(_errAt(p, std::string("Bad \\u char ") + (char)p->ch));
+    }
+    uffff = uffff * 16 + hex;
+  }
+  return uffff;
+}
+
+
 // Parse a string value.
 // callers make sure that (ch === '"' || ch === "'")
 // When parsing for string values, we must look for " and \ characters.
@@ -294,20 +315,25 @@ static std::string _readString(Parser *p, bool allowML) {
       unsigned char ech;
       _next(p);
       if (p->ch == 'u') {
-        uint32_t uffff = 0;
-        for (int i = 0; i < 4; i++) {
+        uint32_t uffff = _readHex4(p);
+        if (uffff >= 0xd800 && uffff < 0xdc00 && _peek(p, 0) == '\\' && _peek(p, 1) == 'u') {
+          // A high surrogate followed by \u: if that is a low surrogate, the
+          // two escapes are one code point (UTF-16 surrogate pair).
+          size_t indexAfterHigh = p->indexNext;
           _next(p);
-          unsigned char hex;
-          if (p->ch >= '0' && p->ch <= '9') {
-            hex = p->ch - '0';
-          } else if (p->ch >= 'a' && p->ch <= 'f') {
-            hex = p->ch - 'a' + 0xa;
-          } else if (p->ch >= 'A' && p->ch <= 'F') {
-            hex = p->ch - 'A' + 0xa;
+          _next(p);
+          uint32_t low = _readHex4(p);
+          if (low >= 0xdc00 && low < 0xe000) {
+            uffff = 0x10000 + ((uffff - 0xd800) << 10) + (low - 0xdc00);
           } else {
-            throw syntax_error(_errAt(p, std::string("Bad \\u char ") + (char)p->ch));
+            // Not a pair, read the second escape again on its own.
+            p->indexNext = indexAfterHigh - 1;
+            _next(p);
           }
-          uffff = uffff * 16 + hex;
+        }
+        if (uffff >= 0xd800 && uffff < 0xe000) {
+          // A lone surrogate cannot be encoded in UTF-8.
+          uffff = 0xfffd;
         }
         _toUtf8(res, uffff);
       } else if ((ech = _escapee(p->ch))) {
