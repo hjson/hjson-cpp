@@ -483,6 +483,12 @@ static CommentInfo _getCommentAfter(Parser *p) {
 // Hjson strings can be quoteless
 // returns string, true, false, or null.
 static Value _readTfnns2(Parser *p, size_t &valEnd) {
+  if (p->ch == 0) {
+    // End of input where a value was expected (e.g. "a:" or "a: # c" at the
+    // end of the input): the value is an empty string.
+    valEnd = p->indexNext - 1;
+    return std::string();
+  }
   if (_isPunctuatorChar(p->ch)) {
     throw syntax_error(_errAt(p, std::string("Found a punctuator character '") +
       (char)p->ch + std::string("' when expecting a quoteless string (check your syntax)")));

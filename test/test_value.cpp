@@ -1694,4 +1694,15 @@ f: "\ud83d\\u0041"
     assert(root["e"] == "\xef\xbf\xbd" "A");
     assert(root["f"] == "\xef\xbf\xbd\\u0041");
   }
+  {
+    // A key without a value at the end of the input gets an empty string,
+    // not the end-of-input marker.
+    const char *inputs[] = {"a:", "a: ", "a: # c", "a: // c", "a: /* c */", "b: 1\na:"};
+    for (auto input : inputs) {
+      auto root = Hjson::Unmarshal(input);
+      assert(root["a"].type() == Hjson::Type::String);
+      assert(root["a"] == "");
+      assert(root["a"].to_string().size() == 0);
+    }
+  }
 }
