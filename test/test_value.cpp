@@ -1705,4 +1705,23 @@ f: "\ud83d\\u0041"
       assert(root["a"].to_string().size() == 0);
     }
   }
+  {
+    // Doubles written with an exponent get no ".0" suffix, and are read back
+    // as the same doubles.
+    double values[] = {1e21, -1e22, 1e-7, 2.5e-10};
+    for (auto d : values) {
+      Hjson::Value val(d);
+      auto str = val.to_string();
+      assert(str.find('e') != std::string::npos);
+      assert(str.find(".0") == std::string::npos);
+      auto root = Hjson::Unmarshal(Hjson::Marshal(val));
+      assert(root.type() == Hjson::Type::Double);
+      assert(root.to_double() == d);
+      root = Hjson::Unmarshal("[" + Hjson::MarshalJson(val) + "]");
+      assert(root[0].type() == Hjson::Type::Double);
+      assert(root[0].to_double() == d);
+    }
+    assert(Hjson::Value(1e21).to_string() == "1e+21");
+    assert(Hjson::Value(100.0).to_string() == "100.0");
+  }
 }

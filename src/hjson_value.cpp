@@ -1625,8 +1625,9 @@ std::string Value::to_string() const {
       // to_chars() does not set a zero termination, which is needed by strchr().
       *res.ptr = '\0';
 
-      // Always output a decimal point.
-      if (strchr(buf.data(), '.') == nullptr) {
+      // Always output a decimal point, unless the number has an exponent
+      // ("1e+21.0" would not be a number).
+      if (strpbrk(buf.data(), ".eE") == nullptr) {
         if (res.ptr - buf.data() >= buf.size() - 1) {
           return "";
         }
@@ -1643,8 +1644,9 @@ std::string Value::to_string() const {
         return "";
       }
 
-      // Always output a decimal point.
-      if (strchr(buf, '.') == nullptr) {
+      // Always output a decimal point, unless the number has an exponent
+      // ("1e+21.0" would not be a number).
+      if (strpbrk(buf, ".eE") == nullptr) {
         if (nChars >= static_cast<int>(sizeof(buf)) - 1) {
           return "";
         }
@@ -1662,10 +1664,11 @@ std::string Value::to_string() const {
 
       oss << prv->d;
 
-      // Always output a decimal point. Done like this to avoid printing more
-      // decimals than needed, which would be the result of using
+      // Always output a decimal point, unless the number has an exponent
+      // ("1e+21.0" would not be a number). Done like this to avoid printing
+      // more decimals than needed, which would be the result of using
       // std::ios::showpoint.
-      if (oss.str().find_first_of('.', 0) == std::string::npos) {
+      if (oss.str().find_first_of(".eE", 0) == std::string::npos) {
         oss << ".0";
       }
 
