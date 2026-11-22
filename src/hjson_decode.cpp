@@ -478,6 +478,12 @@ static Value _readTfnns2(Parser *p, size_t &valEnd) {
       p->ch == '#' ||
       (p->ch == '/' && (_peek(p, 0) == '/' || _peek(p, 0) == '*')))
     {
+      if (valStart < 0 || valEnd <= valStart || valStart >= p->dataSize ||
+        valEnd > p->dataSize)
+      {
+        throw syntax_error(_errAt(p, "End of input when expecting value"));
+      }
+
       const char *pVal = reinterpret_cast<const char*>(p->data) + valStart;
       size_t valLen = valEnd - valStart;
 
