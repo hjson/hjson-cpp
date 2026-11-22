@@ -513,7 +513,7 @@ void test_value() {
     Hjson::Value val;
     val["first"] = "leaf1";
     char szKey[20];
-    sprintf(szKey, "first");
+    snprintf(szKey, 20, "first");
     assert(val[szKey] == "leaf1");
     char *szKey2 = szKey;
     assert(val[szKey2] == "leaf1");
@@ -1674,6 +1674,46 @@ key: val2
       decOpt.duplicateKeyException = true;
       root = Hjson::Unmarshal(str, decOpt);
       assert(!"Did not throw error for duplicate key");
+    } catch(const Hjson::syntax_error& e) {}
+  }
+
+  {
+    auto root = Hjson::Unmarshal("");
+    assert(Hjson::Marshal(root) == "{}");
+  }
+
+  {
+    std::string str = R"(
+key1:)";
+    auto root = Hjson::Unmarshal(str);
+    assert(root == "key1:");
+  }
+
+  {
+    std::string str = R"(
+key1: val1
+key2:)";
+    try {
+      auto root = Hjson::Unmarshal(str);
+      assert(!"Did not throw error for missing value after key");
+    } catch(const Hjson::syntax_error& e) {}
+  }
+
+  {
+    std::string str = R"(
+{key1:)";
+    try {
+      auto root = Hjson::Unmarshal(str);
+      assert(!"Did not throw error for missing value after key");
+    } catch(const Hjson::syntax_error& e) {}
+  }
+
+  {
+    std::string str = R"(
+[1,)";
+    try {
+      auto root = Hjson::Unmarshal(str);
+      assert(!"Did not throw error for missing value in array");
     } catch(const Hjson::syntax_error& e) {}
   }
 }
