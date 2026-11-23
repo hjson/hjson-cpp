@@ -293,6 +293,15 @@ public:
   Value& at(const std::string& key);
   const Value& at(const char *key) const;
   Value& at(const char *key);
+
+#if __cplusplus >= 201703L
+  // These are functions available in C++17 and greater only
+  // This function will add a value to a vector without a copy
+  void push_back(Value&&);
+  // This function can insert a value into the map without an allocation
+  void insert(const std::string&key, Value&&);
+#endif // __cplusplus >= 201703L
+
   // Iterations are always done in alphabetical key order. Returns a default
   // constructed iterator if this Value is of any other type than Map.
   std::map<std::string, Value>::iterator begin();
