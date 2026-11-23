@@ -1736,4 +1736,29 @@ key2:)";
     assert(Hjson::Value(1e21).to_string() == "1e+21");
     assert(Hjson::Value(100.0).to_string() == "100.0");
   }
+
+  {
+    // Strings containing \r cannot be written as multiline strings (parsers
+    // ignore \r in those), but must still be read back unchanged.
+    std::string values[] = {"a\r\nb", "a\rb", "a\r", "\r", "\r\n",
+      "line 1\r\nline 2\r\n", "a\\b\r\nc", "\r\n\r\n"};
+    for (const auto& str : values) {
+      Hjson::Value val;
+      val["key"] = str;
+      val["vec"].push_back(str);
+      auto out = Hjson::Marshal(val);
+      assert(out.find("'''") == std::string::npos);
+      auto root = Hjson::Unmarshal(out);
+      assert(root["key"] == str);
+      assert(root["vec"][0] == str);
+      root = Hjson::Unmarshal(Hjson::Marshal(Hjson::Value(str)));
+      assert(root == str);
+    }
+    // Strings with \n but no \r are still written as multiline strings.
+    Hjson::Value val;
+    val["key"] = "line 1\nline 2";
+    auto out = Hjson::Marshal(val);
+    assert(out.find("'''") != std::string::npos);
+    assert(Hjson::Unmarshal(out)["key"] == "line 1\nline 2");
+  }
 }
