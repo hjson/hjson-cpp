@@ -1,6 +1,6 @@
 #include "hjson.h"
 #include <sstream>
-#include <regex>
+#include <vector>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
@@ -33,10 +33,7 @@ public:
 struct Encoder {
   EncoderOptions opt;
   std::ostream *os;
-  std::locale loc;
   int indent;
-  std::regex needsEscape, needsQuotes, needsEscapeML, startsWithKeyword,
-    needsEscapeName, lineBreak;
   std::vector<EncodeState> vState;
   std::vector<EncodeParent> vParent;
 };
@@ -66,6 +63,225 @@ static const char *_meta(char c) {
   }
 
   return 0;
+}
+
+
+// The functions below decide how a string must be written. They scan the
+// string byte by byte (they are not UTF-8 aware), in linear time and without
+// recursion, so that strings of any length can be encoded.
+
+
+// Returns true for the whitespace characters: space, \t, \n, \v, \f and \r.
+static inline bool _isWhite(unsigned char c) {
+  return c == ' ' || (c >= '\t' && c <= '\r');
+}
+
+
+// If text[i] is the first byte of one of the UTF-8 encoded characters that
+// must always be escaped, the length of that character in bytes is returned.
+// Otherwise 0 is returned. The characters are U+00AD, U+0600-U+0604, U+070F,
+// U+17B4, U+17B5, U+200C, U+200F, U+2028-U+202F, U+2060-U+206F, U+FEFF and
+// U+FFF0-U+FFFF.
+static size_t _specialCharLen(const std::string& text, size_t i) {
+  const size_t n = text.size() - i;
+  if (n < 2) {
+    return 0;
+  }
+
+  const unsigned char c0 = text[i], c1 = text[i + 1];
+
+  switch (c0) {
+  case 0xc2:
+    return c1 == 0xad ? 2 : 0;
+  case 0xd8:
+    return (c1 >= 0x80 && c1 <= 0x84) ? 2 : 0;
+  case 0xdc:
+    return c1 == 0x8f ? 2 : 0;
+  }
+
+  if (n < 3) {
+    return 0;
+  }
+
+  const unsigned char c2 = text[i + 2];
+
+  switch (c0) {
+  case 0xe1:
+    return (c1 == 0x9e && (c2 == 0xb4 || c2 == 0xb5)) ? 3 : 0;
+  case 0xe2:
+    if (c1 == 0x80) {
+      return (c2 == 0x8c || c2 == 0x8f || (c2 >= 0xa8 && c2 <= 0xaf)) ? 3 : 0;
+    } else if (c1 == 0x81) {
+      return (c2 >= 0xa0 && c2 <= 0xaf) ? 3 : 0;
+    }
+    return 0;
+  case 0xef:
+    if (c1 == 0xbb) {
+      return c2 == 0xbf ? 3 : 0;
+    } else if (c1 == 0xbf) {
+      return (c2 >= 0xb0 && c2 <= 0xbf) ? 3 : 0;
+    }
+    return 0;
+  }
+
+  return 0;
+}
+
+
+// If text[i] is the first byte of a character that must be escaped in a
+// quoted string, the length of that character in bytes is returned.
+// Otherwise 0 is returned.
+static size_t _escapeLen(const std::string& text, size_t i) {
+  const unsigned char c = text[i];
+
+  if (c < 0x20 || c == '"' || c == '\\') {
+    return 1;
+  }
+
+  return _specialCharLen(text, i);
+}
+
+
+// Returns true if the string cannot be written without escapes.
+static bool _needsEscape(const std::string& text) {
+  for (size_t i = 0; i < text.size(); ++i) {
+    if (_escapeLen(text, i)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+// Returns true if the string cannot be written as a quoteless string.
+static bool _needsQuotes(const std::string& text) {
+  if (text.empty()) {
+    return false;
+  }
+
+  const unsigned char first = text[0];
+
+  if (_isWhite(first) || _isWhite(text.back())) {
+    return true;
+  }
+
+  switch (first) {
+  case '"':
+  case '\'':
+  case '#':
+  case '{':
+  case '}':
+  case '[':
+  case ']':
+  case ':':
+  case ',':
+    return true;
+  case '/':
+    if (text.size() > 1 && (text[1] == '*' || text[1] == '/')) {
+      return true;
+    }
+    break;
+  }
+
+  for (size_t i = 0; i < text.size(); ++i) {
+    if (static_cast<unsigned char>(text[i]) < 0x20 || _specialCharLen(text, i)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+// Returns true if the string cannot be written as a multiline string.
+static bool _needsEscapeML(const std::string& text) {
+  bool onlyWhite = !text.empty();
+
+  for (size_t i = 0; i < text.size(); ++i) {
+    const unsigned char c = text[i];
+
+    if (!_isWhite(c)) {
+      onlyWhite = false;
+    }
+
+    if ((c < 0x20 && c != '\t' && c != '\n' && c != '\r') ||
+      (c == '\'' && i + 2 < text.size() && text[i + 1] == '\'' &&
+      text[i + 2] == '\'') ||
+      _specialCharLen(text, i))
+    {
+      return true;
+    }
+  }
+
+  return onlyWhite;
+}
+
+
+// Returns true if the string starts with true, false or null, optionally
+// followed by whitespace and then either nothing or a comment or one of the
+// characters ,]} followed by anything except a line feed or carriage return.
+// Such a string would not be read back as a string if written without quotes.
+static bool _startsWithKeyword(const std::string& text) {
+  size_t i;
+
+  if (!text.compare(0, 4, "true") || !text.compare(0, 4, "null")) {
+    i = 4;
+  } else if (!text.compare(0, 5, "false")) {
+    i = 5;
+  } else {
+    return false;
+  }
+
+  while (i < text.size() && _isWhite(text[i])) {
+    ++i;
+  }
+
+  if (i == text.size()) {
+    return true;
+  }
+
+  const char c = text[i];
+
+  if (c != ',' && c != ']' && c != '}' && c != '#' && !(c == '/' &&
+    i + 1 < text.size() && (text[i + 1] == '/' || text[i + 1] == '*')))
+  {
+    return false;
+  }
+
+  return text.find_first_of("\r\n", i) == std::string::npos;
+}
+
+
+// Returns true if the key cannot be written without quotes.
+static bool _needsEscapeName(const std::string& text) {
+  for (size_t i = 0; i < text.size(); ++i) {
+    const unsigned char c = text[i];
+
+    if (_isWhite(c)) {
+      return true;
+    }
+
+    switch (c) {
+    case ',':
+    case '{':
+    case '[':
+    case '}':
+    case ']':
+    case ':':
+    case '#':
+    case '"':
+    case '\'':
+      return true;
+    case '/':
+      if (i + 1 < text.size() && (text[i + 1] == '/' || text[i + 1] == '*')) {
+        return true;
+      }
+      break;
+    }
+  }
+
+  return false;
 }
 
 
@@ -127,22 +343,26 @@ static int _fromUtf8(const unsigned char **ppC, size_t *pnS) {
 static void _quoteReplace(Encoder *e, const std::string& text) {
   size_t uIndexStart = 0;
 
-  for (std::sregex_iterator it = std::sregex_iterator(text.begin(), text.end(),
-    e->needsEscape); it != std::sregex_iterator(); ++it)
-  {
-    std::smatch match = *it;
-    const char *szReplacement = _meta(match.str()[0]);
+  for (size_t i = 0; i < text.size();) {
+    const size_t matchLength = _escapeLen(text, i);
 
-    if (size_t(match.position()) > uIndexStart) {
+    if (!matchLength) {
+      ++i;
+      continue;
+    }
+
+    const char *szReplacement = _meta(text[i]);
+
+    if (i > uIndexStart) {
       // Append non-matching text.
-      *e->os << text.substr(uIndexStart, match.position() - uIndexStart);
+      *e->os << text.substr(uIndexStart, i - uIndexStart);
     }
 
     if (szReplacement) {
       *e->os << szReplacement;
     } else {
-      const char *pC = text.data() + match.position();
-      size_t nS = match.length();
+      const char *pC = text.data() + i;
+      size_t nS = matchLength;
 
       *e->os << std::hex << std::setfill('0');
       while (nS) {
@@ -156,7 +376,8 @@ static void _quoteReplace(Encoder *e, const std::string& text) {
       }
     }
 
-    uIndexStart = match.position() + match.length();
+    i += matchLength;
+    uIndexStart = i;
   }
 
   if (uIndexStart < text.length()) {
@@ -169,10 +390,10 @@ static void _quoteReplace(Encoder *e, const std::string& text) {
 // wrap the string into the ''' (multiline) format
 static void _mlString(Encoder *e, const std::string& value) {
   size_t uIndexStart = 0;
-  std::sregex_iterator it = std::sregex_iterator(value.begin(), value.end(),
-    e->lineBreak);
+  // Each \r and each \n is treated as a line break, so \r\n counts as two.
+  size_t lineBreakPos = value.find_first_of("\r\n");
 
-  if (it == std::sregex_iterator()) {
+  if (lineBreakPos == std::string::npos) {
     if (e->vState.size() > 1 && e->vState[e->vState.size() - 2] == EncodeState::MapElemBegin && (
       !e->opt.comments || e->vParent.back().pVal->get_comment_key().empty()))
     {
@@ -188,18 +409,17 @@ static void _mlString(Encoder *e, const std::string& value) {
     *e->os << "'''";
 
     do {
-      std::smatch match = *it;
       auto indent = e->indent + 1;
-      if (match.position() == uIndexStart) {
+      if (lineBreakPos == uIndexStart) {
         indent = 0;
       }
       _writeIndent(e, indent);
-      if (size_t(match.position()) > uIndexStart) {
-        *e->os << value.substr(uIndexStart, match.position() - uIndexStart);
+      if (lineBreakPos > uIndexStart) {
+        *e->os << value.substr(uIndexStart, lineBreakPos - uIndexStart);
       }
-      uIndexStart = match.position() + match.length();
-      ++it;
-    } while (it != std::sregex_iterator());
+      uIndexStart = lineBreakPos + 1;
+      lineBreakPos = value.find_first_of("\r\n", uIndexStart);
+    } while (lineBreakPos != std::string::npos);
 
     if (uIndexStart < value.length()) {
       // Append remaining text.
@@ -235,9 +455,9 @@ static void _quote(Encoder *e, const std::string& value,
     }
     *e->os << "\"\"";
   } else if (e->opt.quoteAlways ||
-    std::regex_search(value, e->needsQuotes) ||
+    _needsQuotes(value) ||
     startsWithNumber(value.c_str(), value.size()) ||
-    std::regex_search(value, e->startsWithKeyword) ||
+    _startsWithKeyword(value) ||
     hasCommentAfter)
   {
 
@@ -247,13 +467,13 @@ static void _quote(Encoder *e, const std::string& value,
     // format or we must replace the offending characters with safe escape
     // sequences.
 
-    if (!std::regex_search(value, e->needsEscape)) {
+    if (!_needsEscape(value)) {
       if (bSep) {
         *e->os << " ";
       }
       *e->os << '"' << value << '"';
-    } else if (!e->opt.quoteAlways && !std::regex_search(value,
-      e->needsEscapeML) && e->vParent.size() > 1)
+    } else if (!e->opt.quoteAlways && !_needsEscapeML(value) &&
+      e->vParent.size() > 1)
     {
       _mlString(e, value);
     } else {
@@ -277,8 +497,7 @@ static void _quote(Encoder *e, const std::string& value,
 static void _quoteName(Encoder *e, const std::string& name) {
   if (name.empty()) {
     *e->os << "\"\"";
-  } else if (e->opt.quoteKeys || std::regex_search(name, e->needsEscapeName) ||
-    std::regex_search(name, e->needsEscape))
+  } else if (e->opt.quoteKeys || _needsEscapeName(name) || _needsEscape(name))
   {
     *e->os << '"';
     _quoteReplace(e, name);
@@ -615,26 +834,6 @@ static void _marshalStream(const Value& v, const EncoderOptions& options,
   if (e.opt.separator) {
     e.opt.quoteAlways = true;
   }
-
-  // Regex should not be UTF8 aware, just treat the chars as values.
-  e.loc = std::locale::classic();
-
-  std::string commonRange = R"(]|\xc2\xad|\xd8[\x80-\x84]|\xdc\x8f|\xe1\x9e[\xb4\xb5]|\xe2\x80[\x8c\x8f]|\xe2\x80[\xa8-\xaf]|\xe2\x81[\xa0-\xaf]|\xef\xbb\xbf|\xef\xbf[\xb0-\xbf])";
-  // needsEscape tests if the string can be written without escapes
-  e.needsEscape.imbue(e.loc);
-  e.needsEscape.assign(R"([\\\"\x00-\x1f)" + commonRange);
-  // needsQuotes tests if the string can be written as a quoteless string (includes needsEscape but without \\ and \")
-  e.needsQuotes.imbue(e.loc);
-  e.needsQuotes.assign(R"(^\s|^"|^'|^#|^/\*|^//|^\{|^\}|^\[|^\]|^:|^,|\s$|[\x00-\x1f)" + commonRange);
-  // needsEscapeML tests if the string can be written as a multiline string (like needsEscape but without \n, \r, \\, \", \t)
-  e.needsEscapeML.imbue(e.loc);
-  e.needsEscapeML.assign(R"('''|^[\s]+$|[\x00-\x08\x0b\x0c\x0e-\x1f)" + commonRange);
-  // starts with a keyword and optionally is followed by a comment
-  e.startsWithKeyword.imbue(e.loc);
-  e.startsWithKeyword.assign(R"(^(true|false|null)\s*((,|\]|\}|#|//|/\*).*)?$)");
-  e.needsEscapeName.imbue(e.loc);
-  e.needsEscapeName.assign(R"([,\{\[\}\]\s:#"']|//|/\*)");
-  e.lineBreak.assign(R"(\r|\n|\r\n)");
 
   e.vParent.push_back(EncodeParent(&v));
   e.vState.push_back(EncodeState::ValueBegin);

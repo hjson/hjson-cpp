@@ -33,8 +33,6 @@ For other platforms see [hjson.github.io](https://hjson.github.io).
 
 The easiest way to use hjson-cpp is to simply include all of the files from the folders `src` and `include` into your own project. The only requirement is that your compiler fully supports C++11.
 
-GCC 4.8 has the C++11 headers for regex, but unfortunately not a working implementation, so for GCC at least version 4.9 is required.
-
 ## Cmake
 
 The second easiest way to use hjson-cpp is to either add it as a subfolder to your own Cmake project, or to install the Hjson lib on your system by using Cmake. Works on Linux, Windows and MacOS. Your mileage may vary on other platforms. Cmake version 3.10 or newer is required.
