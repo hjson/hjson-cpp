@@ -205,7 +205,8 @@ static bool _needsEscapeML(const std::string& text) {
       onlyWhite = false;
     }
 
-    if ((c < 0x20 && c != '\t' && c != '\n' && c != '\r') ||
+    // \r is not allowed because parsers ignore \r in multiline strings.
+    if ((c < 0x20 && c != '\t' && c != '\n') ||
       (c == '\'' && i + 2 < text.size() && text[i + 1] == '\'' &&
       text[i + 2] == '\'') ||
       _specialCharLen(text, i))
@@ -390,8 +391,9 @@ static void _quoteReplace(Encoder *e, const std::string& text) {
 // wrap the string into the ''' (multiline) format
 static void _mlString(Encoder *e, const std::string& value) {
   size_t uIndexStart = 0;
-  // Each \r and each \n is treated as a line break, so \r\n counts as two.
-  size_t lineBreakPos = value.find_first_of("\r\n");
+  // The value cannot contain \r (see _needsEscapeML()), so \n is the only
+  // line break.
+  size_t lineBreakPos = value.find('\n');
 
   if (lineBreakPos == std::string::npos) {
     if (e->vState.size() > 1 && e->vState[e->vState.size() - 2] == EncodeState::MapElemBegin && (
@@ -418,7 +420,7 @@ static void _mlString(Encoder *e, const std::string& value) {
         *e->os << value.substr(uIndexStart, lineBreakPos - uIndexStart);
       }
       uIndexStart = lineBreakPos + 1;
-      lineBreakPos = value.find_first_of("\r\n", uIndexStart);
+      lineBreakPos = value.find('\n', uIndexStart);
     } while (lineBreakPos != std::string::npos);
 
     if (uIndexStart < value.length()) {
