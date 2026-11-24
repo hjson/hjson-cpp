@@ -1638,6 +1638,8 @@ std::string Value::to_string() const {
       return std::string(buf.data(), res.ptr);
 #elif HJSON_USE_STRTOD
       char buf[32];
+      // At most 15 significant digits so that 0.1+0.2 is marshalled to 0.3
+      // instead of to 0.30000000000000004 (Hjson is for humans).
       int nChars = snprintf(buf, sizeof(buf), "%.15g", prv->d);
 
       if (nChars < 0 || nChars >= static_cast<int>(sizeof(buf))) {
@@ -1660,6 +1662,8 @@ std::string Value::to_string() const {
 
       // Make sure we use dot (not comma) as decimal point.
       oss.imbue(std::locale::classic());
+      // At most 15 significant digits so that 0.1+0.2 is marshalled to 0.3
+      // instead of to 0.30000000000000004 (Hjson is for humans).
       oss.precision(15);
 
       oss << prv->d;

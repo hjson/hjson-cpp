@@ -1761,4 +1761,32 @@ key2:)";
     assert(out.find("'''") != std::string::npos);
     assert(Hjson::Unmarshal(out)["key"] == "line 1\nline 2");
   }
+
+#if !defined(HJSON_USE_CHARCONV) || !HJSON_USE_CHARCONV
+  {
+    double a = 0.1 + 0.2;
+    auto out = Hjson::Marshal(a);
+    // Would not be true if 17 significant digits were used instead of 15.
+    assert(out == "0.3");
+  }
+#endif
+
+  {
+    // Long strings must not cause a stack overflow when deciding how they
+    // should be encoded (the std::regex implementation that was used before
+    // overflowed for these strings, at around 10000 characters on Windows).
+    const size_t n = 200000;
+    std::string values[] = {
+      // Starts with a keyword followed by a comma, so must be quoted.
+      "true," + std::string(n, 'x'),
+      // Only whitespace, so cannot be a multiline string.
+      std::string(n, ' ') + "\n",
+    };
+    for (const auto& str : values) {
+      Hjson::Value val;
+      val["key"] = str;
+      auto root = Hjson::Unmarshal(Hjson::Marshal(val));
+      assert(root["key"] == str);
+    }
+  }
 }
