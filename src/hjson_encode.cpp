@@ -79,10 +79,14 @@ static inline bool _isWhite(unsigned char c) {
 
 // If text[i] is the first byte of one of the UTF-8 encoded characters that
 // must always be escaped, the length of that character in bytes is returned.
-// Otherwise 0 is returned. The characters are U+00AD, U+0600-U+0604, U+070F,
-// U+17B4, U+17B5, U+200C, U+200F, U+2028-U+202F, U+2060-U+206F, U+FEFF and
-// U+FFF0-U+FFFF.
+// Otherwise 0 is returned. The characters are U+007F-U+009F, U+00AD,
+// U+0600-U+0604, U+070F, U+17B4, U+17B5, U+200C, U+200F, U+2028-U+202F,
+// U+2060-U+206F, U+FEFF and U+FFF0-U+FFFF.
 static size_t _specialCharLen(const std::string& text, size_t i) {
+  if (static_cast<unsigned char>(text[i]) == 0x7f) {
+    return 1;
+  }
+
   const size_t n = text.size() - i;
   if (n < 2) {
     return 0;
@@ -92,7 +96,7 @@ static size_t _specialCharLen(const std::string& text, size_t i) {
 
   switch (c0) {
   case 0xc2:
-    return c1 == 0xad ? 2 : 0;
+    return ((c1 >= 0x80 && c1 <= 0x9f) || c1 == 0xad) ? 2 : 0;
   case 0xd8:
     return (c1 >= 0x80 && c1 <= 0x84) ? 2 : 0;
   case 0xdc:
@@ -154,6 +158,67 @@ static bool _needsEscape(const std::string& text) {
 }
 
 
+// If text[i] is the first byte of a Unicode whitespace character (the
+// White_Space property), the length of that character in bytes is returned.
+// Otherwise 0 is returned.
+static size_t _unicodeWhiteLen(const std::string& text, size_t i) {
+  const size_t n = text.size() - i;
+  const unsigned char c0 = text[i];
+
+  if (_isWhite(c0)) {
+    return 1;
+  }
+
+  if (n < 2) {
+    return 0;
+  }
+
+  const unsigned char c1 = text[i + 1];
+
+  if (c0 == 0xc2) {
+    // U+0085, U+00A0
+    return (c1 == 0x85 || c1 == 0xa0) ? 2 : 0;
+  }
+
+  if (n < 3) {
+    return 0;
+  }
+
+  const unsigned char c2 = text[i + 2];
+
+  switch (c0) {
+  case 0xe1:
+    // U+1680
+    return (c1 == 0x9a && c2 == 0x80) ? 3 : 0;
+  case 0xe2:
+    if (c1 == 0x80) {
+      // U+2000-U+200A, U+2028, U+2029, U+202F
+      return ((c2 >= 0x80 && c2 <= 0x8a) || c2 == 0xa8 || c2 == 0xa9 ||
+        c2 == 0xaf) ? 3 : 0;
+    }
+    // U+205F
+    return (c1 == 0x81 && c2 == 0x9f) ? 3 : 0;
+  case 0xe3:
+    // U+3000
+    return (c1 == 0x80 && c2 == 0x80) ? 3 : 0;
+  }
+
+  return 0;
+}
+
+
+// Returns true if the string ends with a Unicode whitespace character.
+static bool _endsWithUnicodeWhite(const std::string& text) {
+  for (size_t len = 1; len <= 3 && len <= text.size(); ++len) {
+    if (_unicodeWhiteLen(text, text.size() - len) == len) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 // Returns true if the string cannot be written as a quoteless string.
 static bool _needsQuotes(const std::string& text) {
   if (text.empty()) {
@@ -162,7 +227,9 @@ static bool _needsQuotes(const std::string& text) {
 
   const unsigned char first = text[0];
 
-  if (_isWhite(first) || _isWhite(text.back())) {
+  // Quote strings that start or end with any Unicode whitespace, because
+  // other Hjson parsers (e.g. hjson-js) trim it from quoteless strings.
+  if (_unicodeWhiteLen(text, 0) || _endsWithUnicodeWhite(text)) {
     return true;
   }
 
@@ -197,12 +264,17 @@ static bool _needsQuotes(const std::string& text) {
 // Returns true if the string cannot be written as a multiline string.
 static bool _needsEscapeML(const std::string& text) {
   bool onlyWhite = !text.empty();
+  bool hasLineFeed = false;
 
   for (size_t i = 0; i < text.size(); ++i) {
     const unsigned char c = text[i];
 
     if (!_isWhite(c)) {
       onlyWhite = false;
+    }
+
+    if (c == '\n') {
+      hasLineFeed = true;
     }
 
     // \r is not allowed because parsers ignore \r in multiline strings.
@@ -213,6 +285,15 @@ static bool _needsEscapeML(const std::string& text) {
     {
       return true;
     }
+  }
+
+  // A string without line feeds is written on the same line as the opening
+  // and closing ''' (see _mlString()). Parsers ignore whitespace at the start
+  // of that line, and a ' at the end would become part of the closing '''.
+  if (!hasLineFeed && !text.empty() &&
+    (_isWhite(text.front()) || text.back() == '\''))
+  {
+    return true;
   }
 
   return onlyWhite;

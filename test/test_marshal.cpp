@@ -7,7 +7,9 @@
 #include "hjson_test.h"
 
 
-#define WRITE_FACIT 0
+#ifndef WRITE_FACIT
+# define WRITE_FACIT 0
+#endif
 
 
 static std::string _readStream(std::ifstream *pInfile) {
@@ -114,7 +116,7 @@ static Hjson::Value _getTestContent(std::string name, Hjson::DecoderOptions opt=
 }
 
 
-static bool _evaluate(std::string name, std::string expected, Hjson::Value root, std::string got) {
+static bool _evaluate(std::string name, std::string expected, Hjson::Value root, std::string got, std::string folderName) {
   // Visual studio will have trailing null chars in rhjson if there was any
   // CRLF conversion when reading it from the file. If so, `==` would return
   // `false`, therefore we need to use `strcmp`.
@@ -125,7 +127,7 @@ static bool _evaluate(std::string name, std::string expected, Hjson::Value root,
         break;
       }
     }
-    std::cout << "\nExpected: (size " << expected.size() << ")\n" <<
+    std::cout << "\nExpected (folder '" << folderName << "'): (size " << expected.size() << ")\n" <<
       expected << "\n\nGot: (size " << got.size() << ")\n" << got << "\n\n";
     return false;
   }
@@ -189,7 +191,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  assert(_evaluate(name, rhjson, root, actualHjson));
+  assert(_evaluate(name, rhjson, root, actualHjson, "comments2"));
 
   opt.bracesSameLine = false;
 
@@ -203,7 +205,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  assert(_evaluate(name, rhjson, root, actualHjson));
+  assert(_evaluate(name, rhjson, root, actualHjson, "comments"));
 
   opt.comments = false;
 
@@ -217,7 +219,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  assert(_evaluate(name, rhjson, root, actualHjson));
+  assert(_evaluate(name, rhjson, root, actualHjson, "assets"));
 
   auto rjson = _readFile("assets/", extra, name + "_result.json", &bUsedExtra);
   auto actualJson = Hjson::MarshalJson(root);
@@ -229,7 +231,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  assert(_evaluate(name, rjson, root, actualJson));
+  assert(_evaluate(name, rjson, root, actualJson, "assets"));
 
   opt.preserveInsertionOrder = false;
 
@@ -243,7 +245,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  assert(_evaluate(name, rhjson, root, actualHjson));
+  assert(_evaluate(name, rhjson, root, actualHjson, "sorted"));
 
   opt.bracesSameLine = true;
   opt.quoteAlways = true;
@@ -261,7 +263,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  assert(_evaluate(name, rjson, root, actualJson));
+  assert(_evaluate(name, rjson, root, actualJson, "sorted"));
 
   Hjson::DecoderOptions decOpt;
   decOpt.whitespaceAsComments = true;
@@ -283,7 +285,7 @@ static void _examine(std::string filename) {
   outputFile.close();
 #endif
 
-  assert(_evaluate(name, rhjson, root, actualHjson));
+  assert(_evaluate(name, rhjson, root, actualHjson, "comments3"));
 }
 
 
