@@ -264,11 +264,13 @@ Hjson::Value myValue = 9223372036854775807;
 assert(myValue == 9223372036854775807);
 ```
 
-All integers are stored with 64-bit precision. An *Hjson::Value* containing an integer will be of the type *Hjson::Type::Int64*. The only other way that a number is stored in an *Hjson::Value* is in the form of a double precision floating point representation, which can handle up to 52 bits of integer precision. An *Hjson::Value* containing a floating point value will be of the type *Hjson::Type::Double*.
+All integers are stored with 64-bit precision. An *Hjson::Value* containing an integer will be of the type *Hjson::Type::Int64*. The only other way that a number is stored in an *Hjson::Value* is in the form of a double precision floating point representation, which can handle up to 53 bits of integer precision. An *Hjson::Value* containing a floating point value will be of the type *Hjson::Type::Double*.
+
+When an *Hjson::Value* of type *Hjson::Type::Double* is marshalled to a string it uses at most 15 significant digits if the Cmake option `HJSON_NUMBER_PARSER` was set to `StringStream` (the default) or `StrToD`, so that `0.1 + 0.2` is written as `0.3` and not as `0.30000000000000004`. The reason being that Hjson is meant for humans. The downside of this choice is that a double that needs 16 or 17 significant digits is not read back as exactly the same value. However, if `HJSON_NUMBER_PARSER` is `CharConv` then `0.1 + 0.2` will be written as `0.30000000000000004`, i.e. the output will not be limited to 15 significant digits.
 
 An *Hjson::Value* that has been unmarshalled from a string that contains a decimal point (for example the string `"1.0"`), or a string containing a number that is bigger or smaller than what can be represented by an *std::int64_t* variable (bigger than 9223372036854775807 or smaller than -9223372036854775808) will be stored as a double precision floating point number internally in the *Hjson::Value*.
 
-Any *Hjson::Value* of type *Hjson::Type::Double* will be represented by a string containing a decimal point when marshalled (for example `"1.0"`), so that the string can be unmarshalled back into an *Hjson::Type::Double*, i.e. no information is lost in the marshall-unmarshall cycle.
+Any *Hjson::Value* of type *Hjson::Type::Double* will be represented by a string containing a decimal point when marshalled (for example `"1.0"`), so that the string can be unmarshalled back into an *Hjson::Type::Double*, i.e. the type information is not lost in the marshall-unmarshall cycle.
 
 The function *Hjson::Value::is_numeric()* returns true if the *Hjson::Value* is of type *Hjson::Type::Double* or *Hjson::Type::Int64*.
 
