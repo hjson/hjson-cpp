@@ -979,6 +979,38 @@ void test_value() {
   }
 
   {
+    // Deeply nested trees must not cause stack overflow in clone(),
+    // deep_equal() or Merge().
+    const int depth = 200000;
+    std::string open, close;
+    for (int a = 0; a < depth; ++a) {
+      open += "{a:";
+      close += "}";
+    }
+    auto map1 = Hjson::Unmarshal(open + "1" + close);
+    auto map1b = Hjson::Unmarshal(open + "1" + close);
+    auto map2 = Hjson::Unmarshal(open + "2" + close);
+    auto vec1 = Hjson::Unmarshal(std::string(depth, '[') + "1" + std::string(depth, ']'));
+    auto vec2 = Hjson::Unmarshal(std::string(depth, '[') + "2" + std::string(depth, ']'));
+
+    assert(map1.deep_equal(map1b));
+    assert(!map1.deep_equal(map2));
+    assert(!vec1.deep_equal(vec2));
+
+    auto map1Clone = map1.clone();
+    assert(map1Clone != map1);
+    assert(map1Clone.deep_equal(map1));
+    auto vec1Clone = vec1.clone();
+    assert(vec1Clone != vec1);
+    assert(vec1Clone.deep_equal(vec1));
+
+    auto merged = Hjson::Merge(map1, map2);
+    assert(merged.deep_equal(map2));
+    merged = Hjson::Merge(map2, map1);
+    assert(merged.deep_equal(map1));
+  }
+
+  {
     Hjson::Value val1;
     val1["first"] = 1;
     Hjson::Value val2 = val1.clone();
