@@ -638,7 +638,7 @@ static void _readObjectBegin(Parser *p) {
   }
 
 
-  if (p->ch == '}' && !(p->vParent.empty() && p->withoutBraces)) {
+  if (p->ch == '}' && !(p->vParent.size() == 1 && p->withoutBraces)) {
     _setComment(p->vParent.back().val, &Value::set_comment_inside, p, p->vParent.back().ciElemBefore);
     _next(p);
     p->vState.back() = ParseState::ValueEnd;
