@@ -1,7 +1,6 @@
 #include "hjson.h"
 #include <sstream>
 #include <vector>
-#include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -422,6 +421,26 @@ static int _fromUtf8(const unsigned char **ppC, size_t *pnS) {
 }
 
 
+// Writes the code point as \u followed by four lowercase hex digits. The digits
+// are not formatted by the stream, because the stream can belong to the caller
+// (operator << and StreamEncoder) and must not be affected by, or have its
+// format flags changed by, the encoder. Only code points up to U+FFFF are
+// escaped (see _escapeLen()).
+static void _writeUnicodeEscape(Encoder *e, int codePoint) {
+  static const char hexDigits[] = "0123456789abcdef";
+  const char esc[] = {
+    '\\',
+    'u',
+    hexDigits[(codePoint >> 12) & 0xf],
+    hexDigits[(codePoint >> 8) & 0xf],
+    hexDigits[(codePoint >> 4) & 0xf],
+    hexDigits[codePoint & 0xf],
+  };
+
+  e->os->write(esc, sizeof(esc));
+}
+
+
 static void _quoteReplace(Encoder *e, const std::string& text) {
   size_t uIndexStart = 0;
 
@@ -446,7 +465,6 @@ static void _quoteReplace(Encoder *e, const std::string& text) {
       const char *pC = text.data() + i;
       size_t nS = matchLength;
 
-      *e->os << std::hex << std::setfill('0');
       while (nS) {
         int nRet = _fromUtf8((const unsigned char**) &pC, &nS);
         if (nRet < 0) {
@@ -454,7 +472,7 @@ static void _quoteReplace(Encoder *e, const std::string& text) {
           *e->os << std::string(pC, nS);
           break;
         }
-        *e->os << "\\u" << std::setw(4) << nRet;
+        _writeUnicodeEscape(e, nRet);
       }
     }
 
