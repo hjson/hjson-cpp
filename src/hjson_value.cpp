@@ -1219,79 +1219,98 @@ size_t Value::size() const {
 
 
 bool Value::deep_equal(const Value& other) const {
-  if (*this == other) {
-    return true;
-  }
+  // A loop instead of recursive calls, so that a deeply nested tree cannot
+  // cause a stack overflow. Each item is a pair of Values that must be equal.
+  std::vector<std::pair<const Value*, const Value*> > todo;
 
-  if (this->type() != other.type() || this->size() != other.size()) {
-    return false;
-  }
+  todo.emplace_back(this, &other);
 
-  switch (prv->type)
-  {
-  case Type::Vector:
-    {
-      auto itA = this->prv->v->begin();
-      auto endA = this->prv->v->end();
-      auto itB = other.prv->v->begin();
-      while (itA != endA) {
-        if (!itA->deep_equal(*itB)) {
-          return false;
-        }
-        ++itA;
-        ++itB;
-      }
+  while (!todo.empty()) {
+    const Value *a = todo.back().first;
+    const Value *b = todo.back().second;
+    todo.pop_back();
+
+    if (*a == *b) {
+      continue;
     }
-    return true;
 
-  case Type::Map:
-    {
-      auto itA = this->begin(), endA = this->end(), itB = other.begin();
-      while (itA != endA) {
-        if (!itA->second.deep_equal(itB->second)) {
-          return false;
-        }
-        ++itA;
-        ++itB;
-      }
+    if (a->type() != b->type() || a->size() != b->size()) {
+      return false;
     }
-    return true;
 
-  default:
-    break;
+    switch (a->prv->type)
+    {
+    case Type::Vector:
+      for (size_t index = 0; index < a->prv->v->size(); ++index) {
+        todo.emplace_back(&(*a->prv->v)[index], &(*b->prv->v)[index]);
+      }
+      break;
+
+    case Type::Map:
+      {
+        auto itA = a->prv->m->m.cbegin(), endA = a->prv->m->m.cend();
+        auto itB = b->prv->m->m.cbegin();
+        for (; itA != endA; ++itA, ++itB) {
+          if (itA->first != itB->first) {
+            return false;
+          }
+          todo.emplace_back(&itA->second, &itB->second);
+        }
+      }
+      break;
+
+    default:
+      return false;
+    }
   }
 
-  return false;
+  return true;
 }
 
 
 Value Value::clone() const {
-  switch (prv->type) {
-  case Type::Vector:
-    {
-      Value ret;
-      for (int index = 0; index < int(size()); ++index) {
-        ret.push_back(operator[](index).clone());
-      }
-      ret.set_comments(*this);
-      return ret;
-    }
-
-  case Type::Map:
-    {
-      Value ret;
-      for (int index = 0; index < size(); ++index) {
-        ret[key(index)] = operator[](index).clone();
-      }
-      ret.set_comments(*this);
-      return ret;
-    }
-
-  default:
-    break;
+  if (!is_container()) {
+    return *this;
   }
 
-  return *this;
+  Value ret(prv->type);
+  ret.set_comments(*this);
+
+  // A loop instead of recursive calls, so that a deeply nested tree cannot
+  // cause a stack overflow. Each item is a source Vector or Map and its clone.
+  // The clone is still empty but has already been inserted in its parent
+  // clone, sharing the underlying vector or map with the inserted element.
+  std::vector<std::pair<const Value*, Value> > todo;
+
+  todo.emplace_back(this, ret);
+
+  while (!todo.empty()) {
+    const Value *src = todo.back().first;
+    Value dst = todo.back().second;
+    todo.pop_back();
+
+    for (int index = 0; index < int(src->size()); ++index) {
+      const Value &srcElem = (*src)[index];
+      // For other types than Vector and Map, the copy constructor is used,
+      // which also copies the comments.
+      Value dstElem = srcElem.is_container() ? Value(srcElem.prv->type) : srcElem;
+
+      if (srcElem.is_container()) {
+        dstElem.set_comments(srcElem);
+        todo.emplace_back(&srcElem, dstElem);
+      }
+
+      if (dst.prv->type == Type::Vector) {
+        dst.prv->v->push_back(dstElem);
+      } else {
+        const std::string &key = src->prv->m->v[index];
+        dst.prv->m->v.push_back(key);
+        dst.prv->m->m.emplace(key, dstElem);
+      }
+    }
+  }
+
+  return ret;
 }
 
 
@@ -1922,31 +1941,61 @@ MapProxy& MapProxy::assign_with_comments(Value&& other) {
 
 
 Value Merge(const Value& base, const Value& ext) {
-  Value merged;
-
   if (!ext.defined()) {
-    merged = base.clone();
-  } else if (base.type() == Type::Map && ext.type() == Type::Map) {
-    for (int index = 0; index < ext.size(); ++index) {
-      if (base[ext.key(index)].defined()) {
-        merged[ext.key(index)] = Merge(base[ext.key(index)], ext[index]);
-      } else {
-        merged[ext.key(index)] = ext[index].clone();
-      }
-    }
-
-    for (int index = 0; index < base.size(); ++index) {
-      if (!merged[base.key(index)].defined()) {
-        merged[base.key(index)] = base[index].clone();
-      }
-    }
-
-    merged.set_comments(ext);
-  } else {
-    merged = ext.clone();
+    return base.clone();
+  } else if (base.type() != Type::Map || ext.type() != Type::Map) {
+    return ext.clone();
   }
 
-  return merged;
+  // Explicitly a Map, so that the result is not Undefined if both maps are
+  // empty.
+  Value ret(Type::Map);
+  ret.set_comments(ext);
+
+  // A loop instead of recursive calls, so that deeply nested maps cannot cause
+  // a stack overflow. Each item is a pair of maps from "base" and "ext" that
+  // should be merged into "merged". "merged" is still empty but has already
+  // been inserted in its parent, sharing the underlying map with the inserted
+  // element.
+  struct MergeItem {
+    Value base, ext, merged;
+  };
+  std::vector<MergeItem> todo;
+
+  todo.push_back(MergeItem{base, ext, ret});
+
+  while (!todo.empty()) {
+    MergeItem item = todo.back();
+    todo.pop_back();
+
+    for (int index = 0; index < int(item.ext.size()); ++index) {
+      const std::string key = item.ext.key(index);
+      const Value &extElem = item.ext[index];
+      const Value baseElem = static_cast<const Value&>(item.base)[key];
+
+      if (!baseElem.defined()) {
+        item.merged[key] = extElem.clone();
+      } else if (!extElem.defined()) {
+        item.merged[key] = baseElem.clone();
+      } else if (baseElem.type() == Type::Map && extElem.type() == Type::Map) {
+        Value mergedElem(Type::Map);
+        mergedElem.set_comments(extElem);
+        item.merged[key] = mergedElem;
+        todo.push_back(MergeItem{baseElem, extElem, mergedElem});
+      } else {
+        item.merged[key] = extElem.clone();
+      }
+    }
+
+    for (int index = 0; index < int(item.base.size()); ++index) {
+      const std::string key = item.base.key(index);
+      if (!item.merged[key].defined()) {
+        item.merged[key] = item.base[index].clone();
+      }
+    }
+  }
+
+  return ret;
 }
 
 

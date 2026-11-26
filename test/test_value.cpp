@@ -945,6 +945,37 @@ void test_value() {
     assert(!val1.deep_equal(val2));
     val2 = Hjson::Value(Hjson::Type::Map);
     assert(val1.deep_equal(val2));
+    val1["a"] = 1;
+    val2["b"] = 1;
+    // Same values but different keys.
+    assert(!val1.deep_equal(val2));
+    val1["b"] = 1;
+    val2["a"] = 1;
+    // Same keys and values, but different insertion order.
+    assert(val1.deep_equal(val2));
+  }
+
+  {
+    // Empty vectors and maps must be kept by clone() and Merge().
+    auto root = Hjson::Unmarshal("{a: [], b: {}, c: [[], {}], d: {e: {}}}");
+    auto rootStr = Hjson::Marshal(root);
+    auto rootClone = root.clone();
+    assert(rootClone["a"].type() == Hjson::Type::Vector);
+    assert(rootClone["b"].type() == Hjson::Type::Map);
+    assert(rootClone["c"][0].type() == Hjson::Type::Vector);
+    assert(rootClone["c"][1].type() == Hjson::Type::Map);
+    assert(rootClone["d"]["e"].type() == Hjson::Type::Map);
+    assert(rootClone.deep_equal(root));
+    assert(Hjson::Marshal(rootClone) == rootStr);
+    assert(Hjson::Value(Hjson::Type::Vector).clone().type() == Hjson::Type::Vector);
+    assert(Hjson::Value(Hjson::Type::Map).clone().type() == Hjson::Type::Map);
+
+    assert(Hjson::Marshal(Hjson::Merge(root, Hjson::Value())) == rootStr);
+    assert(Hjson::Marshal(Hjson::Merge(Hjson::Value(Hjson::Type::Map), root)) == rootStr);
+    assert(Hjson::Marshal(Hjson::Merge(root, root)) == rootStr);
+    auto merged = Hjson::Merge(Hjson::Value(Hjson::Type::Map),
+      Hjson::Value(Hjson::Type::Map));
+    assert(merged.type() == Hjson::Type::Map);
   }
 
   {
