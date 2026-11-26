@@ -1248,7 +1248,7 @@ bool Value::deep_equal(const Value& other) const {
     {
       auto itA = this->begin(), endA = this->end(), itB = other.begin();
       while (itA != endA) {
-        if (!itA->second.deep_equal(itB->second)) {
+        if (itA->first != itB->first || !itA->second.deep_equal(itB->second)) {
           return false;
         }
         ++itA;

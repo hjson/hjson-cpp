@@ -945,6 +945,14 @@ void test_value() {
     assert(!val1.deep_equal(val2));
     val2 = Hjson::Value(Hjson::Type::Map);
     assert(val1.deep_equal(val2));
+    val1["a"] = 1;
+    val2["b"] = 1;
+    // Same values but different keys.
+    assert(!val1.deep_equal(val2));
+    val1["b"] = 1;
+    val2["a"] = 1;
+    // Same keys and values, but different insertion order.
+    assert(val1.deep_equal(val2));
   }
 
   {
