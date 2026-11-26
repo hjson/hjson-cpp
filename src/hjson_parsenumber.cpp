@@ -28,11 +28,16 @@ static bool _parseFloat(double *pNumber, const char *pCh, size_t nCh) {
   return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range &&
     !std::isinf(*pNumber) && !std::isnan(*pNumber);
 #elif HJSON_USE_STRTOD
+  // strtod() reads until it finds a char that cannot be part of the number,
+  // so it must get a copy that is zero terminated after nCh chars. Otherwise
+  // it could read past the end of the input data.
+  std::string str(pCh, nCh);
   char *endptr;
   errno = 0;
-  *pNumber = std::strtod(pCh, &endptr);
+  *pNumber = std::strtod(str.c_str(), &endptr);
 
-  return !errno && endptr - pCh == nCh && !std::isinf(*pNumber) && !std::isnan(*pNumber);
+  return !errno && endptr - str.c_str() == nCh && !std::isinf(*pNumber) &&
+    !std::isnan(*pNumber);
 #else
   std::string str(pCh, nCh);
   std::stringstream ss(str);
@@ -53,11 +58,13 @@ static bool _parseInt(std::int64_t *pNumber, const char *pCh, size_t nCh) {
 
   return res.ptr == pCh + nCh && res.ec != std::errc::result_out_of_range;
 #elif HJSON_USE_STRTOD
+  // Zero terminated copy, see _parseFloat().
+  std::string str(pCh, nCh);
   char *endptr;
   errno = 0;
-  *pNumber = std::strtoll(pCh, &endptr, 0);
+  *pNumber = std::strtoll(str.c_str(), &endptr, 0);
 
-  return !errno && endptr - pCh == nCh;
+  return !errno && endptr - str.c_str() == nCh;
 #else
   std::string str(pCh, nCh);
   std::stringstream ss(str);
@@ -89,7 +96,8 @@ static bool _next(NumberParser *p) {
 }
 
 
-// Parse a number value. The parameter "text" must be zero terminated.
+// Parse a number value. Only the first "textSize" chars of "text" are read,
+// "text" does not need to be zero terminated.
 bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopAtNext) {
   NumberParser p = {
     (const unsigned char*) text,
