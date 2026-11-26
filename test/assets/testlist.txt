@@ -50,6 +50,8 @@ failObj2_test.hjson
 failObj3_test.hjson
 failObj4_test.hjson
 failObj5_test.hjson
+failObj6_test.hjson
+failObj7_test.hjson
 failStr1a_test.hjson
 failStr1b_test.hjson
 failStr1c_test.hjson
