@@ -880,6 +880,30 @@ void test_value() {
   }
 
   {
+    // The input data does not need to be zero terminated. Chars after
+    // dataSize that could be part of a number must not be read.
+    const char bufInt[] = {'a', ':', '1', '2'};
+    Hjson::Value root = Hjson::Unmarshal(bufInt, 3);
+    assert(root["a"].type() == Hjson::Type::Int64);
+    assert(root["a"] == 1);
+
+    const char bufRoot[] = {'1', '2'};
+    root = Hjson::Unmarshal(bufRoot, 1);
+    assert(root.type() == Hjson::Type::Int64);
+    assert(root == 1);
+
+    const char bufDouble[] = {'a', ':', '1', '.', '5', 'e', '9'};
+    root = Hjson::Unmarshal(bufDouble, 5);
+    assert(root["a"].type() == Hjson::Type::Double);
+    assert(root["a"] == 1.5);
+
+    const char bufExp[] = {'a', ':', '2', 'e', '1', '0', '0', '0'};
+    root = Hjson::Unmarshal(bufExp, 5);
+    assert(root["a"].type() == Hjson::Type::Double);
+    assert(root["a"] == 20.0);
+  }
+
+  {
     Hjson::Value val1;
     Hjson::Value val2;
     assert(val1 == val2);
