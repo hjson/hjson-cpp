@@ -1269,7 +1269,7 @@ Value Value::clone() const {
   switch (prv->type) {
   case Type::Vector:
     {
-      Value ret;
+      Value ret(Type::Vector);
       for (int index = 0; index < int(size()); ++index) {
         ret.push_back(operator[](index).clone());
       }
@@ -1279,7 +1279,7 @@ Value Value::clone() const {
 
   case Type::Map:
     {
-      Value ret;
+      Value ret(Type::Map);
       for (int index = 0; index < size(); ++index) {
         ret[key(index)] = operator[](index).clone();
       }
@@ -1927,6 +1927,9 @@ Value Merge(const Value& base, const Value& ext) {
   if (!ext.defined()) {
     merged = base.clone();
   } else if (base.type() == Type::Map && ext.type() == Type::Map) {
+    // Explicitly a Map, so that the result is not Undefined if both maps are
+    // empty.
+    merged = Value(Type::Map);
     for (int index = 0; index < ext.size(); ++index) {
       if (base[ext.key(index)].defined()) {
         merged[ext.key(index)] = Merge(base[ext.key(index)], ext[index]);
