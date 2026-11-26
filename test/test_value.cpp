@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstring>
 #include <sstream>
+#include <iomanip>
 #include <cstdio>
 #include "hjson_test.h"
 
@@ -1661,6 +1662,30 @@ alfa: a
     ss.str(str1);
     ss >> sd;
     assert(root2.deep_equal(root));
+  }
+
+  {
+    // Writing \u escapes must neither depend on nor change the format flags
+    // of the caller's stream.
+    Hjson::Value root;
+    root["k"] = std::string("a\x01" "b\x7f" "c\xef\xbb\xbf" "d");
+    const std::string expected = "{\n  k: \"a\\u0001b\\u007fc\\ufeffd\"\n} 255 ab";
+    std::ostringstream oss;
+    oss << root << " " << 255 << " " << std::setw(2) << "ab";
+    assert(oss.str() == expected);
+    oss.str("");
+    oss << std::left << std::uppercase << std::showbase << std::setfill('x') <<
+      root << " " << std::dec << 255 << " " << std::setw(2) << "ab";
+    assert(oss.str() == expected);
+    oss.str("");
+    oss.flags(std::ios::dec);
+    oss.fill(' ');
+    const auto flagsBefore = oss.flags();
+    oss << Hjson::StreamEncoder(root, Hjson::EncoderOptions());
+    assert(oss.flags() == flagsBefore);
+    assert(oss.fill() == ' ');
+    oss << " " << 255 << " ab";
+    assert(oss.str() == expected);
   }
 
   {
