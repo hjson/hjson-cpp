@@ -116,4 +116,16 @@
     minus: "-3"
     zero: "0"
   }
+
+  # could be mistaken for numbers but are strings
+  sci: {
+    a: 1e
+    b: 1E
+    c: 1.2e
+    d: 1e+
+    e: 1.
+    f: 1.e2
+    g: -1.
+    h: 1.e
+  }
 }

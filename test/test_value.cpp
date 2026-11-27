@@ -2008,6 +2008,28 @@ key2:)";
   }
 
   {
+    // A decimal point must be followed by at least one digit, otherwise the
+    // value is a quoteless string.
+    std::string values[] = {"1.", "1.e2", "-1.", "1.e", "0.", "1.E+5"};
+    for (const auto& str : values) {
+      auto root = Hjson::Unmarshal("{\n  k: " + str + "\n  a: [\n    " + str + "\n  ]\n}");
+      assert(root["k"].type() == Hjson::Type::String);
+      assert(root["k"] == str);
+      assert(root["a"][0] == str);
+      // Written without quotes, and read back as the same string.
+      Hjson::Value val;
+      val["k"] = str;
+      auto out = Hjson::Marshal(val);
+      assert(out == "{\n  k: " + str + "\n}");
+      assert(Hjson::Unmarshal(out)["k"] == str);
+    }
+    auto root = Hjson::Unmarshal("{\n  a: 1.5\n  b: -0.5e2\n  c: 1.0\n}");
+    assert(root["a"].type() == Hjson::Type::Double && root["a"] == 1.5);
+    assert(root["b"].type() == Hjson::Type::Double && root["b"] == -50.0);
+    assert(root["c"].type() == Hjson::Type::Double && root["c"] == 1.0);
+  }
+
+  {
     // Strings containing \r cannot be written as multiline strings (parsers
     // ignore \r in those), but must still be read back unchanged.
     std::string values[] = {"a\r\nb", "a\rb", "a\r", "\r", "\r\n",
