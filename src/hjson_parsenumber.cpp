@@ -96,9 +96,14 @@ static bool _next(NumberParser *p) {
 }
 
 
-// Parse a number value. Only the first "textSize" chars of "text" are read,
-// "text" does not need to be zero terminated.
-bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopAtNext) {
+// Returns true if the text is a number according to the Hjson syntax, without
+// checking if the number fits in a double. If so, *pNumberSize is set to the
+// number of chars in the number (not including any trailing whitespace or
+// comment). Only the first "textSize" chars of "text" are read, "text" does
+// not need to be zero terminated.
+static bool _scanNumber(const char *text, size_t textSize, bool stopAtNext,
+  size_t *pNumberSize)
+{
   NumberParser p = {
     (const unsigned char*) text,
     textSize,
@@ -146,6 +151,10 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
     if (p.ch == '-' || p.ch == '+') {
       _next(&p);
     }
+    // An exponent needs at least one digit.
+    if (p.ch < '0' || p.ch > '9') {
+      return false;
+    }
     while (p.ch >= '0' && p.ch <= '9') {
       _next(&p);
     }
@@ -173,13 +182,27 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
     return false;
   }
 
+  *pNumberSize = end - 1;
+
+  return true;
+}
+
+
+// Parse a number value. Only the first "textSize" chars of "text" are read,
+// "text" does not need to be zero terminated.
+bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopAtNext) {
+  size_t numberSize;
+  if (!_scanNumber(text, textSize, stopAtNext, &numberSize)) {
+    return false;
+  }
+
   std::int64_t i;
-  if (_parseInt(&i, (char*) p.data, end - 1)) {
+  if (_parseInt(&i, text, numberSize)) {
     *pValue = Value(i);
     return true;
   } else {
     double d;
-    if (_parseFloat(&d, (char*) p.data, end - 1)) {
+    if (_parseFloat(&d, text, numberSize)) {
       *pValue = Value(d);
       return true;
     }
@@ -189,9 +212,13 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
 }
 
 
+// Returns true if the text would be read as a number by an Hjson parser. A
+// number that does not fit in a double (e.g. "1e400") counts as a number
+// here, even though this library reads it as a string: such a string must be
+// quoted when it is written, because the Hjson syntax makes it a number.
 bool startsWithNumber(const char *text, size_t textSize) {
-  Value number;
-  return tryParseNumber(&number, text, textSize, true);
+  size_t numberSize;
+  return _scanNumber(text, textSize, true, &numberSize);
 }
 
 
