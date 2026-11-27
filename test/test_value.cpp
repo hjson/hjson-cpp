@@ -956,6 +956,102 @@ void test_value() {
   }
 
   {
+    // Bool, Double, Int64 and String are copy on write: changing a copy must
+    // not change the original, and vice versa.
+    Hjson::Value i1 = 5;
+    Hjson::Value i2 = i1;
+    i2 += 1;
+    assert(i1 == 5 && i2 == 6);
+    ++i2;
+    i2++;
+    --i2;
+    i2--;
+    i2 -= 1;
+    i2 *= 3;
+    i2 /= 3;
+    i2 %= 4;
+    i2 += 1.5;
+    i2 *= 2.0;
+    i2 /= 2.0;
+    assert(i1 == 5 && i2 == 2);
+    Hjson::Value i3 = i1;
+    i1 += 10;
+    assert(i1 == 15 && i3 == 5);
+
+    Hjson::Value d1 = 1.5;
+    Hjson::Value d2 = d1;
+    d2 += 1;
+    ++d2;
+    d2++;
+    --d2;
+    d2--;
+    d2 -= 1.0;
+    d2 *= 2;
+    d2 /= 4;
+    assert(d1 == 1.5 && d2 == 0.75);
+
+    Hjson::Value s1 = "abc";
+    const char *szS1 = s1;
+    Hjson::Value s2 = s1;
+    s2 += "def";
+    s2 += std::string("g");
+    s2 += Hjson::Value("h");
+    assert(s1 == "abc" && s2 == "abcdefgh");
+    // The char pointer is still valid, the change was made in a copy.
+    assert(!std::strcmp(szS1, "abc"));
+
+    // A Value that is not shared is changed in place.
+    Hjson::Value x = 1;
+    x += 1;
+    assert(x == 2);
+    x += x;
+    assert(x == 4);
+    Hjson::Value y = x;
+    x += y;
+    assert(x == 8 && y == 4);
+
+    // clone() of a single value.
+    Hjson::Value c = i1.clone();
+    c += 1;
+    assert(i1 == 15 && c == 16);
+
+    // Elements in a map or vector.
+    auto root = Hjson::Unmarshal("{n: 1, s: \"a\", v: [1]}");
+    Hjson::Value n = root["n"];
+    n += 10;
+    assert(n == 11 && root["n"] == 1);
+    root["n"] += 5;
+    assert(n == 11 && root["n"] == 6);
+    root.at("n")++;
+    assert(n == 11 && root["n"] == 7);
+    Hjson::Value s = root["s"];
+    root["s"] += "b";
+    assert(s == "a" && root["s"] == "ab");
+    Hjson::Value v0 = root["v"][0];
+    root["v"][0] += 1;
+    assert(v0 == 1 && root["v"][0] == 2);
+    v0 -= 1;
+    assert(v0 == 0 && root["v"][0] == 2);
+    auto rootClone = root.clone();
+    rootClone["n"] += 1;
+    rootClone["v"][0] += 1;
+    assert(root["n"] == 7 && root["v"][0] == 2);
+    assert(rootClone["n"] == 8 && rootClone["v"][0] == 3);
+
+    // Vector and Map are still passed by reference, and so is Undefined.
+    Hjson::Value vec = root["v"];
+    vec.push_back(5);
+    assert(root["v"].size() == 2);
+    Hjson::Value map = root;
+    map["new"] = 1;
+    assert(root["new"] == 1);
+    Hjson::Value u1;
+    Hjson::Value u2 = u1;
+    u2["k"] = 1;
+    assert(u1.type() == Hjson::Type::Map && u1["k"] == 1);
+  }
+
+  {
     // Empty vectors and maps must be kept by clone() and Merge().
     auto root = Hjson::Unmarshal("{a: [], b: {}, c: [[], {}], d: {e: {}}}");
     auto rootStr = Hjson::Marshal(root);

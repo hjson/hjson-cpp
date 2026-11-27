@@ -253,6 +253,26 @@ use_reference(map["myKey"]);
 use_reference(map.at("myKey"));
 ```
 
+### Copies and references
+
+Like in Javascript, a copy of an *Hjson::Value* of type *Hjson::Type::Vector* or *Hjson::Type::Map* refers to the same underlying vector or map as the original. A change made through the copy is therefore also seen through the original. Use the function *clone()* to get a copy that is independent of the original.
+
+The same is true for an *Hjson::Value* of type *Hjson::Type::Undefined*: if a copy of it is turned into a vector or map, for example by *push_back()* or bracket assignment, the original becomes that same vector or map.
+
+The other types (*Hjson::Type::Null*, *Hjson::Type::Bool*, *Hjson::Type::Double*, *Hjson::Type::Int64* and *Hjson::Type::String*) behave like ordinary values: a copy can be changed without changing the original, for example with the operators `+=` or `++`. Internally those values are copy on write, so making a copy is cheap.
+
+```cpp
+Hjson::Value root = Hjson::Unmarshal("{n: 1, v: [1]}");
+
+Hjson::Value n = root["n"];
+n += 10;
+// root["n"] is still 1, n is 11.
+
+Hjson::Value v = root["v"];
+v.push_back(2);
+// root["v"] is now [1, 2], since v refers to the same vector.
+```
+
 ### Number representations
 
 The C++ implementation of Hjson can both read and write 64-bit integers. No special care is needed, you can simply assign the value.

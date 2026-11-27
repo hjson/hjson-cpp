@@ -50,6 +50,7 @@ public:
   ValueImpl(Type);
   ~ValueImpl();
   static void DeepClear(Value &val);
+  static void MakeUnique(std::shared_ptr<ValueImpl> &impl);
 };
 
 
@@ -138,6 +139,36 @@ void Value::ValueImpl::DeepClear(Value &val) {
 }
 
 
+// Copy on write. Must be called before changing a ValueImpl in place. If the
+// ValueImpl is of a type that is passed by value (Bool, Double, Int64 or
+// String) and is shared with other Value objects, it is replaced by a copy so
+// that the change is not seen by the other Value objects. Vector and Map are
+// passed by reference, and so is Undefined (see the comment for Value()).
+void Value::ValueImpl::MakeUnique(std::shared_ptr<ValueImpl> &impl) {
+  if (impl.use_count() <= 1) {
+    return;
+  }
+
+  switch (impl->type)
+  {
+  case Type::Bool:
+    impl = std::make_shared<ValueImpl>(impl->b);
+    break;
+  case Type::Double:
+    impl = std::make_shared<ValueImpl>(impl->d);
+    break;
+  case Type::Int64:
+    impl = std::make_shared<ValueImpl>(impl->i);
+    break;
+  case Type::String:
+    impl = std::make_shared<ValueImpl>(*impl->s);
+    break;
+  default:
+    break;
+  }
+}
+
+
 Value::ValueImpl::~ValueImpl() {
   switch (type)
   {
@@ -167,6 +198,9 @@ Value::ValueImpl::~ValueImpl() {
 // A Map Value is passed by reference, therefore an Undefined Value should also
 // be passed by reference, to avoid surprises when doing bracket assignment
 // on a Value that has been passed around but is still of type Undefined.
+// Values of the types Bool, Double, Int64 and String are instead passed by
+// value. They share their ValueImpl when copied, but are copy on write (see
+// ValueImpl::MakeUnique()).
 Value::Value()
   : prv(std::make_shared<ValueImpl>(Type::Undefined))
 {
@@ -865,6 +899,7 @@ Value& Value::operator+=(const std::string& b) {
     throw type_mismatch("The value must be of type String for this operation.");
   }
 
+  ValueImpl::MakeUnique(prv);
   *prv->s += b;
 
   return *this;
@@ -872,6 +907,8 @@ Value& Value::operator+=(const std::string& b) {
 
 
 Value& Value::operator+=(const Value& b) {
+  ValueImpl::MakeUnique(prv);
+
   if (prv->type == Type::Double && b.prv->type == Type::Int64) {
     prv->d += b.prv->i;
   } else if (prv->type == Type::Int64 && b.prv->type == Type::Double) {
@@ -909,6 +946,8 @@ Value& Value::operator-=(const Value& b) {
 
 
 Value& Value::operator*=(const Value& b) {
+  ValueImpl::MakeUnique(prv);
+
   if (prv->type == Type::Double && b.prv->type == Type::Int64) {
     prv->d *= b.prv->i;
   } else if (prv->type == Type::Int64 && b.prv->type == Type::Double) {
@@ -936,6 +975,8 @@ Value& Value::operator*=(const Value& b) {
 
 
 Value& Value::operator/=(const Value& b) {
+  ValueImpl::MakeUnique(prv);
+
   if (prv->type == Type::Double && b.prv->type == Type::Int64) {
     prv->d /= b.prv->i;
   } else if (prv->type == Type::Int64 && b.prv->type == Type::Double) {
@@ -967,6 +1008,7 @@ Value& Value::operator%=(const Value& b) {
     throw type_mismatch("The values must be of the Int64 type for this operation.");
   }
 
+  ValueImpl::MakeUnique(prv);
   prv->i %= b.prv->i;
 
   return *this;
@@ -1004,6 +1046,8 @@ Value Value::operator-() const {
 
 
 Value& Value::operator++() {
+  ValueImpl::MakeUnique(prv);
+
   switch (prv->type) {
   case Type::Double:
     prv->d++;
@@ -1021,6 +1065,8 @@ Value& Value::operator++() {
 
 
 Value& Value::operator--() {
+  ValueImpl::MakeUnique(prv);
+
   switch (prv->type) {
   case Type::Double:
     prv->d--;
@@ -1039,6 +1085,8 @@ Value& Value::operator--() {
 
 Value Value::operator++(int) {
   Value ret;
+
+  ValueImpl::MakeUnique(prv);
 
   switch (prv->type) {
   case Type::Double:
@@ -1060,6 +1108,8 @@ Value Value::operator++(int) {
 
 Value Value::operator--(int) {
   Value ret;
+
+  ValueImpl::MakeUnique(prv);
 
   switch (prv->type) {
   case Type::Double:
