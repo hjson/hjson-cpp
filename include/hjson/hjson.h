@@ -419,6 +419,9 @@ void MarshalToFile(const Value& v, const std::string& path,
 std::string MarshalJson(const Value&);
 
 // Creates a Value tree from input text.
+// For all the unmarshal functions: the input must be UTF-8 encoded. A UTF-8
+// byte order mark (BOM) at the start of the input is ignored. A UTF-16 or
+// UTF-32 BOM at the start of the input causes an Hjson::syntax_error.
 Value Unmarshal(const char *data, size_t dataSize,
   const DecoderOptions& options = DecoderOptions());
 

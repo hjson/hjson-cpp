@@ -3,6 +3,7 @@
 #include <cstring>
 #include <sstream>
 #include <iomanip>
+#include <fstream>
 #include <cstdio>
 #include "hjson_test.h"
 
@@ -1411,6 +1412,99 @@ beta: a// cm 2
     auto root2 = Hjson::UnmarshalFromFile(szTmp);
     assert(root2.deep_equal(root1));
     std::remove(szTmp);
+  }
+
+  {
+    // A UTF-8 byte order mark (BOM) at the start of the input is ignored.
+    const std::string bom = "\xef\xbb\xbf";
+
+    auto root = Hjson::Unmarshal(bom + "a: 1\nb: 2");
+    assert(root.size() == 2);
+    assert(root.key(0) == "a");
+    assert(root["a"] == 1);
+    root = Hjson::Unmarshal(bom + "{a: 1}");
+    assert(root.type() == Hjson::Type::Map && root["a"] == 1);
+    root = Hjson::Unmarshal(bom + "{\n  a: 1\n}");
+    assert(root.type() == Hjson::Type::Map && root["a"] == 1);
+    root = Hjson::Unmarshal(bom + "[1, 2]");
+    assert(root.type() == Hjson::Type::Vector && root.size() == 2);
+    root = Hjson::Unmarshal(bom + "5");
+    assert(root.type() == Hjson::Type::Int64 && root == 5);
+    root = Hjson::Unmarshal(bom + "\"text\"");
+    assert(root == "text");
+    root = Hjson::Unmarshal(bom);
+    assert(root.deep_equal(Hjson::Unmarshal("")));
+    root = Hjson::Unmarshal((bom + "a: 1").c_str());
+    assert(root["a"] == 1);
+
+    // The BOM must not end up in comments, and is not written by Marshal.
+    Hjson::DecoderOptions decOpt;
+    decOpt.whitespaceAsComments = true;
+    Hjson::EncoderOptions encOpt;
+    encOpt.omitRootBraces = true;
+    const std::string commented = "# config\na: 1\nb: 2";
+    root = Hjson::Unmarshal(bom + commented, decOpt);
+    assert(Hjson::Marshal(root, encOpt) == commented);
+
+    // Error positions are the same as without the BOM.
+    const std::string bad = "a: 1\nb c: 2";
+    std::string errNoBom, errBom;
+    try {
+      Hjson::Unmarshal(bad);
+      assert(!"Did not throw error for key containing whitespace");
+    } catch (const Hjson::syntax_error& e) {
+      errNoBom = e.what();
+    }
+    try {
+      Hjson::Unmarshal(bom + bad);
+      assert(!"Did not throw error for key containing whitespace");
+    } catch (const Hjson::syntax_error& e) {
+      errBom = e.what();
+    }
+    assert(errNoBom.find("line 2") != std::string::npos);
+    assert(errBom == errNoBom);
+
+    // Only a BOM at the very start is ignored. U+FEFF anywhere else is data.
+    root = Hjson::Unmarshal(bom + bom + "a: 1");
+    assert(root.key(0) == bom + "a");
+    root = Hjson::Unmarshal("a: x" + bom);
+    assert(root["a"] == "x" + bom);
+
+    // From a file and from a stream.
+    const char *szTmp = "tmpTestFileBom.hjson";
+    {
+      std::ofstream outFile(szTmp, std::ofstream::binary);
+      outFile << bom << "a: 1\r\nb: 2\r\n";
+    }
+    root = Hjson::UnmarshalFromFile(szTmp);
+    std::remove(szTmp);
+    assert(root.key(0) == "a" && root["a"] == 1 && root["b"] == 2);
+    std::stringstream ss(bom + "a: 1");
+    Hjson::Value streamRoot;
+    ss >> streamRoot;
+    assert(streamRoot.key(0) == "a" && streamRoot["a"] == 1);
+  }
+
+  {
+    // Input starting with a UTF-16 or UTF-32 BOM causes a syntax error.
+    const struct {
+      std::string input;
+      const char *encoding;
+    } cases[] = {
+      {std::string("\xff\xfe" "a\0:\0 \0" "1\0", 10), "UTF-16LE"},
+      {std::string("\xfe\xff\0a\0:\0 \0" "1", 10), "UTF-16BE"},
+      {std::string("\xff\xfe\0\0" "a\0\0\0", 8), "UTF-32LE"},
+      {std::string("\0\0\xfe\xff\0\0\0" "a", 8), "UTF-32BE"},
+      {std::string("\xff\xfe", 2), "UTF-16LE"},
+    };
+    for (const auto& c : cases) {
+      try {
+        Hjson::Unmarshal(c.input);
+        assert(!"Did not throw error for UTF-16 or UTF-32 input");
+      } catch (const Hjson::syntax_error& e) {
+        assert(std::string(e.what()).find(c.encoding) != std::string::npos);
+      }
+    }
   }
 
   {
