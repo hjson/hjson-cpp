@@ -557,6 +557,9 @@ static void _quote(Encoder *e, const std::string& value,
     *e->os << "\"\"";
   } else if (e->opt.quoteAlways ||
     _needsQuotes(value) ||
+    // A root string containing ':' could be read back as a root object
+    // without braces ("a: b" would become {"a": "b"}).
+    (e->vParent.size() == 1 && value.find(':') != std::string::npos) ||
     startsWithNumber(value.c_str(), value.size()) ||
     _startsWithKeyword(value) ||
     hasCommentAfter)
