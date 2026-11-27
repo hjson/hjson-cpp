@@ -845,11 +845,53 @@ static Value _rootValue(Parser *p) {
 }
 
 
+static bool _startsWith(const char *data, size_t dataSize, const char *prefix,
+  size_t prefixSize)
+{
+  return dataSize >= prefixSize && !std::memcmp(data, prefix, prefixSize);
+}
+
+
+// Skips a UTF-8 byte order mark (BOM) at the start of the input, since some
+// editors and tools (e.g. Windows PowerShell 5.1) write one. Throws
+// syntax_error if the input starts with a UTF-16 or UTF-32 BOM, because the
+// input must be UTF-8 and would otherwise be parsed into garbage. The bytes
+// 0xfe and 0xff are never part of valid UTF-8, so a UTF-8 input cannot be
+// mistaken for UTF-16 or UTF-32.
+static void _skipByteOrderMark(const char **pData, size_t *pDataSize) {
+  if (_startsWith(*pData, *pDataSize, "\xef\xbb\xbf", 3)) {
+    *pData += 3;
+    *pDataSize -= 3;
+    return;
+  }
+
+  const char *encoding = 0;
+
+  // Check UTF-32 first, since the UTF-32LE BOM starts with the UTF-16LE BOM.
+  if (_startsWith(*pData, *pDataSize, "\x00\x00\xfe\xff", 4)) {
+    encoding = "UTF-32BE";
+  } else if (_startsWith(*pData, *pDataSize, "\xff\xfe\x00\x00", 4)) {
+    encoding = "UTF-32LE";
+  } else if (_startsWith(*pData, *pDataSize, "\xfe\xff", 2)) {
+    encoding = "UTF-16BE";
+  } else if (_startsWith(*pData, *pDataSize, "\xff\xfe", 2)) {
+    encoding = "UTF-16LE";
+  }
+
+  if (encoding) {
+    throw syntax_error(std::string("The input starts with a ") + encoding +
+      " byte order mark, but Hjson input must be UTF-8 encoded");
+  }
+}
+
+
 // Unmarshal parses the Hjson-encoded data and returns a tree of Values.
 //
 // Unmarshal uses the inverse of the encodings that Marshal uses.
 //
 Value Unmarshal(const char *data, size_t dataSize, const DecoderOptions& options) {
+  _skipByteOrderMark(&data, &dataSize);
+
   Parser parser = {
     (const unsigned char*) data,
     dataSize,

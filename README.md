@@ -139,6 +139,8 @@ Value Merge(const Value& base, const Value& ext);
 
 *UnmarshalFromFile* reads directly from a file instead of taking a string as input.
 
+All of the unmarshal functions ignore a UTF-8 byte order mark (BOM) at the start of the input, since some editors and tools write one (for example Windows PowerShell 5.1 when writing UTF-8). If the input instead starts with a UTF-16 or UTF-32 BOM, an *Hjson::syntax_error* exception is thrown, since that input is not UTF-8 encoded. Note that Windows PowerShell 5.1 writes UTF-16 by default when using `>` or *Out-File*. The marshal functions never write a BOM, so if a file that started with a BOM is read and then written back, the BOM is removed.
+
 *Merge* returns an *Hjson::Value* tree that is a cloned combination of the input *Hjson::Value* trees `base` and `ext`, with values from `ext` used whenever both `base` and `ext` has a value for some specific position in the tree. The function is convenient when implementing an application with a default configuration (`base`) that can be overridden by input parameters (`ext`).
 
 ### Stream operator
