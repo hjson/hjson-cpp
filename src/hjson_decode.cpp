@@ -4,6 +4,7 @@
 #include <cctype>
 #include <cstring>
 #include <fstream>
+#include <limits>
 
 
 namespace Hjson {
@@ -36,6 +37,12 @@ public:
   CommentInfo ciBefore, ciKey, ciElemBefore, ciElemExtra;
   std::string key;
 };
+
+
+// The maximum size in bytes of the input to the parser. The parser stores
+// positions in int variables, and moves a few positions past the end of the
+// input, so leave a small margin below INT_MAX.
+static const size_t _maxInputSize = std::numeric_limits<int>::max() - 16;
 
 
 class Parser {
@@ -892,6 +899,11 @@ static void _skipByteOrderMark(const char **pData, size_t *pDataSize) {
 Value Unmarshal(const char *data, size_t dataSize, const DecoderOptions& options) {
   _skipByteOrderMark(&data, &dataSize);
 
+  if (dataSize > _maxInputSize) {
+    throw syntax_error("The input is too large (" + std::to_string(dataSize) +
+      " bytes), the maximum size is " + std::to_string(_maxInputSize) + " bytes");
+  }
+
   Parser parser = {
     (const unsigned char*) data,
     dataSize,
@@ -929,11 +941,25 @@ Value UnmarshalFromFile(const std::string &path, const DecoderOptions& options) 
   if (!infile.is_open()) {
     throw file_error("Could not open file '" + path + "' for reading");
   }
+  const std::streamoff fileSize = infile.tellg();
+  if (fileSize < 0) {
+    throw file_error("Could not get the size of file '" + path + "'");
+  }
+  // Checked here too, so that a file that is too large is not read into
+  // memory before Unmarshal() rejects it.
+  if (static_cast<unsigned long long>(fileSize) > _maxInputSize) {
+    throw file_error("The file '" + path + "' is too large (" +
+      std::to_string(fileSize) + " bytes), the maximum size is " +
+      std::to_string(_maxInputSize) + " bytes");
+  }
   std::string inStr;
-  size_t len = infile.tellg();
+  size_t len = static_cast<size_t>(fileSize);
   inStr.resize(len);
   infile.seekg(0, std::ios::beg);
   infile.read(&inStr[0], inStr.size());
+  if (static_cast<size_t>(infile.gcount()) != len) {
+    throw file_error("Could not read file '" + path + "'");
+  }
   infile.close();
 
   while (len > 0 && inStr.at(len - 1) == '\0') {

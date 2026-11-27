@@ -421,7 +421,10 @@ std::string MarshalJson(const Value&);
 // Creates a Value tree from input text.
 // For all the unmarshal functions: the input must be UTF-8 encoded. A UTF-8
 // byte order mark (BOM) at the start of the input is ignored. A UTF-16 or
-// UTF-32 BOM at the start of the input causes an Hjson::syntax_error.
+// UTF-32 BOM at the start of the input causes an Hjson::syntax_error. Input
+// larger than 2147483631 bytes (a little less than 2 GB, not counting a UTF-8
+// BOM) also causes an Hjson::syntax_error, except for UnmarshalFromFile() that
+// throws Hjson::file_error for files larger than that.
 Value Unmarshal(const char *data, size_t dataSize,
   const DecoderOptions& options = DecoderOptions());
 
@@ -434,7 +437,8 @@ Value Unmarshal(const std::string& data,
   const DecoderOptions& options = DecoderOptions());
 
 // Reads the entire file (in binary mode) and unmarshals it. Throws
-// Hjson::file_error if the file cannot be opened for reading.
+// Hjson::file_error if the file cannot be opened or read, or if the file is
+// larger than 2147483631 bytes (a little less than 2 GB).
 Value UnmarshalFromFile(const std::string& path,
   const DecoderOptions& options = DecoderOptions());
 
