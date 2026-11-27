@@ -275,6 +275,8 @@ v.push_back(2);
 // root["v"] is now [1, 2], since v refers to the same vector.
 ```
 
+This also means that a vector or map can be made to contain itself, for example by `root["self"] = root`. Such a tree cannot be marshalled since the result would be infinitely large: an *Hjson::circular_reference* exception is thrown instead. The functions *clone()* and *Merge()* also throw, but *deep_equal()* works as usual. Note that a vector or map that contains itself is never deleted, unless the reference to itself is removed (for example by `root.erase("self")`).
+
 ### Number representations
 
 The C++ implementation of Hjson can both read and write 64-bit integers. No special care is needed, you can simply assign the value.

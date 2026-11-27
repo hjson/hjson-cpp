@@ -8,6 +8,17 @@
 #include "hjson_test.h"
 
 
+template<typename F>
+static bool _throwsCircularReference(F f) {
+  try {
+    f();
+  } catch (const Hjson::circular_reference&) {
+    return true;
+  }
+  return false;
+}
+
+
 static std::string _test_string_param(std::string param) {
   return param;
 }
@@ -2080,5 +2091,127 @@ key2:)";
       auto root = Hjson::Unmarshal(Hjson::Marshal(val));
       assert(root["key"] == str);
     }
+  }
+
+  {
+    // A Value that contains itself cannot be marshalled, cloned or merged,
+    // but can be compared.
+    Hjson::Value map1;
+    map1["a"] = 1;
+    map1["self"] = map1;
+    assert(map1["self"]["self"]["a"] == 1);
+
+    // Contains itself through a vector and a map.
+    Hjson::Value vec, map2;
+    vec.push_back(1);
+    map2["v"] = vec;
+    vec.push_back(map2);
+
+    // Contains itself further down.
+    Hjson::Value map3;
+    map3["b"]["c"] = map3;
+
+    Hjson::Value cyclic[] = {map1, vec, map2, map3};
+    for (const auto& val : cyclic) {
+      assert(_throwsCircularReference([&]() { Hjson::Marshal(val); }));
+      assert(_throwsCircularReference([&]() { Hjson::MarshalJson(val); }));
+      assert(_throwsCircularReference([&]() {
+        std::ostringstream oss;
+        oss << val;
+      }));
+      assert(_throwsCircularReference([&]() { val.clone(); }));
+      assert(_throwsCircularReference([&]() { Hjson::Merge(val, Hjson::Value()); }));
+      assert(_throwsCircularReference([&]() { Hjson::Merge(Hjson::Value(), val); }));
+      assert(_throwsCircularReference([&]() { Hjson::Merge(val, val); }));
+      assert(val.deep_equal(val));
+    }
+    // The other Values in the vector are not affected.
+    Hjson::Value withCyclic;
+    withCyclic.push_back(1);
+    withCyclic.push_back(map1);
+    assert(_throwsCircularReference([&]() { Hjson::Marshal(withCyclic); }));
+    assert(_throwsCircularReference([&]() { withCyclic.clone(); }));
+
+    // deep_equal() compares the trees, even if they contain themselves.
+    Hjson::Value same, different;
+    same["a"] = 1;
+    same["self"] = same;
+    different["a"] = 2;
+    different["self"] = different;
+    assert(map1.deep_equal(same));
+    assert(same.deep_equal(map1));
+    assert(!map1.deep_equal(different));
+    assert(!map1.deep_equal(map2));
+
+    // A tree that contains itself far down (deeper than where deep_equal()
+    // starts to keep track of the path).
+    auto makeChain = [](int value) {
+      Hjson::Value root, cur = root, back;
+      for (int i = 0; i < 100; i++) {
+        if (i == 80) {
+          back = cur;
+        }
+        cur["next"]["i"] = i;
+        cur = cur["next"];
+      }
+      cur["value"] = value;
+      cur["back"] = back;
+      return root;
+    };
+    Hjson::Value chain1 = makeChain(1), chain2 = makeChain(1), chain3 = makeChain(2);
+    assert(chain1.deep_equal(chain2));
+    assert(!chain1.deep_equal(chain3));
+    assert(_throwsCircularReference([&]() { Hjson::Marshal(chain1); }));
+    assert(_throwsCircularReference([&]() { chain1.clone(); }));
+    assert(_throwsCircularReference([&]() { Hjson::Merge(chain1, chain2); }));
+    for (auto chain : {chain1, chain2, chain3}) {
+      Hjson::Value cur = chain;
+      while (cur["next"].defined()) {
+        cur = cur["next"];
+      }
+      cur.erase("back");
+    }
+
+    // Merging is possible if the part of "base" that contains itself is
+    // replaced by "ext".
+    Hjson::Value ext;
+    ext["self"] = 2;
+    Hjson::Value merged = Hjson::Merge(map1, ext);
+    assert(Hjson::Marshal(merged) == "{\n  self: 2\n  a: 1\n}");
+    Hjson::Value ext2;
+    ext2["self"]["self"] = 3;
+    merged = Hjson::Merge(map1, ext2);
+    assert(Hjson::Marshal(merged) == "{\n  self: {\n    self: 3\n    a: 1\n  }\n  a: 1\n}");
+
+    // The same vector or map can occur several times in a tree, as long as
+    // it does not contain itself.
+    Hjson::Value shared;
+    shared["x"].push_back(1);
+    Hjson::Value root;
+    root["a"] = shared;
+    root["b"] = shared;
+    root["v"].push_back(shared);
+    root["v"].push_back(shared);
+    root["v"].push_back(root["a"]["x"]);
+    const std::string expected = "{\n  a: {\n    x: [\n      1\n    ]\n  }\n"
+      "  b: {\n    x: [\n      1\n    ]\n  }\n  v: [\n    {\n      x: [\n"
+      "        1\n      ]\n    }\n    {\n      x: [\n        1\n      ]\n"
+      "    }\n    [\n      1\n    ]\n  ]\n}";
+    assert(Hjson::Marshal(root) == expected);
+    Hjson::Value rootClone = root.clone();
+    assert(Hjson::Marshal(rootClone) == expected);
+    assert(rootClone.deep_equal(root));
+    // The clone does not share anything.
+    rootClone["a"]["x"].push_back(2);
+    assert(rootClone["b"]["x"].size() == 1);
+    assert(root["a"]["x"].size() == 1);
+    assert(Hjson::Marshal(Hjson::Merge(root, root)) == expected);
+
+    // Break the cycles, otherwise the Values are never deleted.
+    map1.erase("self");
+    vec.erase(1);
+    map3.erase("b");
+    same.erase("self");
+    different.erase("self");
   }
 }
