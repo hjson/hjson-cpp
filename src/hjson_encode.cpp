@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cmath>
 #include <cctype>
+#include <unordered_set>
 
 
 namespace Hjson {
@@ -20,12 +21,15 @@ enum class EncodeState {
 
 class EncodeParent {
 public:
-  EncodeParent(const Value *_pVal) : pVal(_pVal), index(0), isEmpty(true) {}
+  EncodeParent(const Value *_pVal) : pVal(_pVal), index(0), isEmpty(true),
+    id(nullptr) {}
   const Value *pVal;
   int index;
   bool isEmpty;
   std::string commentAfter;
   std::map<std::string, Value>::const_iterator it;
+  // Identifies the vector or map in pVal if it is in Encoder::path.
+  const void *id;
 };
 
 
@@ -35,10 +39,27 @@ struct Encoder {
   int indent;
   std::vector<EncodeState> vState;
   std::vector<EncodeParent> vParent;
+  // The vectors and maps in vParent, to find a tree that contains itself. A
+  // vector or map can still occur more than once in the tree, as long as it
+  // does not contain itself.
+  std::unordered_set<const void*> path;
 };
 
 
 bool startsWithNumber(const char *text, size_t textSize);
+const void *_containerId(const Value& val);
+
+
+// Must be called when starting to write a Vector or Map.
+static void _enterContainer(Encoder *e, const Value& value) {
+  const void *id = _containerId(value);
+  if (id) {
+    if (!e->path.insert(id).second) {
+      throw circular_reference("Cannot marshal a Value that contains itself.");
+    }
+    e->vParent.back().id = id;
+  }
+}
 
 
 // table of character substitutions
@@ -689,6 +710,7 @@ static void _writeValueBegin(Encoder *e) {
     break;
 
   case Type::Vector:
+    _enterContainer(e, value);
     *e->os << "[";
     e->indent++;
     e->vParent.back().commentAfter = value.get_comment_inside();
@@ -696,6 +718,7 @@ static void _writeValueBegin(Encoder *e) {
     return;
 
   case Type::Map:
+    _enterContainer(e, value);
     if (!e->opt.omitRootBraces || e->vParent.size() > 1 || value.empty()) {
       *e->os << "{";
       e->indent++;
@@ -714,6 +737,9 @@ static void _writeValueBegin(Encoder *e) {
 
 
 static void _writeValueEnd(Encoder *e) {
+  if (e->vParent.back().id) {
+    e->path.erase(e->vParent.back().id);
+  }
   e->vState.pop_back();
   e->vParent.pop_back();
 }
@@ -967,9 +993,8 @@ static void _marshalStream(const Value& v, const EncoderOptions& options,
 // Map values encode as JSON objects. The map's key type must be a
 // string. The map keys are used as JSON object keys.
 //
-// JSON cannot represent cyclic data structures and Marshal does not
-// handle them. Passing cyclic structures to Marshal will result in
-// an infinite recursion.
+// Hjson cannot represent cyclic data structures. Passing a value tree that
+// contains itself to Marshal throws Hjson::circular_reference.
 //
 std::string Marshal(const Value& v, const EncoderOptions& options) {
   std::ostringstream oss;

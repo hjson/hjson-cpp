@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <cstring>
 #include <algorithm>
+#include <unordered_set>
 #if HJSON_USE_CHARCONV
 # include <charconv>
 # include <array>
@@ -1268,48 +1269,128 @@ size_t Value::size() const {
 }
 
 
+// Returns a pointer that identifies the underlying vector or map of a non-empty
+// Value of type Vector or Map (Values that share the same vector or map get
+// the same pointer). Returns nullptr for any other Value. Only uses the public
+// interface of Value, so that it can be used by the encoder too. An empty
+// vector or map cannot contain itself, so it does not need to be identified.
+const void *_containerId(const Value& val) {
+  if (!val.is_container() || val.empty()) {
+    return nullptr;
+  }
+  // The address of the first element is unique for each vector or map, and
+  // does not change as long as the vector or map is not changed.
+  return &val[0];
+}
+
+
+namespace {
+struct PairHash {
+  size_t operator()(const std::pair<const void*, const void*>& p) const {
+    std::hash<const void*> h;
+    return h(p.first) ^ (h(p.second) * 31);
+  }
+};
+}
+
+
 bool Value::deep_equal(const Value& other) const {
+  typedef std::pair<const void*, const void*> IdPair;
+
   // A loop instead of recursive calls, so that a deeply nested tree cannot
-  // cause a stack overflow. Each item is a pair of Values that must be equal.
-  std::vector<std::pair<const Value*, const Value*> > todo;
+  // cause a stack overflow. Each item is a pair of Vectors or Maps whose
+  // child elements must be equal, and the position of the next child elements
+  // to compare. The items form the path from the roots to the Vectors or Maps
+  // that are being compared.
+  struct EqualItem {
+    const Value *a, *b;
+    IdPair id;
+    bool inPath;
+    size_t index;
+    ValueMap::const_iterator itA, itB;
+  };
+  std::vector<EqualItem> todo;
+  // The pairs of vectors or maps on the path. If a pair is found again further
+  // down, the trees contain themselves. That pair is then already being
+  // compared, so it does not need to be compared again (that would never end).
+  // For speed, the pairs closest to the roots are not stored: if the trees
+  // contain themselves the path never ends, so a pair is still found again.
+  std::unordered_set<IdPair, PairHash> path;
+  const size_t untrackedDepth = 64;
 
-  todo.emplace_back(this, &other);
-
-  while (!todo.empty()) {
-    const Value *a = todo.back().first;
-    const Value *b = todo.back().second;
-    todo.pop_back();
-
+  // Returns false if a and b are not equal. Returns true if they are equal,
+  // or if their child elements must be compared (a new item is then added,
+  // which invalidates references to items).
+  auto visit = [&todo, &path, untrackedDepth](const Value *a, const Value *b) -> bool {
     if (*a == *b) {
-      continue;
+      // Same type and value, or the same vector or map.
+      return true;
     }
 
-    if (a->type() != b->type() || a->size() != b->size()) {
+    if (a->type() != b->type() || a->size() != b->size() ||
+      !a->is_container())
+    {
       return false;
     }
 
-    switch (a->prv->type)
-    {
-    case Type::Vector:
-      for (size_t index = 0; index < a->prv->v->size(); ++index) {
-        todo.emplace_back(&(*a->prv->v)[index], &(*b->prv->v)[index]);
-      }
-      break;
+    if (a->empty()) {
+      return true;
+    }
 
-    case Type::Map:
-      {
-        auto itA = a->prv->m->m.cbegin(), endA = a->prv->m->m.cend();
-        auto itB = b->prv->m->m.cbegin();
-        for (; itA != endA; ++itA, ++itB) {
-          if (itA->first != itB->first) {
-            return false;
-          }
-          todo.emplace_back(&itA->second, &itB->second);
+    IdPair id(a->prv.get(), b->prv.get());
+    const bool inPath = (todo.size() >= untrackedDepth);
+    if (inPath && !path.insert(id).second) {
+      return true;
+    }
+
+    EqualItem item = {a, b, id, inPath, 0, ValueMap::const_iterator(),
+      ValueMap::const_iterator()};
+    if (a->prv->type == Type::Map) {
+      item.itA = a->prv->m->m.cbegin();
+      item.itB = b->prv->m->m.cbegin();
+    }
+    todo.push_back(item);
+
+    return true;
+  };
+
+  if (!visit(this, &other)) {
+    return false;
+  }
+
+  while (!todo.empty()) {
+    EqualItem &item = todo.back();
+    const Value *a, *b;
+
+    if (item.a->prv->type == Type::Vector) {
+      if (item.index >= item.a->prv->v->size()) {
+        if (item.inPath) {
+          path.erase(item.id);
         }
+        todo.pop_back();
+        continue;
       }
-      break;
+      a = &(*item.a->prv->v)[item.index];
+      b = &(*item.b->prv->v)[item.index];
+      ++item.index;
+    } else {
+      if (item.itA == item.a->prv->m->m.cend()) {
+        if (item.inPath) {
+          path.erase(item.id);
+        }
+        todo.pop_back();
+        continue;
+      }
+      if (item.itA->first != item.itB->first) {
+        return false;
+      }
+      a = &item.itA->second;
+      b = &item.itB->second;
+      ++item.itA;
+      ++item.itB;
+    }
 
-    default:
+    if (!visit(a, b)) {
       return false;
     }
   }
@@ -1327,36 +1408,62 @@ Value Value::clone() const {
   ret.set_comments(*this);
 
   // A loop instead of recursive calls, so that a deeply nested tree cannot
-  // cause a stack overflow. Each item is a source Vector or Map and its clone.
-  // The clone is still empty but has already been inserted in its parent
-  // clone, sharing the underlying vector or map with the inserted element.
-  std::vector<std::pair<const Value*, Value> > todo;
+  // cause a stack overflow. Each item is a source Vector or Map, its clone,
+  // and the index of the next child element to clone. The clone has already
+  // been inserted in its parent clone, sharing the underlying vector or map
+  // with the inserted element. The items form the path from the root to the
+  // Vector or Map that is being cloned.
+  struct CloneItem {
+    const Value *src;
+    Value dst;
+    int index;
+    const void *id;
+  };
+  std::vector<CloneItem> todo;
+  // The vectors and maps on the path, to find a tree that contains itself.
+  // A vector or map can still occur more than once in the tree, as long as it
+  // does not contain itself.
+  std::unordered_set<const void*> path;
 
-  todo.emplace_back(this, ret);
+  todo.push_back(CloneItem{this, ret, 0, _containerId(*this)});
+  if (todo.back().id) {
+    path.insert(todo.back().id);
+  }
 
   while (!todo.empty()) {
-    const Value *src = todo.back().first;
-    Value dst = todo.back().second;
-    todo.pop_back();
+    CloneItem &item = todo.back();
 
-    for (int index = 0; index < int(src->size()); ++index) {
-      const Value &srcElem = (*src)[index];
-      // For other types than Vector and Map, the copy constructor is used,
-      // which also copies the comments.
-      Value dstElem = srcElem.is_container() ? Value(srcElem.prv->type) : srcElem;
+    if (item.index >= int(item.src->size())) {
+      path.erase(item.id);
+      todo.pop_back();
+      continue;
+    }
 
-      if (srcElem.is_container()) {
-        dstElem.set_comments(srcElem);
-        todo.emplace_back(&srcElem, dstElem);
+    const int index = item.index++;
+    const Value &srcElem = (*item.src)[index];
+    // For other types than Vector and Map, the copy constructor is used,
+    // which also copies the comments.
+    Value dstElem = srcElem.is_container() ? Value(srcElem.prv->type) : srcElem;
+    if (srcElem.is_container()) {
+      // Before dstElem is inserted, since the comments are copied then.
+      dstElem.set_comments(srcElem);
+    }
+
+    if (item.dst.prv->type == Type::Vector) {
+      item.dst.prv->v->push_back(dstElem);
+    } else {
+      const std::string &key = item.src->prv->m->v[index];
+      item.dst.prv->m->v.push_back(key);
+      item.dst.prv->m->m.emplace(key, dstElem);
+    }
+
+    const void *id = _containerId(srcElem);
+    if (id) {
+      if (!path.insert(id).second) {
+        throw circular_reference("Cannot clone a Value that contains itself.");
       }
-
-      if (dst.prv->type == Type::Vector) {
-        dst.prv->v->push_back(dstElem);
-      } else {
-        const std::string &key = src->prv->m->v[index];
-        dst.prv->m->v.push_back(key);
-        dst.prv->m->m.emplace(key, dstElem);
-      }
+      // Invalidates item.
+      todo.push_back(CloneItem{&srcElem, dstElem, 0, id});
     }
   }
 
@@ -2004,21 +2111,35 @@ Value Merge(const Value& base, const Value& ext) {
 
   // A loop instead of recursive calls, so that deeply nested maps cannot cause
   // a stack overflow. Each item is a pair of maps from "base" and "ext" that
-  // should be merged into "merged". "merged" is still empty but has already
-  // been inserted in its parent, sharing the underlying map with the inserted
-  // element.
+  // should be merged into "merged", and the index of the next key in "ext" to
+  // merge. "merged" has already been inserted in its parent, sharing the
+  // underlying map with the inserted element. The items form the path from
+  // the root to the maps that are being merged.
   struct MergeItem {
     Value base, ext, merged;
+    int index;
+    const void *extId;
   };
   std::vector<MergeItem> todo;
+  // The maps from "ext" on the path. Merging only continues into a map if
+  // both "base" and "ext" have a map there, so the loop could only go on
+  // forever if "ext" contains itself (and "base" too). If "ext" contains
+  // itself it is never possible to create the merged tree, because each part
+  // of "ext" is either merged or cloned. "base" can contain itself if that
+  // part of "base" is replaced by "ext" in the merged tree (otherwise clone()
+  // throws).
+  std::unordered_set<const void*> extPath;
 
-  todo.push_back(MergeItem{base, ext, ret});
+  todo.push_back(MergeItem{base, ext, ret, 0, _containerId(ext)});
+  if (todo.back().extId) {
+    extPath.insert(todo.back().extId);
+  }
 
   while (!todo.empty()) {
-    MergeItem item = todo.back();
-    todo.pop_back();
+    MergeItem &item = todo.back();
 
-    for (int index = 0; index < int(item.ext.size()); ++index) {
+    if (item.index < int(item.ext.size())) {
+      const int index = item.index++;
       const std::string key = item.ext.key(index);
       const Value &extElem = item.ext[index];
       const Value baseElem = static_cast<const Value&>(item.base)[key];
@@ -2031,18 +2152,29 @@ Value Merge(const Value& base, const Value& ext) {
         Value mergedElem(Type::Map);
         mergedElem.set_comments(extElem);
         item.merged[key] = mergedElem;
-        todo.push_back(MergeItem{baseElem, extElem, mergedElem});
+        const void *extId = _containerId(extElem);
+        if (extId && !extPath.insert(extId).second) {
+          throw circular_reference("Cannot merge a Value that contains itself.");
+        }
+        // Invalidates item.
+        todo.push_back(MergeItem{baseElem, extElem, mergedElem, 0, extId});
       } else {
         item.merged[key] = extElem.clone();
       }
+      continue;
     }
 
+    // All keys in "ext" have been merged, add the keys that only exist in
+    // "base".
     for (int index = 0; index < int(item.base.size()); ++index) {
       const std::string key = item.base.key(index);
       if (!item.merged[key].defined()) {
         item.merged[key] = item.base[index].clone();
       }
     }
+
+    extPath.erase(item.extId);
+    todo.pop_back();
   }
 
   return ret;

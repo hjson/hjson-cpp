@@ -65,6 +65,10 @@ class file_error : public std::runtime_error {
   using std::runtime_error::runtime_error;
 };
 
+class circular_reference : public std::logic_error {
+  using std::logic_error::logic_error;
+};
+
 
 enum class Type {
   Undefined,
@@ -244,9 +248,10 @@ public:
   bool is_numeric() const;
   // Returns true if the entire tree for which this Value is the root is equal
   // to the entire tree for which the Value parameter is root. Comments are
-  // ignored in the comparison.
+  // ignored in the comparison. Also works for trees that contain themselves.
   bool deep_equal(const Value&) const;
-  // Returns a full clone of the tree for which this Value is the root.
+  // Returns a full clone of the tree for which this Value is the root. Throws
+  // Hjson::circular_reference if the tree contains itself.
   Value clone() const;
 
   // -- Vector and Map specific functions
@@ -405,6 +410,9 @@ public:
 
 // Returns a properly indented text representation of the input value tree.
 // Extra options can be specified in the input parameter "options".
+// For all the marshal functions (including the stream operators): throws
+// Hjson::circular_reference if the value tree contains itself. A stream or
+// file then contains the output that was written before the error was found.
 std::string Marshal(const Value& v, const EncoderOptions& options = EncoderOptions());
 
 // Writes (in binary mode, so using Unix EOL) a properly indented text
@@ -458,6 +466,9 @@ Value UnmarshalFromFile(const std::string& path,
 // tree will not affect the input variables "base" and "ext.
 //
 // If "ext" is of type Undefined, a clone of "base" is returned.
+//
+// Throws Hjson::circular_reference if "ext" contains itself, or if a part of
+// "base" that contains itself would be included in the returned tree.
 //
 Value Merge(const Value& base, const Value& ext);
 
