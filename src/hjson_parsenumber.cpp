@@ -131,7 +131,14 @@ bool tryParseNumber(Value *pValue, const char *text, size_t textSize, bool stopA
   } // single 0 is allowed
 
   if (p.ch == '.') {
-    while (_next(&p) && p.ch >= '0' && p.ch <= '9') {
+    _next(&p);
+    // A fraction needs at least one digit, otherwise the text is a quoteless
+    // string (e.g. "1." or "1.e2").
+    if (p.ch < '0' || p.ch > '9') {
+      return false;
+    }
+    while (p.ch >= '0' && p.ch <= '9') {
+      _next(&p);
     }
   }
   if (p.ch == 'e' || p.ch == 'E') {
