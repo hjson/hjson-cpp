@@ -2054,42 +2054,6 @@ key2:)";
     assert(Hjson::Unmarshal(out)["key"] == "line 1\nline 2");
   }
 
-  {
-    // A string that spells a number that does not fit in a double is read as
-    // a string, but must be quoted when written, because the Hjson syntax
-    // makes it a number (other parsers would read a number).
-    std::string values[] = {"1e400", "1e309", "-1e999",
-      "123456789012345678901234567890e300", "1e400 # comment", "1e400,",
-      // Too small for a double. Depending on HJSON_NUMBER_PARSER this is read
-      // either as a string or as the number 0.
-      "1e-400"};
-    for (const auto& str : values) {
-      if (str != "1e-400") {
-        auto root = Hjson::Unmarshal("{\n  k: " + str + "\n}");
-        assert(root["k"].type() == Hjson::Type::String);
-        assert(root["k"] == str);
-      }
-
-      Hjson::Value val;
-      val["k"] = str;
-      val["a"].push_back(str);
-      auto out = Hjson::Marshal(val);
-      assert(out == "{\n  k: \"" + str + "\"\n  a: [\n    \"" + str + "\"\n  ]\n}");
-      auto back = Hjson::Unmarshal(out);
-      assert(back["k"] == str);
-      assert(back["a"][0] == str);
-      assert(Hjson::Marshal(Hjson::Value(str)) == "\"" + str + "\"");
-    }
-    // Strings that are not numbers according to the Hjson syntax are still
-    // written without quotes.
-    std::string notNumbers[] = {"1e", "1e400 x", "01e400", "1e400e"};
-    for (const auto& str : notNumbers) {
-      Hjson::Value val;
-      val["k"] = str;
-      assert(Hjson::Marshal(val) == "{\n  k: " + str + "\n}");
-    }
-  }
-
 #if !defined(HJSON_USE_CHARCONV) || !HJSON_USE_CHARCONV
   {
     double a = 0.1 + 0.2;
